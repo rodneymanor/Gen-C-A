@@ -51,21 +51,19 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
     gap: var(--space-3);
   `}
   
-  /* Variant styles */
+  /* Variant styles - Perplexity Flat Design */
   ${variant === 'primary' && css`
-    background: var(--button-primary-bg);
+    background: var(--button-primary-bg);  /* Claude orange preserved */
     color: var(--button-primary-text);
-    box-shadow: var(--button-primary-shadow);
+    /* REMOVED: All shadows for flat design */
     
     &:hover:not(:disabled) {
       background: var(--button-primary-bg-hover);
-      box-shadow: var(--shadow-elevated);
-      transform: translateY(-1px);
+      /* REMOVED: Shadow and transform - flat hover only */
     }
     
     &:active {
-      transform: translateY(0);
-      box-shadow: var(--button-primary-shadow);
+      background: var(--color-primary-700);  /* Slightly darker on press */
     }
   `}
   
@@ -81,29 +79,18 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
   `}
   
   ${variant === 'ai-powered' && css`
-    background: linear-gradient(135deg, var(--color-ai-gradient-start), var(--color-ai-gradient-end));
+    /* Perplexity Flat Design - No Gradients, Use Claude Orange */
+    background: var(--color-creative-purple);  /* Solid purple instead of gradient */
     color: white;
-    box-shadow: var(--shadow-ai);
-    overflow: hidden;
-    
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      transition: left 0.5s ease;
-    }
+    /* REMOVED: All shadows and animations for flat design */
     
     &:hover:not(:disabled) {
-      box-shadow: var(--shadow-button-ai);
-      transform: translateY(-2px);
-      
-      &::before {
-        left: 100%;
-      }
+      background: #7c3aed;  /* Simple color change only */
+      /* REMOVED: All shadows and transforms */
+    }
+    
+    &:active {
+      background: #6d28d9;  /* Darker on press */
     }
   `}
   
@@ -113,8 +100,11 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
     
     &:hover:not(:disabled) {
       background: #7c3aed;
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-elevated);
+      /* REMOVED: Transform and shadow for flat design */
+    }
+    
+    &:active {
+      background: #6d28d9;
     }
   `}
   
@@ -152,11 +142,11 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
     box-shadow: var(--focus-ring);
   }
   
-  /* Disabled state */
+  /* Disabled state - Perplexity Flat Design */
   &:disabled {
-    opacity: 0.6;
+    opacity: 0.5;  /* Slightly more faded */
     cursor: not-allowed;
-    transform: none !important;
+    /* No transforms needed in flat design */
   }
   
   /* Loading state */

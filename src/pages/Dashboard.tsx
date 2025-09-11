@@ -74,21 +74,22 @@ const welcomeSectionStyles = css`
       gap: var(--space-2);
     }
     
+    /* Perplexity Flat Design - Minimal stat items */
     .stat-item {
-      background: var(--color-primary-50);
-      border: 1px solid var(--color-primary-200);
+      background: transparent;  /* Remove background for flat design */
+      border: 1px solid var(--color-neutral-200);  /* Simple border only */
       border-radius: var(--radius-medium);
       padding: var(--space-3) var(--space-4);
       
       .stat-icon {
         margin-right: var(--space-2);
-        color: var(--color-primary-700);
+        color: var(--color-primary-500);  /* Claude orange for icon accent */
       }
       
       .stat-text {
         font-size: var(--font-size-body-small);
         font-weight: var(--font-weight-medium);
-        color: var(--color-primary-700);
+        color: var(--color-text-primary);  /* Standard text, not colored */
       }
     }
   }
@@ -171,8 +172,10 @@ const activityItemStyles = css`
   padding: var(--space-4);
   transition: var(--transition-all);
   
+  /* Perplexity Flat Design - Minimal hover state */
   &:hover {
-    background: var(--color-neutral-50);
+    border-left: 3px solid var(--color-primary-500);  /* Claude orange accent */
+    padding-left: calc(var(--space-4) - 2px);  /* Adjust padding for border */
   }
   
   .activity-icon {

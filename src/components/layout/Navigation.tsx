@@ -70,7 +70,7 @@ const sidebarStyles = (isCollapsed: boolean, isMobile: boolean) => css`
     top: 0;
     width: ${isCollapsed ? '0' : 'var(--sidebar-width)'};
     overflow: hidden;
-    box-shadow: ${!isCollapsed ? 'var(--shadow-elevated)' : 'none'};
+    /* REMOVED: Shadow for Perplexity flat design */
   ` : css`
     /* Desktop: relative positioned sidebar */
     width: ${isCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)'};
@@ -95,7 +95,7 @@ const headerStyles = css`
     .logo {
       width: 32px;
       height: 32px;
-      background: linear-gradient(135deg, var(--color-ai-gradient-start), var(--color-ai-gradient-end));
+      background: var(--color-primary-500);  /* Claude orange - flat design */
       border-radius: var(--radius-medium);
       display: flex;
       align-items: center;
@@ -159,7 +159,7 @@ const navItemStyles = (isActive: boolean, isCollapsed: boolean) => css`
   
   &:focus-visible {
     outline: none;
-    box-shadow: var(--focus-ring);
+    box-shadow: var(--focus-ring);  /* Keep focus ring for accessibility */
   }
   
   .nav-icon {
@@ -176,8 +176,8 @@ const navItemStyles = (isActive: boolean, isCollapsed: boolean) => css`
     white-space: nowrap;
     overflow: hidden;
     opacity: ${isCollapsed ? '0' : '1'};
-    transform: ${isCollapsed ? 'translateX(-10px)' : 'translateX(0)'};
-    transition: var(--transition-all);
+    /* REMOVED: Transform for Perplexity flat design */
+    transition: var(--transition-colors);
   }
   
   .nav-badge {
@@ -237,8 +237,8 @@ const userMenuStyles = (isCollapsed: boolean) => css`
     flex: 1;
     min-width: 0;
     opacity: ${isCollapsed ? '0' : '1'};
-    transform: ${isCollapsed ? 'translateX(-10px)' : 'translateX(0)'};
-    transition: var(--transition-all);
+    /* REMOVED: Transform for Perplexity flat design */
+    transition: var(--transition-colors);
     
     .user-name {
       font-size: var(--font-size-body-small);

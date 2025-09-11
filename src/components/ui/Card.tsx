@@ -38,26 +38,26 @@ const getCardStyles = (
     padding: var(--space-6);
   `}
   
-  /* Appearance variants */
+  /* Appearance variants - Perplexity Flat Design */
   ${appearance === 'subtle' && css`
     border: 1px solid var(--card-border);
-    box-shadow: none;
+    /* REMOVED: All shadows for flat design */
     background: var(--color-neutral-50);
   `}
   
   ${appearance === 'raised' && css`
     border: 1px solid var(--card-border);
-    box-shadow: var(--card-shadow);
+    /* REMOVED: Card shadow for flat design */
   `}
   
   ${appearance === 'elevated' && css`
     border: 1px solid var(--card-border);
-    box-shadow: var(--shadow-elevated);
+    /* REMOVED: Elevated shadow for flat design */
   `}
   
   ${appearance === 'selected' && css`
-    border: 2px solid var(--color-primary-500);
-    box-shadow: var(--shadow-primary);
+    border: 2px solid var(--color-primary-500);  /* Claude orange preserved */
+    /* REMOVED: Shadow - use border + background only */
     background: var(--color-primary-50);
   `}
   
@@ -73,12 +73,9 @@ const getCardStyles = (
   
   ${isHoverable && css`
     &:hover {
-      box-shadow: var(--shadow-elevated);
-      transform: translateY(-2px);
-      
-      ${appearance === 'elevated' && css`
-        box-shadow: var(--shadow-modal);
-      `}
+      /* Perplexity Flat Design - Simple border color change only */
+      border-color: var(--color-neutral-300);
+      /* REMOVED: All shadows and transforms for flat design */
     }
   `}
   

@@ -142,15 +142,16 @@ const favoritesStyles = css`
     .favorite-item {
       min-width: 200px;
       padding: var(--space-3) var(--space-4);
-      background: var(--color-warning-50);
-      border: 1px solid var(--color-warning-200);
+      /* Perplexity Flat Design - Minimal favorites */
+      background: transparent;
+      border: 1px solid var(--color-neutral-200);
       border-radius: var(--radius-medium);
       cursor: pointer;
-      transition: var(--transition-all);
+      transition: var(--transition-colors);
       
       &:hover {
-        background: var(--color-warning-100);
-        transform: translateY(-2px);
+        border-color: var(--color-primary-500);  /* Claude orange accent on hover */
+        /* REMOVED: Background and transform for flat design */
       }
       
       .favorite-icon {
@@ -201,7 +202,7 @@ const collectionsGridStyles = css`
 
 const newCollectionCardStyles = css`
   border: 2px dashed var(--color-neutral-300);
-  background: var(--color-neutral-50);
+  background: transparent;  /* Perplexity flat design */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -211,10 +212,10 @@ const newCollectionCardStyles = css`
   cursor: pointer;
   transition: var(--transition-all);
   
+  /* Perplexity Flat Design - Minimal hover */
   &:hover {
-    border-color: var(--color-primary-400);
-    background: var(--color-primary-50);
-    transform: translateY(-2px);
+    border-color: var(--color-primary-500);  /* Claude orange accent */
+    /* REMOVED: Background and transform for flat design */
   }
   
   .new-icon {
