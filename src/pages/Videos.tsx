@@ -626,7 +626,6 @@ export const Videos: React.FC = () => {
             onClick={() => toggleFilterValue('watchList', true)}
             aria-label="Filter by watch list"
           >
-            <StarFilledIcon label="" size="small" primaryColor="currentColor" />
             Watch list
             {filters.watchList && (
               <span className="remove-icon" onClick={(e) => {
@@ -642,7 +641,6 @@ export const Videos: React.FC = () => {
             css={filterPillStyles(filters.platforms.length > 0)}
             onClick={() => toggleFilterValue('platforms', 'tiktok')}
           >
-            <PersonIcon label="" size="small" primaryColor="currentColor" />
             Platform
             {filters.platforms.length > 0 && (
               <Badge variant="neutral" size="small">
@@ -655,7 +653,6 @@ export const Videos: React.FC = () => {
             css={filterPillStyles(filters.viewsRange !== 'any')}
             onClick={() => toggleFilterValue('viewsRange', 'high')}
           >
-            <EyeIcon label="" size="small" primaryColor="currentColor" />
             Views
           </button>
 
@@ -663,7 +660,6 @@ export const Videos: React.FC = () => {
             css={filterPillStyles(filters.timeRange !== 'any')}
             onClick={() => toggleFilterValue('timeRange', 'month')}
           >
-            <CalendarIcon label="" size="small" primaryColor="currentColor" />
             Last three months
           </button>
 
@@ -671,7 +667,6 @@ export const Videos: React.FC = () => {
             css={filterPillStyles(filters.engagementRate !== 'any')}
             onClick={() => toggleFilterValue('engagementRate', 'high')}
           >
-            <GraphLineIcon label="" size="small" primaryColor="currentColor" />
             Engagement rate
           </button>
         </div>

@@ -770,7 +770,6 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({
                   key={platform}
                   variant={enabled ? 'primary' : 'secondary'}
                   size="medium"
-                  iconBefore={<PlatformIcon platform={platform} size="small" />}
                   onClick={() => handlePlatformToggle(platform)}
                   testId={`${testId}-filter-${platform}`}
                 >

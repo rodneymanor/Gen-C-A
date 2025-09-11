@@ -503,21 +503,18 @@ export const Collections: React.FC = () => {
               <Button 
                 variant={platformFilter === 'tiktok' ? 'primary' : 'subtle'} 
                 size="small"
-                iconBefore={<MobileIcon label="" />}
               >
                 TikTok
               </Button>
               <Button 
                 variant={platformFilter === 'instagram' ? 'primary' : 'subtle'} 
                 size="small"
-                iconBefore={<ImageIcon label="" />}
               >
                 Instagram
               </Button>
               <Button 
                 variant="subtle" 
                 size="small"
-                iconBefore={<CalendarIcon label="" />}
               >
                 Newest
               </Button>
@@ -577,21 +574,18 @@ export const Collections: React.FC = () => {
           <Button 
             variant={platformFilter === 'tiktok' ? 'primary' : 'subtle'} 
             size="small"
-            iconBefore={<MobileIcon label="" />}
           >
             TikTok
           </Button>
           <Button 
             variant={platformFilter === 'instagram' ? 'primary' : 'subtle'} 
             size="small"
-            iconBefore={<ImageIcon label="" />}
           >
             Instagram
           </Button>
           <Button 
             variant={platformFilter === 'youtube' ? 'primary' : 'subtle'} 
             size="small"
-            iconBefore={<VideoIcon label="" />}
           >
             YouTube
           </Button>
