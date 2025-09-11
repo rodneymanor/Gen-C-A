@@ -2,27 +2,33 @@ import React, { useState } from 'react';
 import { css } from '@emotion/react';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { formatDuration, getPlatformIcon, formatRelativeTime } from '../../utils/format';
+import { Badge } from '../ui/Badge';
+import { VideoGrid as Grid } from '../layout/Grid';
+import { formatDuration, getPlatformIcon, formatRelativeTime, formatViewCount } from '../../utils/format';
 import type { ContentItem } from '../../types';
+import { token } from '@atlaskit/tokens';
+
+// Atlassian Design System Icons
+import VidPlayIcon from '@atlaskit/icon/glyph/vid-play';
+import CheckIcon from '@atlaskit/icon/glyph/check';
+import PersonIcon from '@atlaskit/icon/glyph/person';
+import CameraIcon from '@atlaskit/icon/glyph/camera';
+import StarIcon from '@atlaskit/icon/glyph/star';
+import StarFilledIcon from '@atlaskit/icon/glyph/star-filled';
+import MoreIcon from '@atlaskit/icon/glyph/more';
+import EyeIcon from '@atlaskit/icon/glyph/watch';
 
 export interface VideoGridProps {
   videos: ContentItem[];
   onVideoSelect?: (video: ContentItem) => void;
   onVideoPlay?: (video: ContentItem) => void;
+  onVideoFavorite?: (video: ContentItem) => void;
+  onVideoContextMenu?: (video: ContentItem, event: React.MouseEvent | React.KeyboardEvent) => void;
   selectedVideos?: string[];
+  favoriteVideos?: string[];
   showBulkActions?: boolean;
 }
 
-const gridStyles = css`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-4);
-  
-  @media (max-width: 640px) {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: var(--space-3);
-  }
-`;
 
 const videoCardStyles = (isSelected: boolean) => css`
   position: relative;
@@ -56,7 +62,7 @@ const videoCardStyles = (isSelected: boolean) => css`
 const thumbnailContainerStyles = css`
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 9 / 16;
   background: var(--color-neutral-200);
   border-radius: var(--radius-medium) var(--radius-medium) 0 0;
   overflow: hidden;
@@ -88,10 +94,10 @@ const overlayStyles = css`
   bottom: 0;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.1) 0%,
+    ${token('color.background.neutral.subtle', 'rgba(0, 0, 0, 0.1)')} 0%,
     transparent 30%,
     transparent 70%,
-    rgba(0, 0, 0, 0.6) 100%
+    ${token('color.background.neutral.bold', 'rgba(0, 0, 0, 0.6)')} 100%
   );
   opacity: 0;
   transition: var(--transition-all);
@@ -100,9 +106,9 @@ const overlayStyles = css`
   justify-content: center;
   
   .play-button {
-    background: rgba(255, 255, 255, 0.9);
+    background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.9)')};
     backdrop-filter: blur(4px);
-    border: 2px solid white;
+    border: 2px solid ${token('color.background.neutral', 'white')};
     border-radius: var(--radius-full);
     width: 60px;
     height: 60px;
@@ -115,10 +121,77 @@ const overlayStyles = css`
     transform: scale(0.8);
     
     &:hover {
-      background: var(--color-primary-500);
-      color: white;
+      background: ${token('color.background.brand.bold', 'var(--color-primary-500)')};
+      color: ${token('color.text.inverse', 'white')};
       transform: scale(0.9);
     }
+  }
+`;
+
+const viewCountStyles = css`
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  background: ${token('color.background.neutral.bold', 'rgba(0, 0, 0, 0.8)')};
+  color: ${token('color.text.inverse', 'white')};
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-small);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+`;
+
+const favoriteStarStyles = css`
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-10);
+  background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.9)')};
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-full);
+  padding: var(--space-2);
+  cursor: pointer;
+  transition: var(--transition-all);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &:hover {
+    background: var(--color-warning-50);
+    border-color: var(--color-warning-300);
+  }
+  
+  &.favorited {
+    background: var(--color-warning-100);
+    border-color: var(--color-warning-300);
+  }
+`;
+
+const contextMenuStyles = css`
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.9)')};
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-full);
+  padding: var(--space-2);
+  cursor: pointer;
+  transition: var(--transition-all);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  
+  &:hover {
+    background: var(--color-neutral-50);
+    border-color: var(--color-neutral-300);
   }
 `;
 
@@ -126,8 +199,8 @@ const durationBadgeStyles = css`
   position: absolute;
   bottom: var(--space-2);
   right: var(--space-2);
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
+  background: ${token('color.background.neutral.bold', 'rgba(0, 0, 0, 0.8)')};
+  color: ${token('color.text.inverse', 'white')};
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-small);
   font-size: var(--font-size-caption);
@@ -139,20 +212,6 @@ const platformBadgeStyles = css`
   position: absolute;
   top: var(--space-2);
   left: var(--space-2);
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: var(--radius-small);
-  padding: var(--space-1) var(--space-2);
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  
-  .platform-icon {
-    font-size: 12px;
-  }
 `;
 
 const checkboxStyles = css`
@@ -161,9 +220,9 @@ const checkboxStyles = css`
   right: var(--space-2);
   width: 20px;
   height: 20px;
-  background: rgba(255, 255, 255, 0.9);
+  background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.9)')};
   backdrop-filter: blur(4px);
-  border: 2px solid var(--color-neutral-300);
+  border: 2px solid ${token('color.border', 'var(--color-neutral-300)')};
   border-radius: var(--radius-small);
   cursor: pointer;
   transition: var(--transition-all);
@@ -248,10 +307,13 @@ const videoInfoStyles = css`
 const VideoCard: React.FC<{
   video: ContentItem;
   isSelected: boolean;
+  isFavorited: boolean;
   onSelect?: (video: ContentItem) => void;
   onPlay?: (video: ContentItem) => void;
+  onFavorite?: (video: ContentItem) => void;
+  onContextMenu?: (video: ContentItem, event: React.MouseEvent | React.KeyboardEvent) => void;
   showCheckbox?: boolean;
-}> = ({ video, isSelected, onSelect, onPlay, showCheckbox = false }) => {
+}> = ({ video, isSelected, isFavorited, onSelect, onPlay, onFavorite, onContextMenu, showCheckbox = false }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -277,7 +339,7 @@ const VideoCard: React.FC<{
           />
         ) : (
           <div className="thumbnail-placeholder" aria-hidden="true">
-            🎥
+            <VidPlayIcon label="Video thumbnail" size="xlarge" primaryColor={token('color.icon.disabled')} />
           </div>
         )}
         
@@ -302,15 +364,34 @@ const VideoCard: React.FC<{
               }
             }}
           >
-            ▶️
+            <VidPlayIcon label="" size="medium" primaryColor={token('color.icon.inverse')} />
           </div>
         </div>
         
         {/* Platform badge */}
         {video.platform && (
           <div css={platformBadgeStyles}>
-            <span className="platform-icon">{getPlatformIcon(video.platform)}</span>
-            <span>{video.platform}</span>
+            <Badge
+              variant="neutral"
+              size="small"
+              icon={getPlatformIcon(video.platform)}
+              className="platform-badge-overlay"
+              style={{
+                background: token('color.background.neutral', 'rgba(255, 255, 255, 0.9)'),
+                backdropFilter: 'blur(4px)',
+                border: `1px solid ${token('color.border', 'rgba(255, 255, 255, 0.5)')}`
+              }}
+            >
+              {video.platform}
+            </Badge>
+          </div>
+        )}
+        
+        {/* View count */}
+        {video.metadata?.views && (
+          <div css={viewCountStyles}>
+            <EyeIcon label="" size="small" primaryColor={token('color.text.inverse')} />
+            {formatViewCount(video.metadata.views)}
           </div>
         )}
         
@@ -320,6 +401,52 @@ const VideoCard: React.FC<{
             ▶ {formatDuration(video.duration)}
           </div>
         )}
+        
+        {/* Favorite star */}
+        <div
+          css={favoriteStarStyles}
+          className={isFavorited ? 'favorited' : ''}
+          onClick={(e) => {
+            e.stopPropagation();
+            onFavorite?.(video);
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label={isFavorited ? `Remove ${video.title} from favorites` : `Add ${video.title} to favorites`}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onFavorite?.(video);
+            }
+          }}
+        >
+          {isFavorited ? (
+            <StarFilledIcon label="" size="small" primaryColor={token('color.icon.warning')} />
+          ) : (
+            <StarIcon label="" size="small" primaryColor={token('color.icon')} />
+          )}
+        </div>
+        
+        {/* Context menu */}
+        <div
+          css={contextMenuStyles}
+          style={{ opacity: isHovered ? 1 : 0 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onContextMenu?.(video, e);
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label={`More options for ${video.title}`}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onContextMenu?.(video, e);
+            }
+          }}
+        >
+          <MoreIcon label="" size="small" primaryColor={token('color.icon')} />
+        </div>
         
         {/* Selection checkbox */}
         {showCheckbox && (
@@ -334,7 +461,7 @@ const VideoCard: React.FC<{
             aria-checked={isSelected}
             aria-label={`Select ${video.title}`}
           >
-            {isSelected && '✓'}
+            {isSelected && <CheckIcon label="" size="small" primaryColor="white" />}
           </div>
         )}
       </div>
@@ -346,7 +473,9 @@ const VideoCard: React.FC<{
         
         <div id={`video-meta-${video.id}`} className="video-meta">
           <div className="creator-info">
-            <span className="creator-avatar" aria-hidden="true">👤</span>
+            <span className="creator-avatar" aria-hidden="true">
+              <PersonIcon label="" size="small" primaryColor={token('color.icon')} />
+            </span>
             <span className="creator-name">
               {video.creator || 'Unknown creator'}
             </span>
@@ -379,7 +508,10 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   videos,
   onVideoSelect,
   onVideoPlay,
+  onVideoFavorite,
+  onVideoContextMenu,
   selectedVideos = [],
+  favoriteVideos = [],
   showBulkActions = false
 }) => {
   if (videos.length === 0) {
@@ -387,7 +519,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
       <Card appearance="subtle" spacing="comfortable">
         <div style={{ textAlign: 'center', padding: 'var(--space-8)' }}>
           <div style={{ fontSize: '64px', marginBottom: 'var(--space-4)', opacity: 0.5 }}>
-            📹
+            <CameraIcon label="No videos" size="xlarge" primaryColor={token('color.icon.disabled')} />
           </div>
           <h3 style={{ 
             fontSize: 'var(--font-size-h4)', 
@@ -413,17 +545,20 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   }
 
   return (
-    <div css={gridStyles} role="grid" aria-label="Video collection">
+    <Grid role="grid" aria-label="Video collection">
       {videos.map(video => (
         <VideoCard
           key={video.id}
           video={video}
           isSelected={selectedVideos.includes(video.id)}
+          isFavorited={favoriteVideos.includes(video.id)}
           onSelect={onVideoSelect}
           onPlay={onVideoPlay}
+          onFavorite={onVideoFavorite}
+          onContextMenu={onVideoContextMenu}
           showCheckbox={showBulkActions}
         />
       ))}
-    </div>
+    </Grid>
   );
 };

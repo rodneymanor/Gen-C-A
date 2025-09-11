@@ -36,6 +36,11 @@ export const formatCount = (count: number): string => {
 };
 
 /**
+ * Format view count - alias for formatCount
+ */
+export const formatViewCount = formatCount;
+
+/**
  * Format a date to a relative time string (e.g., "2 hours ago", "Yesterday")
  */
 export const formatRelativeTime = (date: Date): string => {
@@ -102,37 +107,37 @@ export const toTitleCase = (str: string): string => {
 };
 
 /**
- * Get platform-specific emoji/icon
+ * Get platform-specific icon identifier
  */
 export const getPlatformIcon = (platform: string): string => {
   const platformIcons: Record<string, string> = {
-    'tiktok': '📱',
-    'instagram': '📸',
-    'youtube': '🎥',
-    'twitter': '🐦',
-    'linkedin': '💼',
-    'facebook': '👥',
-    'other': '🌐',
+    'tiktok': 'mobile',
+    'instagram': 'image', 
+    'youtube': 'video',
+    'twitter': 'person',
+    'linkedin': 'office',
+    'facebook': 'people',
+    'other': 'world',
   };
   
   return platformIcons[platform.toLowerCase()] || platformIcons.other;
 };
 
 /**
- * Get content type emoji/icon
+ * Get content type icon identifier
  */
 export const getContentTypeIcon = (type: string): string => {
   const typeIcons: Record<string, string> = {
-    'video': '🎥',
-    'script': '✍️',
-    'image': '📸',
-    'note': '📝',
-    'idea': '💡',
-    'audio': '🎵',
-    'collection': '📁',
+    'video': 'video',
+    'script': 'edit',
+    'image': 'image',
+    'note': 'document',
+    'idea': 'lightbulb',
+    'audio': 'audio',
+    'collection': 'folder',
   };
   
-  return typeIcons[type.toLowerCase()] || '📄';
+  return typeIcons[type.toLowerCase()] || 'document';
 };
 
 /**
