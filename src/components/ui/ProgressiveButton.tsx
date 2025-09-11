@@ -28,13 +28,12 @@ const getProgressiveEnhancements = (
     padding: var(--space-responsive-md) var(--space-responsive-lg);
   }
   
-  /* Hover effects only where supported */
+  /* Perplexity Flat Design - No transforms/shadows on hover */
   ${styles.hover && css`
     @media (hover: hover) and (pointer: fine) {
       &:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-progressive);
-        transition: all 0.2s ease;
+        /* REMOVED: transform and shadow for flat design */
+        transition: background-color 0.2s ease, color 0.2s ease;
       }
     }
   `}
@@ -50,13 +49,10 @@ const getProgressiveEnhancements = (
     }
   `}
   
-  /* Reduced motion preference */
+  /* Reduced motion preference - Perplexity Flat Design */
   ${viewport.prefersReducedMotion && css`
     transition: none;
-    
-    &:hover {
-      transform: none;
-    }
+    /* No transforms needed in flat design */
   `}
   
   /* Dark mode enhancement */
@@ -81,10 +77,10 @@ const getProgressiveEnhancements = (
     transition-duration: 0.1s;
   `}
   
-  /* Device pixel ratio optimizations */
+  /* Device pixel ratio optimizations - Perplexity Flat Design */
   ${viewport.devicePixelRatio > 2 && css`
-    /* Enhanced visuals for high-DPI displays */
-    box-shadow: var(--shadow-progressive-subtle);
+    /* Enhanced visuals for high-DPI displays - No shadows in flat design */
+    border: var(--border-width-thin) solid var(--color-border-subtle);
   `}
 `;
 
