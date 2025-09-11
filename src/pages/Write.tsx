@@ -52,6 +52,7 @@ const loadingOverlayStyles = css`
   
   .loading-content {
     background: var(--color-neutral-0);
+    border: 1px solid var(--color-neutral-200);
     border-radius: var(--radius-large);
     padding: var(--space-8);
     text-align: center;
@@ -87,7 +88,7 @@ const loadingOverlayStyles = css`
       
       .progress-bar {
         height: 100%;
-        background: linear-gradient(90deg, var(--color-ai-gradient-start), var(--color-ai-gradient-end));
+        background: var(--color-primary-500);
         transition: width 0.3s ease;
       }
     }
@@ -351,10 +352,10 @@ ${request.prompt.toLowerCase().includes('skincare') ?
                 transition: 'var(--transition-all)'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--color-primary-50)';
+                e.currentTarget.style.color = 'var(--color-primary-600)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'none';
+                e.currentTarget.style.color = 'var(--color-primary-500)';
               }}
             >
               ← Back to Generator

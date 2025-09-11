@@ -194,7 +194,7 @@ const dropdownStyles = css`
     align-items: center;
     justify-content: space-between;
     padding: var(--space-3) var(--space-4);
-    background: var(--color-neutral-50);
+    background: transparent;
     border: 1px solid var(--color-neutral-200);
     border-radius: var(--radius-medium);
     font-size: var(--font-size-body);
@@ -203,8 +203,8 @@ const dropdownStyles = css`
     transition: var(--transition-all);
 
     &:hover {
-      background: var(--color-neutral-100);
-      border-color: var(--color-neutral-300);
+      border-color: var(--color-primary-500);
+      color: var(--color-primary-600);
     }
 
     &:focus {
@@ -222,7 +222,6 @@ const dropdownStyles = css`
     background: white;
     border: 1px solid var(--color-neutral-200);
     border-radius: var(--radius-medium);
-    box-shadow: var(--shadow-overlay);
     z-index: 10;
     margin-top: var(--space-1);
 
@@ -238,7 +237,8 @@ const dropdownStyles = css`
       transition: var(--transition-all);
 
       &:hover {
-        background: var(--color-neutral-50);
+        background: var(--color-primary-50);
+        color: var(--color-primary-600);
       }
 
       &:first-of-type {
@@ -258,7 +258,8 @@ const filtersStyles = css`
   gap: var(--space-3);
   align-items: center;
   padding: var(--space-4);
-  background: var(--color-neutral-50);
+  background: transparent;
+  border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-medium);
 
   @media (max-width: 768px) {
@@ -304,17 +305,17 @@ const filterPillStyles = (isActive: boolean) => css`
   border: 1px solid transparent;
 
   ${isActive ? css`
-    background: var(--color-primary-100);
-    color: var(--color-primary-700);
-    border-color: var(--color-primary-300);
+    background: var(--color-primary-500);
+    color: white;
+    border-color: var(--color-primary-500);
   ` : css`
-    background: white;
+    background: transparent;
     color: var(--color-neutral-700);
     border-color: var(--color-neutral-200);
 
     &:hover {
-      background: var(--color-neutral-50);
-      border-color: var(--color-neutral-300);
+      border-color: var(--color-primary-500);
+      color: var(--color-primary-600);
     }
   `}
 
@@ -331,7 +332,7 @@ const filterPillStyles = (isActive: boolean) => css`
     transition: var(--transition-all);
 
     &:hover {
-      transform: scale(1.1);
+      opacity: 0.8;
     }
   }
 `;
@@ -346,7 +347,6 @@ const savedFiltersDropdownStyles = css`
     background: white;
     border: 1px solid var(--color-neutral-200);
     border-radius: var(--radius-medium);
-    box-shadow: var(--shadow-overlay);
     z-index: 10;
     margin-top: var(--space-1);
     min-width: 200px;
@@ -366,7 +366,8 @@ const savedFiltersDropdownStyles = css`
       gap: var(--space-2);
 
       &:hover {
-        background: var(--color-neutral-50);
+        background: var(--color-primary-50);
+        color: var(--color-primary-600);
       }
     }
   }

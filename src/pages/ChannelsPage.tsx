@@ -35,7 +35,7 @@ export interface ChannelsPageProps {
 const pageStyles = css`
   display: flex;
   min-height: 100vh;
-  background: var(--color-neutral-50);
+  background: transparent;
   
   /* Dark theme styles */
   .theme-dark & {
@@ -51,8 +51,8 @@ const mainContentStyles = css`
 `;
 
 const headerStyles = css`
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--card-border);
+  background: transparent;
+  border-bottom: 1px solid var(--color-neutral-200);
   padding: var(--space-6) var(--space-6) var(--space-4) var(--space-6);
   
   .theme-dark & {
@@ -194,13 +194,14 @@ const viewToggleStyles = css`
   button {
     padding: var(--space-2);
     border: 1px solid var(--color-neutral-300);
-    background: var(--card-bg);
+    background: transparent;
     color: var(--color-neutral-600);
     border-radius: var(--radius-medium);
     cursor: pointer;
     
     &:hover {
-      background: var(--color-neutral-100);
+      border-color: var(--color-primary-500);
+      color: var(--color-primary-600);
     }
     
     &[data-active="true"] {

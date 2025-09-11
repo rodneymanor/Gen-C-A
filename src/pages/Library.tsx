@@ -150,13 +150,12 @@ const contentItemStyles = (isSelected: boolean) => css`
   
   ${isSelected && css`
     border-color: var(--color-primary-500);
-    background: var(--color-primary-50);
+    background: transparent;
   `}
   
   &:hover {
-    border-color: var(--color-primary-300);
-    background: var(--color-primary-50);
-    transform: translateY(-1px);
+    border-color: var(--color-primary-500);
+    background: transparent;
   }
   
   .content-checkbox {
@@ -205,9 +204,10 @@ const contentItemStyles = (isSelected: boolean) => css`
       }
       
       .content-type {
-        background: var(--color-neutral-100);
-        color: var(--color-neutral-700);
+        background: transparent;
+        color: var(--color-primary-600);
         padding: var(--space-1) var(--space-2);
+        border: 1px solid var(--color-primary-500);
         border-radius: var(--radius-small);
         font-size: var(--font-size-caption);
         font-weight: var(--font-weight-medium);
@@ -255,7 +255,7 @@ const previewPanelStyles = css`
       line-height: var(--line-height-relaxed);
       margin: 0 0 var(--space-5) 0;
       padding: var(--space-4);
-      background: var(--color-neutral-50);
+      border: 1px solid var(--color-neutral-200);
       border-radius: var(--radius-medium);
     }
     
