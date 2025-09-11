@@ -78,7 +78,7 @@ const getInputStyles = (
   &:focus {
     outline: none;
     border-color: var(--input-border-focus);
-    box-shadow: 0 0 0 3px var(--color-primary-100);
+    box-shadow: var(--focus-ring-shadow);
   }
   
   &:hover:not(:focus):not(:disabled) {
@@ -244,25 +244,27 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
         )}
       </div>
       
-      <div css={footerStyles}>
-        <div>
-          {errorMessage ? (
-            <div id={errorId} css={errorTextStyles} role="alert">
-              {errorMessage}
-            </div>
-          ) : helperText ? (
-            <div id={helperId} css={helperTextStyles}>
-              {helperText}
-            </div>
-          ) : null}
-        </div>
-        
-        {showCharacterCount && maxLength && (
-          <div css={characterCountStyles} aria-live="polite">
-            {characterCount}/{maxLength}
+      {(errorMessage || helperText || (showCharacterCount && maxLength)) && (
+        <div css={footerStyles}>
+          <div>
+            {errorMessage ? (
+              <div id={errorId} css={errorTextStyles} role="alert">
+                {errorMessage}
+              </div>
+            ) : helperText ? (
+              <div id={helperId} css={helperTextStyles}>
+                {helperText}
+              </div>
+            ) : null}
           </div>
-        )}
-      </div>
+          
+          {showCharacterCount && maxLength && (
+            <div css={characterCountStyles} aria-live="polite">
+              {characterCount}/{maxLength}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 });

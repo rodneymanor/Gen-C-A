@@ -5,6 +5,10 @@ import { Navigation } from './Navigation';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useLiveAnnouncer } from '../../hooks/useFocusManagement';
 import type { User } from '../../types';
+import { token } from '@atlaskit/tokens';
+
+// Atlassian Design System Icons
+import MenuIcon from '@atlaskit/icon/glyph/menu';
 
 export interface LayoutProps {
   user: User;
@@ -23,9 +27,10 @@ const mainStyles = (isCollapsed: boolean, isMobile: boolean) => css`
   flex-direction: column;
   overflow: hidden;
   transition: var(--transition-all);
-  margin-left: ${isMobile ? '0' : (isCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)')};
+  /* Removed margin-left since sidebar uses fixed/absolute positioning and components have their own padding */
   
   ${isMobile && css`
+    /* Mobile: main content takes full width, sidebar overlays when open */
     margin-left: 0;
   `}
 `;
@@ -187,7 +192,7 @@ export const Layout: React.FC<LayoutProps> = ({ user = mockUser, children }) => 
                   borderRadius: 'var(--radius-small)',
                 }}
               >
-                ☰
+                <MenuIcon label="" size="medium" primaryColor={token('color.icon')} />
               </button>
               <h1 className="page-title">Dashboard</h1>
             </div>

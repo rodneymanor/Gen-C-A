@@ -3,8 +3,22 @@ import { css } from '@emotion/react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent } from '../components/ui/Card';
-import { formatRelativeTime, getContentTypeIcon, getPlatformIcon, truncate } from '../utils/format';
+import { formatRelativeTime, getContentTypeIcon, getPlatformIconComponent, truncate } from '../utils/format';
 import type { ContentItem } from '../types';
+
+// Atlassian Design System Icons
+import DownloadIcon from '@atlaskit/icon/glyph/download';
+import AddIcon from '@atlaskit/icon/glyph/add';
+import SearchIcon from '@atlaskit/icon/glyph/search';
+import DocumentIcon from '@atlaskit/icon/glyph/document';
+import EditIcon from '@atlaskit/icon/glyph/edit';
+import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb';
+import CalendarIcon from '@atlaskit/icon/glyph/calendar';
+import ViewIcon from '@atlaskit/icon/glyph/watch';
+import UploadIcon from '@atlaskit/icon/glyph/upload';
+import FolderIcon from '@atlaskit/icon/glyph/folder';
+import CrossIcon from '@atlaskit/icon/glyph/cross';
+import MoreIcon from '@atlaskit/icon/glyph/more';
 
 const libraryStyles = css`
   max-width: 1200px;
@@ -66,6 +80,8 @@ const filtersStyles = css`
   .search-container {
     flex: 1;
     max-width: 400px;
+    display: flex;
+    align-items: center;
     
     @media (max-width: 768px) {
       max-width: none;
@@ -74,6 +90,7 @@ const filtersStyles = css`
   
   .quick-filters {
     display: flex;
+    align-items: center;
     gap: var(--space-2);
     flex-wrap: wrap;
     
@@ -232,24 +249,14 @@ const previewPanelStyles = css`
   .preview-content {
     margin-bottom: var(--space-6);
     
-    .preview-thumbnail {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background: var(--color-neutral-200);
-      border-radius: var(--radius-medium);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 48px;
-      color: var(--color-neutral-400);
-      margin-bottom: var(--space-4);
-    }
-    
     .preview-description {
       font-size: var(--font-size-body);
       color: var(--color-neutral-700);
       line-height: var(--line-height-relaxed);
-      margin: 0 0 var(--space-4) 0;
+      margin: 0 0 var(--space-5) 0;
+      padding: var(--space-4);
+      background: var(--color-neutral-50);
+      border-radius: var(--radius-medium);
     }
     
     .preview-meta {
@@ -306,7 +313,7 @@ const emptyStateStyles = css`
   }
 `;
 
-// Mock content data
+// Mock content data - text-based content only
 const mockContent: ContentItem[] = [
   {
     id: '1',
@@ -324,21 +331,6 @@ const mockContent: ContentItem[] = [
   },
   {
     id: '2',
-    title: 'Beach Day Transformation',
-    description: 'Quick makeup transformation video perfect for summer beach days',
-    type: 'video',
-    platform: 'tiktok',
-    thumbnail: '',
-    duration: 15,
-    tags: ['makeup', 'transformation', 'beach'],
-    creator: 'Sarah Chen',
-    created: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    updated: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    status: 'published',
-    metadata: { views: 247000 }
-  },
-  {
-    id: '3',
     title: 'Content Ideas - July Batch',
     description: '10 summer content ideas for lifestyle creators including trending topics and seasonal themes',
     type: 'idea',
@@ -350,19 +342,7 @@ const mockContent: ContentItem[] = [
     metadata: {}
   },
   {
-    id: '4',
-    title: 'Product Photos - Sunscreen Collection',
-    description: '12 high-resolution product photos with beach-themed backgrounds for summer campaign',
-    type: 'image',
-    tags: ['product-photos', 'sunscreen', 'beach'],
-    creator: 'Sarah Chen',
-    created: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    updated: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    status: 'published',
-    metadata: { imageCount: 12 }
-  },
-  {
-    id: '5',
+    id: '3',
     title: 'Viral Hook Analysis',
     description: 'Analysis of top 10 viral hooks in fitness content including engagement metrics and timing strategies',
     type: 'note',
@@ -372,10 +352,36 @@ const mockContent: ContentItem[] = [
     updated: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     status: 'published',
     metadata: {}
+  },
+  {
+    id: '4',
+    title: 'Brand Voice Guidelines',
+    description: 'Comprehensive guide to maintaining consistent brand voice across all content platforms including tone, style, and messaging frameworks',
+    type: 'note',
+    tags: ['brand', 'voice', 'guidelines', 'consistency'],
+    creator: 'Sarah Chen',
+    created: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+    updated: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+    status: 'published',
+    metadata: {}
+  },
+  {
+    id: '5',
+    title: 'Holiday Campaign Script Collection',
+    description: 'A collection of 15 engaging scripts for holiday-themed content across multiple platforms',
+    type: 'script',
+    platform: 'instagram',
+    wordCount: 245,
+    tags: ['holiday', 'campaign', 'scripts', 'seasonal'],
+    creator: 'Sarah Chen',
+    created: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    updated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    status: 'draft',
+    metadata: { estimatedDuration: 30 }
   }
 ];
 
-type ContentType = 'all' | 'scripts' | 'videos' | 'images' | 'notes' | 'ideas';
+type ContentType = 'all' | 'scripts' | 'notes' | 'ideas';
 
 const ContentItem: React.FC<{
   item: ContentItem;
@@ -419,21 +425,23 @@ const ContentItem: React.FC<{
           </div>
           {item.platform && (
             <div className="meta-item">
-              <span>{getPlatformIcon(item.platform)}</span>
+              <span>{getPlatformIconComponent(item.platform)}</span>
               <span>{item.platform}</span>
             </div>
           )}
           <div className="meta-item">
-            <span>📅</span>
+            <CalendarIcon label="" />
             <span>{formatRelativeTime(item.created)}</span>
           </div>
         </div>
       </div>
       
       <div className="content-actions">
-        <Button variant="subtle" size="small">
-          ⋯
-        </Button>
+        <Button 
+          variant="subtle" 
+          size="small"
+          iconBefore={<MoreIcon label="More options" />}
+        />
       </div>
     </div>
   );
@@ -445,13 +453,11 @@ export const Library: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(mockContent[0]);
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
 
-  const filters: { key: ContentType; label: string; icon: string }[] = [
-    { key: 'all', label: 'All', icon: '📄' },
-    { key: 'scripts', label: 'Scripts', icon: '✍️' },
-    { key: 'videos', label: 'Videos', icon: '🎥' },
-    { key: 'images', label: 'Images', icon: '📸' },
-    { key: 'notes', label: 'Notes', icon: '📝' },
-    { key: 'ideas', label: 'Ideas', icon: '💡' }
+  const filters: { key: ContentType; label: string; icon: React.ReactNode }[] = [
+    { key: 'all', label: 'All', icon: <DocumentIcon label="" /> },
+    { key: 'scripts', label: 'Scripts', icon: <EditIcon label="" /> },
+    { key: 'notes', label: 'Notes', icon: <DocumentIcon label="" /> },
+    { key: 'ideas', label: 'Ideas', icon: <LightbulbIcon label="" /> }
   ];
 
   const filteredContent = mockContent.filter(item => {
@@ -460,8 +466,6 @@ export const Library: React.FC = () => {
     
     const matchesFilter = activeFilter === 'all' || 
       (activeFilter === 'scripts' && item.type === 'script') ||
-      (activeFilter === 'videos' && item.type === 'video') ||
-      (activeFilter === 'images' && item.type === 'image') ||
       (activeFilter === 'notes' && item.type === 'note') ||
       (activeFilter === 'ideas' && item.type === 'idea');
     
@@ -488,11 +492,17 @@ export const Library: React.FC = () => {
           <p className="subtitle">Your creative asset repository</p>
         </div>
         <div className="header-actions">
-          <Button variant="secondary">
-            📥 Import
+          <Button 
+            variant="secondary"
+            iconBefore={<DownloadIcon label="" />}
+          >
+            Import
           </Button>
-          <Button variant="primary">
-            + Add Content
+          <Button 
+            variant="primary"
+            iconBefore={<AddIcon label="" />}
+          >
+            Add Content
           </Button>
         </div>
       </div>
@@ -501,7 +511,7 @@ export const Library: React.FC = () => {
         <div className="search-container">
           <Input
             placeholder="Search all content..."
-            iconBefore="🔍"
+            iconBefore={<SearchIcon label="" />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -515,7 +525,7 @@ export const Library: React.FC = () => {
               size="small"
               onClick={() => setActiveFilter(filter.key)}
             >
-              {filter.icon} {filter.label}
+              {filter.label}
             </Button>
           ))}
         </div>
@@ -546,7 +556,9 @@ export const Library: React.FC = () => {
           ) : (
             <Card appearance="subtle" spacing="comfortable">
               <div css={emptyStateStyles}>
-                <div className="empty-icon">🔍</div>
+                <div className="empty-icon">
+                  <SearchIcon label="Search" size="xlarge" />
+                </div>
                 <h3 className="empty-title">No content found</h3>
                 <p className="empty-description">
                   Try adjusting your search or filters to find what you're looking for
@@ -562,24 +574,21 @@ export const Library: React.FC = () => {
         {selectedItem && (
           <Card appearance="elevated" spacing="comfortable" css={previewPanelStyles}>
             <div className="preview-header">
-              <h3 className="preview-title">{selectedItem.title}</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <span style={{ color: 'var(--color-primary-500)', fontSize: '20px' }}>
+                  {getContentTypeIcon(selectedItem.type)}
+                </span>
+                <h3 className="preview-title">{selectedItem.title}</h3>
+              </div>
               <Button
                 variant="subtle"
                 size="small"
                 onClick={() => setSelectedItem(null)}
-                iconBefore="×"
+                iconBefore={<CrossIcon label="" />}
               />
             </div>
             
             <div className="preview-content">
-              <div className="preview-thumbnail">
-                {selectedItem.thumbnail ? (
-                  <img src={selectedItem.thumbnail} alt={selectedItem.title} />
-                ) : (
-                  getContentTypeIcon(selectedItem.type)
-                )}
-              </div>
-              
               {selectedItem.description && (
                 <p className="preview-description">
                   {selectedItem.description}
@@ -609,17 +618,33 @@ export const Library: React.FC = () => {
             </div>
             
             <div className="preview-actions">
-              <Button variant="primary" fullWidth>
-                📖 View
+              <Button 
+                variant="primary" 
+                fullWidth
+                iconBefore={<ViewIcon label="" />}
+              >
+                View
               </Button>
-              <Button variant="secondary" fullWidth>
-                ✏️ Edit
+              <Button 
+                variant="secondary" 
+                fullWidth
+                iconBefore={<EditIcon label="" />}
+              >
+                Edit
               </Button>
-              <Button variant="subtle" fullWidth>
-                📤 Download
+              <Button 
+                variant="subtle" 
+                fullWidth
+                iconBefore={<UploadIcon label="" />}
+              >
+                Download
               </Button>
-              <Button variant="subtle" fullWidth>
-                🗂️ Add to Collection
+              <Button 
+                variant="subtle" 
+                fullWidth
+                iconBefore={<FolderIcon label="" />}
+              >
+                Add to Collection
               </Button>
             </div>
           </Card>

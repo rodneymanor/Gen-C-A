@@ -1,7 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import '@atlaskit/css-reset';
 import App from './App';
 import './styles/globals.css';
+
+// Theme system initialization moved to ThemeProvider component
 
 // Error boundary component for better error handling
 class ErrorBoundary extends React.Component<

@@ -2,8 +2,23 @@ import React from 'react';
 import { css } from '@emotion/react';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
+import { DashboardGrid } from '../components/layout/Grid';
 import { formatRelativeTime } from '../utils/format';
 import type { Activity, User } from '../types';
+
+// Atlassian Design System Icons
+import WaveIcon from '@atlaskit/icon/glyph/emoji/frequent';
+import ChartIcon from '@atlaskit/icon/glyph/graph-line';
+import FolderIcon from '@atlaskit/icon/glyph/folder';
+import EditIcon from '@atlaskit/icon/glyph/edit';
+import BookIcon from '@atlaskit/icon/glyph/book';
+import PersonIcon from '@atlaskit/icon/glyph/person';
+import VideoIcon from '@atlaskit/icon/glyph/vid-play';
+import DocumentIcon from '@atlaskit/icon/glyph/document';
+import TrashIcon from '@atlaskit/icon/glyph/trash';
+import DownloadIcon from '@atlaskit/icon/glyph/download';
+import AddIcon from '@atlaskit/icon/glyph/add';
+import EmptyIcon from '@atlaskit/icon/glyph/editor/remove';
 
 const dashboardStyles = css`
   max-width: 1200px;
@@ -15,14 +30,9 @@ const welcomeStyles = css`
 `;
 
 const heroStyles = css`
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--space-6);
   margin-bottom: var(--space-8);
   
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
     margin-bottom: var(--space-6);
   }
 `;
@@ -36,6 +46,7 @@ const welcomeSectionStyles = css`
     
     .welcome-emoji {
       font-size: 24px;
+      color: var(--color-neutral-600);
     }
     
     h1 {
@@ -71,6 +82,7 @@ const welcomeSectionStyles = css`
       
       .stat-icon {
         margin-right: var(--space-2);
+        color: var(--color-primary-700);
       }
       
       .stat-text {
@@ -313,16 +325,16 @@ const mockActivities: Activity[] = [
   }
 ];
 
-const getActivityIcon = (type: Activity['type'], entityType: Activity['entityType']): string => {
-  const iconMap: Record<string, string> = {
-    created: '🎥',
-    generated: '✨',
-    updated: '📝',
-    deleted: '🗑️',
-    imported: '📥'
+const getActivityIcon = (type: Activity['type'], entityType: Activity['entityType']): React.ReactNode => {
+  const iconMap: Record<string, React.ReactNode> = {
+    created: <VideoIcon label={`Created ${entityType}`} />,
+    generated: <AddIcon label={`Generated ${entityType}`} />,
+    updated: <DocumentIcon label={`Updated ${entityType}`} />,
+    deleted: <TrashIcon label={`Deleted ${entityType}`} />,
+    imported: <DownloadIcon label={`Imported ${entityType}`} />
   };
   
-  return iconMap[type] || '📄';
+  return iconMap[type] || <DocumentIcon label={entityType} />;
 };
 
 const ActivityItem: React.FC<{ activity: Activity }> = ({ activity }) => (
@@ -332,7 +344,7 @@ const ActivityItem: React.FC<{ activity: Activity }> = ({ activity }) => (
     css={activityItemStyles}
     key={activity.id}
   >
-    <div className="activity-icon" aria-hidden="true">
+    <div className="activity-icon">
       {getActivityIcon(activity.type, activity.entityType)}
     </div>
     
@@ -373,86 +385,92 @@ export const Dashboard: React.FC = () => {
       {/* Welcome Hero Section */}
       <section css={welcomeStyles} aria-labelledby="welcome-heading">
         <div css={heroStyles}>
-          <Card appearance="subtle" spacing="comfortable" css={welcomeSectionStyles}>
-            <div className="welcome-header">
-              <span className="welcome-emoji" aria-hidden="true">👋</span>
-              <h1 id="welcome-heading">Welcome back, Sarah!</h1>
-            </div>
-            
-            <p className="welcome-message">
-              Today you've saved {user.todayVideos} videos and generated{' '}
-              {user.todayScripts} scripts. Ready to create something amazing?
-            </p>
-            
-            <div className="stats-summary">
-              <div className="stat-item">
-                <span className="stat-icon" aria-hidden="true">📊</span>
-                <span className="stat-text">
-                  This week: {user.weekVideos} videos, {user.weekScripts} scripts
+          <DashboardGrid columns={{ sm: 1, lg: '2fr 1fr' }}>
+            <Card appearance="subtle" spacing="comfortable" css={welcomeSectionStyles}>
+              <div className="welcome-header">
+                <span className="welcome-emoji">
+                  <WaveIcon label="Welcome" />
                 </span>
+                <h1 id="welcome-heading">Welcome back, Sarah!</h1>
               </div>
-            </div>
-          </Card>
-          
-          <Card appearance="raised" spacing="comfortable" css={quickActionsStyles}>
-            <div className="actions-header">
-              <h2>Quick Actions</h2>
-            </div>
+              
+              <p className="welcome-message">
+                Today you've saved {user.todayVideos} videos and generated{' '}
+                {user.todayScripts} scripts. Ready to create something amazing?
+              </p>
+              
+              <div className="stats-summary">
+                <div className="stat-item">
+                  <span className="stat-icon">
+                    <ChartIcon label="Statistics" />
+                  </span>
+                  <span className="stat-text">
+                    This week: {user.weekVideos} videos, {user.weekScripts} scripts
+                  </span>
+                </div>
+              </div>
+            </Card>
             
-            <div className="actions-grid">
-              <Button
-                variant="primary"
-                size="large"
-                onClick={handleCreateCollection}
-                className="action-button"
-              >
-                <span className="action-icon" aria-hidden="true">📁</span>
-                <div className="action-content">
-                  <div className="action-title">New Collection</div>
-                  <div className="action-description">Organize your videos</div>
-                </div>
-              </Button>
+            <Card appearance="subtle" spacing="comfortable" css={quickActionsStyles}>
+              <div className="actions-header">
+                <h2>Quick Actions</h2>
+              </div>
               
-              <Button
-                variant="ai-powered"
-                size="large"
-                onClick={handleGenerateScript}
-                className="action-button"
-              >
-                <span className="action-icon" aria-hidden="true">✍️</span>
-                <div className="action-content">
-                  <div className="action-title">Generate Script</div>
-                  <div className="action-description">AI-powered writing</div>
-                </div>
-              </Button>
-              
-              <Button
-                variant="secondary"
-                size="large"
-                onClick={handleBrowseLibrary}
-                className="action-button"
-              >
-                <span className="action-icon" aria-hidden="true">📚</span>
-                <div className="action-content">
-                  <div className="action-title">Browse Library</div>
-                  <div className="action-description">View all content</div>
-                </div>
-              </Button>
-              
-              <Button
-                variant="creative"
-                size="large"
-                onClick={handleAIAssistant}
-                className="action-button"
-              >
-                <span className="action-icon" aria-hidden="true">🤖</span>
-                <div className="action-content">
-                  <div className="action-title">AI Assistant</div>
-                  <div className="action-description">Get help and ideas</div>
-                </div>
-              </Button>
-            </div>
-          </Card>
+              <div className="actions-grid">
+                <Button
+                  variant="primary"
+                  size="large"
+                  onClick={handleCreateCollection}
+                  className="action-button"
+                  iconBefore={<FolderIcon label="" />}
+                >
+                  <div className="action-content">
+                    <div className="action-title">New Collection</div>
+                    <div className="action-description">Organize your videos</div>
+                  </div>
+                </Button>
+                
+                <Button
+                  variant="ai-powered"
+                  size="large"
+                  onClick={handleGenerateScript}
+                  className="action-button"
+                  iconBefore={<EditIcon label="" />}
+                >
+                  <div className="action-content">
+                    <div className="action-title">Generate Script</div>
+                    <div className="action-description">AI-powered writing</div>
+                  </div>
+                </Button>
+                
+                <Button
+                  variant="secondary"
+                  size="large"
+                  onClick={handleBrowseLibrary}
+                  className="action-button"
+                  iconBefore={<BookIcon label="" />}
+                >
+                  <div className="action-content">
+                    <div className="action-title">Browse Library</div>
+                    <div className="action-description">View all content</div>
+                  </div>
+                </Button>
+                
+                <Button
+                  variant="creative"
+                  size="large"
+                  onClick={handleAIAssistant}
+                  className="action-button"
+                  iconBefore={<PersonIcon label="" />}
+                >
+                  <div className="action-content">
+                    <div className="action-title">AI Assistant</div>
+                    <div className="action-description">Get help and ideas</div>
+                  </div>
+                </Button>
+              </div>
+            </Card>
+          </DashboardGrid>
         </div>
       </section>
       
@@ -475,7 +493,9 @@ export const Dashboard: React.FC = () => {
           ) : (
             <Card appearance="subtle" spacing="comfortable">
               <div css={emptyStateStyles}>
-                <div className="empty-icon" aria-hidden="true">📭</div>
+                <div className="empty-icon">
+                  <EmptyIcon label="Empty inbox" size="xlarge" />
+                </div>
                 <h3 className="empty-title">No recent activity</h3>
                 <p className="empty-description">
                   Start creating content to see your activity here

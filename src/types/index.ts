@@ -183,7 +183,7 @@ export interface TableColumn {
 export interface NavigationItem {
   path: string;
   label: string;
-  icon: string;
+  icon: React.ReactNode;
   badge?: string;
   children?: NavigationItem[];
 }
@@ -252,6 +252,65 @@ export interface ErrorState {
   scripts: string | null;
   content: string | null;
   generation: string | null;
+}
+
+// Creator/Channels types
+export interface Creator {
+  id: string;
+  name: string;
+  username: string;
+  avatar?: string;
+  followerCount: number;
+  platform: Platform;
+  isVerified?: boolean;
+  description?: string;
+  tags: string[];
+  metrics: {
+    engagementRate?: number;
+    averageViews?: number;
+    avgLikes?: number;
+  };
+  created: Date;
+  updated: Date;
+}
+
+export interface Watchlist {
+  id: string;
+  name: string;
+  description?: string;
+  creatorIds: string[];
+  isPublic: boolean;
+  created: Date;
+  updated: Date;
+  owner: string;
+}
+
+export interface PlatformFilter {
+  platform: Platform;
+  enabled: boolean;
+  count?: number;
+}
+
+export interface CreatorFilters {
+  search: string;
+  platforms: PlatformFilter[];
+  minFollowers?: number;
+  maxFollowers?: number;
+  tags: string[];
+  verified?: boolean;
+}
+
+export interface CreatorPageState {
+  creators: Creator[];
+  filteredCreators: Creator[];
+  watchlists: Watchlist[];
+  activeFilters: CreatorFilters;
+  selectedCreators: string[];
+  currentPage: number;
+  itemsPerPage: number;
+  totalItems: number;
+  isLoading: boolean;
+  error: string | null;
 }
 
 // Hook return types

@@ -1,6 +1,68 @@
 /* Global Styles for Gen.C Alpha Dashboard */
 @import './tokens.css';
 
+/* CRITICAL: Override system preference with manual theme selection
+   These must be more specific than the @media (prefers-color-scheme) in tokens.css */
+html[data-color-mode="dark"] {
+  --color-neutral-0: #0f1419 !important;       /* Dark surface */
+  --color-neutral-50: #1a1d23 !important;      /* Elevated surface */
+  --color-neutral-100: #22252a !important;     /* Card background */
+  --color-neutral-200: #2c2f36 !important;     /* Hover surface */
+  --color-neutral-300: #3c4043 !important;     /* Border color */
+  --color-neutral-400: #5f6368 !important;     /* Subtle border */
+  --color-neutral-500: #80868b !important;     /* Tertiary text */
+  --color-neutral-600: #9aa0a6 !important;     /* Secondary text */
+  --color-neutral-700: #bdc1c6 !important;     /* Subtle text */
+  --color-neutral-800: #e8eaed !important;     /* Primary text */
+  --color-neutral-900: #ffffff !important;     /* Inverse text */
+  
+  /* Surface tokens */
+  --color-surface: var(--color-neutral-0) !important;
+  --color-surface-elevated: var(--color-neutral-50) !important;
+  --color-surface-hover: var(--color-neutral-100) !important;
+  --color-surface-active: var(--color-neutral-200) !important;
+  
+  /* Text tokens */
+  --color-text-primary: var(--color-neutral-800) !important;
+  --color-text-secondary: var(--color-neutral-600) !important;
+  --color-text-tertiary: var(--color-neutral-500) !important;
+  --color-text-quaternary: var(--color-neutral-400) !important;
+  
+  /* Border tokens */
+  --color-border: var(--color-neutral-300) !important;
+  --color-border-subtle: var(--color-neutral-200) !important;
+}
+
+html[data-color-mode="light"] {
+  --color-neutral-0: #ffffff !important;     /* Pure white */
+  --color-neutral-50: #fafbfc !important;    /* Off-white surface */
+  --color-neutral-100: #f4f5f7 !important;   /* Light gray surface */
+  --color-neutral-200: #e4e6ea !important;   /* Subtle border */
+  --color-neutral-300: #c1c7d0 !important;   /* Light border */
+  --color-neutral-400: #8590a2 !important;   /* Medium border/disabled text */
+  --color-neutral-500: #5e6c84 !important;   /* Tertiary text */
+  --color-neutral-600: #42526e !important;   /* Secondary text */
+  --color-neutral-700: #253858 !important;   /* Strong text */
+  --color-neutral-800: #172b4d !important;   /* Primary text */
+  --color-neutral-900: #091e42 !important;   /* Darkest text */
+  
+  /* Surface tokens */
+  --color-surface: var(--color-neutral-0) !important;
+  --color-surface-elevated: var(--color-neutral-50) !important;
+  --color-surface-hover: var(--color-neutral-100) !important;
+  --color-surface-active: var(--color-neutral-200) !important;
+  
+  /* Text tokens */
+  --color-text-primary: var(--color-neutral-800) !important;
+  --color-text-secondary: var(--color-neutral-600) !important;
+  --color-text-tertiary: var(--color-neutral-500) !important;
+  --color-text-quaternary: var(--color-neutral-400) !important;
+  
+  /* Border tokens */
+  --color-border: var(--color-neutral-300) !important;
+  --color-border-subtle: var(--color-neutral-200) !important;
+}
+
 /* Reset and base styles */
 *,
 *::before,
@@ -18,11 +80,11 @@ body {
 }
 
 body {
-  font-family: var(--font-family-primary);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-normal);
-  color: var(--color-neutral-800);
-  background-color: var(--color-neutral-50);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-text-primary, #172B4D);
+  background-color: var(--color-surface, #FFFFFF);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -33,20 +95,20 @@ body {
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-  color: var(--color-neutral-900);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-text-primary, #172B4D);
 }
 
-h1 { font-size: var(--font-size-h1); }
-h2 { font-size: var(--font-size-h2); }
-h3 { font-size: var(--font-size-h3); }
-h4 { font-size: var(--font-size-h4); }
-h5 { font-size: var(--font-size-h5); }
-h6 { font-size: var(--font-size-h6); }
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.125rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.875rem; }
 
 p {
-  margin-bottom: var(--space-4);
+  margin-bottom: 1rem;
 }
 
 /* Links */
@@ -260,6 +322,171 @@ a:hover {
 .animate-spin { animation: spin 1s linear infinite; }
 .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 .animate-bounce { animation: bounce 1s infinite; }
+
+/* ========================================
+   ADVANCED RESPONSIVE UTILITIES
+   Building upon existing mobile-first foundation ✅
+   ======================================== */
+
+/* Progressive Enhancement Utilities */
+.progressive-enhancement {
+  /* Mobile-first base (keep existing) */
+  display: block;
+  
+  /* Enhance for larger screens */
+  @media (min-width: 768px) and (hover: hover) {
+    /* Add hover effects only on devices that support them */
+    transition: transform 0.2s ease;
+  }
+  
+  @media (min-width: 1024px) {
+    /* Desktop-specific enhancements */
+    display: flex;
+  }
+}
+
+/* Container Queries (New Enhancement) */
+.responsive-container {
+  container-type: inline-size;
+  
+  /* Your existing container styles */
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-responsive-md);
+}
+
+@container (min-width: 400px) {
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@container (min-width: 600px) {
+  .card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Enhanced Touch Targets (Build on existing 44px+) */
+.touch-enhanced {
+  /* Keep your existing 44px minimum */
+  min-height: 44px;
+  
+  /* Add enhanced touch areas for better UX */
+  @media (max-width: 480px) {
+    min-height: 48px;  /* Larger on very small screens */
+    padding: var(--space-responsive-md);
+    margin: var(--space-responsive-xs); /* Prevent accidental touches */
+  }
+}
+
+/* Advanced Media Query Utilities */
+.hover-effects {
+  @media (hover: hover) and (pointer: fine) {
+    transition: var(--transition-all);
+    
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-elevated);
+    }
+  }
+}
+
+.reduced-motion-safe {
+  @media (prefers-reduced-motion: reduce) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.high-contrast-enhanced {
+  @media (prefers-contrast: high) {
+    border: 2px solid currentColor;
+    background: var(--color-surface);
+  }
+}
+
+/* Intrinsic Web Design Utilities */
+.fluid-typography {
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+}
+
+.fluid-spacing {
+  padding: clamp(var(--space-2), 4vw, var(--space-8));
+  margin: clamp(var(--space-1), 2vw, var(--space-6)) 0;
+}
+
+.adaptive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: clamp(var(--space-2), 3vw, var(--space-6));
+}
+
+/* Safe Area Utilities for Mobile Devices */
+.safe-area-insets {
+  padding-left: max(var(--space-4), env(safe-area-inset-left));
+  padding-right: max(var(--space-4), env(safe-area-inset-right));
+  padding-top: max(var(--space-4), env(safe-area-inset-top));
+  padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+}
+
+/* Device Capability Utilities */
+.touch-only {
+  @media (hover: none) and (pointer: coarse) {
+    /* Touch-specific styles */
+    min-height: var(--touch-target-comfortable);
+    padding: var(--space-4);
+  }
+}
+
+.mouse-only {
+  @media (hover: hover) and (pointer: fine) {
+    /* Mouse-specific styles */
+    cursor: pointer;
+    
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+}
+
+/* Dark Mode Utilities */
+.dark-mode-adaptive {
+  @media (prefers-color-scheme: dark) {
+    background-color: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+  }
+}
+
+/* Performance Responsive Loading */
+.desktop-only {
+  @media (max-width: 1023px) {
+    display: none;
+  }
+}
+
+.mobile-only {
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+.tablet-only {
+  @media (max-width: 767px), (min-width: 1024px) {
+    display: none;
+  }
+}
+
+/* Advanced Viewport Units */
+.dynamic-viewport-height {
+  height: 100dvh; /* Dynamic viewport height */
+  min-height: 100svh; /* Small viewport height fallback */
+}
+
+.large-viewport-width {
+  width: 100lvw; /* Large viewport width */
+}
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {

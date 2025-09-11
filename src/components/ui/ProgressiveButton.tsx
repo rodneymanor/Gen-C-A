@@ -33,7 +33,7 @@ const getProgressiveEnhancements = (
     @media (hover: hover) and (pointer: fine) {
       &:hover:not(:disabled) {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: var(--shadow-progressive);
         transition: all 0.2s ease;
       }
     }
@@ -84,7 +84,7 @@ const getProgressiveEnhancements = (
   /* Device pixel ratio optimizations */
   ${viewport.devicePixelRatio > 2 && css`
     /* Enhanced visuals for high-DPI displays */
-    box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-progressive-subtle);
   `}
 `;
 

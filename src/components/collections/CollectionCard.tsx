@@ -2,8 +2,16 @@ import React from 'react';
 import { css } from '@emotion/react';
 import { Card, CardHeader, CardContent, CardFooter } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
 import { formatDate, getPlatformIcon } from '../../utils/format';
 import type { Collection } from '../../types';
+import { token } from '@atlaskit/tokens';
+
+// Atlassian Design System Icons
+import StarIcon from '@atlaskit/icon/glyph/star';
+import EditIcon from '@atlaskit/icon/glyph/edit';
+import EyeIcon from '@atlaskit/icon/glyph/watch';
+import FolderIcon from '@atlaskit/icon/glyph/folder';
 
 export interface CollectionCardProps {
   collection: Collection;
@@ -67,23 +75,6 @@ const platformBadgesStyles = css`
   flex-wrap: wrap;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
-  
-  .platform-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-1) var(--space-2);
-    background: var(--color-primary-100);
-    color: var(--color-primary-700);
-    border: 1px solid var(--color-primary-200);
-    border-radius: var(--radius-full);
-    font-size: var(--font-size-caption);
-    font-weight: var(--font-weight-medium);
-    
-    .platform-icon {
-      font-size: 12px;
-    }
-  }
 `;
 
 const descriptionStyles = css`
@@ -99,37 +90,6 @@ const descriptionStyles = css`
   overflow: hidden;
 `;
 
-const previewThumbnailsStyles = css`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-  
-  .preview-thumb {
-    aspect-ratio: 16 / 9;
-    border-radius: var(--radius-small);
-    object-fit: cover;
-    background: var(--color-neutral-200);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--font-size-caption);
-    color: var(--color-neutral-500);
-  }
-  
-  .more-videos {
-    aspect-ratio: 16 / 9;
-    border-radius: var(--radius-small);
-    background: var(--color-neutral-100);
-    border: 2px dashed var(--color-neutral-300);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--font-size-body-small);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-neutral-600);
-  }
-`;
 
 const actionsStyles = css`
   display: flex;
@@ -141,7 +101,7 @@ const favoriteButtonStyles = css`
   position: absolute;
   top: var(--space-3);
   right: var(--space-3);
-  background: rgba(255, 255, 255, 0.9);
+  background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.9)')};
   backdrop-filter: blur(4px);
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-full);
@@ -210,7 +170,7 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({
           aria-label={`Add ${collection.name} to favorites`}
           title="Add to favorites"
         >
-          ⭐
+          <StarIcon label="" primaryColor={token('color.icon.warning')} />
         </button>
         
         <CardHeader>
@@ -227,7 +187,7 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({
               </p>
             </div>
             <div className="collection-icon" aria-hidden="true">
-              📁
+              <FolderIcon label="Collection" size="medium" primaryColor={token('color.icon')} />
             </div>
           </div>
         </CardHeader>
@@ -236,10 +196,14 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({
           {collection.platforms.length > 0 && (
             <div css={platformBadgesStyles}>
               {collection.platforms.map(platform => (
-                <span key={platform} className="platform-badge">
-                  <span className="platform-icon">{getPlatformIcon(platform)}</span>
+                <Badge
+                  key={platform}
+                  variant="primary"
+                  size="small"
+                  icon={getPlatformIcon(platform)}
+                >
                   {platform}
-                </span>
+                </Badge>
               ))}
             </div>
           )}
@@ -253,34 +217,6 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({
             </p>
           )}
           
-          <div css={previewThumbnailsStyles}>
-            {collection.previewVideos.slice(0, 4).map(video => (
-              <div key={video.id} className="preview-thumb">
-                {video.thumbnail ? (
-                  <img 
-                    src={video.thumbnail} 
-                    alt={`Preview of ${video.title}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  '🎥'
-                )}
-              </div>
-            ))}
-            
-            {/* Fill empty slots or show "more" indicator */}
-            {Array.from({ length: 4 - Math.min(collection.previewVideos.length, 4) }, (_, index) => (
-              <div key={`empty-${index}`} className="preview-thumb">
-                {collection.videoCount > 4 && index === 3 - Math.min(collection.previewVideos.length, 3) ? (
-                  <div className="more-videos">
-                    +{collection.videoCount - 3}
-                  </div>
-                ) : (
-                  '📹'
-                )}
-              </div>
-            ))}
-          </div>
         </CardContent>
         
         <CardFooter>
@@ -293,8 +229,9 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({
                 onView?.(collection);
               }}
               aria-label={`View ${collection.name} collection`}
+              iconBefore={<EyeIcon label="" size="small" primaryColor={token('color.icon')} />}
             >
-              👁️ Preview
+              Preview
             </Button>
             <Button
               variant="secondary"
@@ -304,8 +241,9 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({
                 onEdit?.(collection);
               }}
               aria-label={`Edit ${collection.name} collection`}
+              iconBefore={<EditIcon label="" primaryColor={token('color.icon')} />}
             >
-              ✏️ Edit
+              Edit
             </Button>
           </div>
         </CardFooter>

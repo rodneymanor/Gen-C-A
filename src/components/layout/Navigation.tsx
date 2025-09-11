@@ -4,9 +4,24 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
+import { Avatar } from '../ui/Avatar';
 import { Card } from '../ui/Card';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { useResponsive } from '../../hooks/useResponsive';
 import type { NavigationItem, NavigationSection, User } from '../../types';
+
+// Atlassian Design System Icons
+import HomeIcon from '@atlaskit/icon/glyph/home';
+import FolderIcon from '@atlaskit/icon/glyph/folder';
+import BookIcon from '@atlaskit/icon/glyph/book';
+import EditIcon from '@atlaskit/icon/glyph/edit';
+import PeopleIcon from '@atlaskit/icon/glyph/people';
+import AddonIcon from '@atlaskit/icon/glyph/addon';
+import MobileIcon from '@atlaskit/icon/glyph/mobile';
+import SettingsIcon from '@atlaskit/icon/glyph/settings';
+import ArrowRightIcon from '@atlaskit/icon/glyph/arrow-right';
+import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left';
 
 export interface NavigationProps {
   isCollapsed?: boolean;
@@ -18,23 +33,23 @@ const navigationData: NavigationSection[] = [
   {
     section: 'Content',
     items: [
-      { path: '/dashboard', label: 'Dashboard', icon: '🏠', badge: '' },
-      { path: '/collections', label: 'Collections', icon: '📁', badge: '12' },
-      { path: '/library', label: 'Library', icon: '📚', badge: '247' },
-      { path: '/write', label: 'Write', icon: '✍️', badge: '' },
+      { path: '/dashboard', label: 'Dashboard', icon: <HomeIcon label="Dashboard" />, badge: '' },
+      { path: '/collections', label: 'Collections', icon: <FolderIcon label="Collections" />, badge: '12' },
+      { path: '/library', label: 'Library', icon: <BookIcon label="Library" />, badge: '247' },
+      { path: '/write', label: 'Write', icon: <EditIcon label="Write" />, badge: '' },
     ]
   },
   {
     section: 'Brand',
     items: [
-      { path: '/brand-hub', label: 'Brand Hub', icon: '👥', badge: '5' }
+      { path: '/brand-hub', label: 'Brand Hub', icon: <PeopleIcon label="Brand Hub" />, badge: '5' }
     ]
   },
   {
     section: 'Tools',
     items: [
-      { path: '/extensions', label: 'Extensions', icon: '🔌', badge: '' },
-      { path: '/mobile', label: 'Mobile Shortcuts', icon: '📱', badge: '' }
+      { path: '/extensions', label: 'Extensions', icon: <AddonIcon label="Extensions" />, badge: '' },
+      { path: '/mobile', label: 'Mobile Shortcuts', icon: <MobileIcon label="Mobile Shortcuts" />, badge: '' }
     ]
   }
 ];
@@ -46,19 +61,21 @@ const sidebarStyles = (isCollapsed: boolean, isMobile: boolean) => css`
   background: var(--color-neutral-0);
   border-right: 1px solid var(--color-neutral-200);
   transition: var(--transition-all);
-  position: relative;
+  position: ${isMobile ? 'fixed' : 'relative'};
   z-index: 100;
   
   ${isMobile ? css`
-    position: fixed;
+    /* Mobile: fixed positioned overlay */
     left: 0;
     top: 0;
     width: ${isCollapsed ? '0' : 'var(--sidebar-width)'};
     overflow: hidden;
     box-shadow: ${!isCollapsed ? 'var(--shadow-elevated)' : 'none'};
   ` : css`
+    /* Desktop: relative positioned sidebar */
     width: ${isCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)'};
     min-width: ${isCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)'};
+    flex-shrink: 0;
   `}
 `;
 
@@ -165,20 +182,7 @@ const navItemStyles = (isActive: boolean, isCollapsed: boolean) => css`
   
   .nav-badge {
     margin-left: auto;
-    background: var(--color-neutral-200);
-    color: var(--color-neutral-700);
-    padding: 2px 6px;
-    border-radius: var(--radius-full);
-    font-size: var(--font-size-caption);
-    font-weight: var(--font-weight-medium);
-    min-width: 20px;
-    text-align: center;
     opacity: ${isCollapsed ? '0' : '1'};
-    
-    ${isActive && css`
-      background: var(--color-primary-200);
-      color: var(--color-primary-700);
-    `}
   }
   
   ${isCollapsed && css`
@@ -228,18 +232,6 @@ const userMenuStyles = (isCollapsed: boolean) => css`
     background: var(--color-neutral-100);
   }
   
-  .user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-full);
-    background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-600));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: var(--font-weight-semibold);
-    flex-shrink: 0;
-  }
   
   .user-info {
     flex: 1;
@@ -286,10 +278,14 @@ const NavItem: React.FC<{
     css={navItemStyles(isActive, isCollapsed)}
     className={clsx('nav-item', { active: isActive })}
   >
-    <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+    <span className="nav-icon">{item.icon}</span>
     <span className="nav-label">{item.label}</span>
     {item.badge && !isCollapsed && (
-      <span className="nav-badge">{item.badge}</span>
+      <div className="nav-badge">
+        <Badge variant={isActive ? 'primary' : 'neutral'} size="small">
+          {item.badge}
+        </Badge>
+      </div>
     )}
     {item.badge && isCollapsed && (
       <span className="collapsed-badge">{item.badge}</span>
@@ -298,22 +294,14 @@ const NavItem: React.FC<{
 );
 
 const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isCollapsed }) => {
-  const initials = user.name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-
   return (
     <div css={userMenuStyles(isCollapsed)} className="user-menu-trigger">
-      <div className="user-avatar">
-        {user.avatar ? (
-          <img src={user.avatar} alt={user.name} />
-        ) : (
-          initials
-        )}
-      </div>
+      <Avatar
+        src={user.avatar}
+        name={user.name}
+        size="medium"
+        variant="circular"
+      />
       <div className="user-info">
         <p className="user-name">{user.name}</p>
         <p className="user-plan">{user.plan} Plan</p>
@@ -357,7 +345,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             variant="subtle"
             size="small"
             onClick={onToggleCollapse}
-            iconBefore={isCollapsed ? '→' : '←'}
+            iconBefore={isCollapsed ? <ArrowRightIcon label="" /> : <ArrowLeftIcon label="" />}
             aria-label={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
           />
         </div>
@@ -384,8 +372,14 @@ export const Navigation: React.FC<NavigationProps> = ({
         </div>
         
         <div css={footerStyles}>
+          {!isCollapsed && (
+            <div style={{ padding: '0.5rem 1rem', marginBottom: '0.5rem' }}>
+              <ThemeToggle />
+            </div>
+          )}
+          
           <NavItem
-            item={{ path: '/settings', label: 'Settings', icon: '⚙️', badge: '' }}
+            item={{ path: '/settings', label: 'Settings', icon: <SettingsIcon label="Settings" />, badge: '' }}
             isActive={location.pathname === '/settings'}
             isCollapsed={isCollapsed}
           />

@@ -5,6 +5,18 @@ import { Button } from '../ui/Button';
 import { TextArea } from '../ui/TextArea';
 import type { Script, ScriptInsight } from '../../types';
 
+// Atlassian Design System Icons
+import RefreshIcon from '@atlaskit/icon/glyph/refresh';
+import AudioIcon from '@atlaskit/icon/glyph/audio';
+import DocumentIcon from '@atlaskit/icon/glyph/document';
+import SearchIcon from '@atlaskit/icon/glyph/search';
+import ChartIcon from '@atlaskit/icon/glyph/graph-line';
+import SuccessIcon from '@atlaskit/icon/glyph/check-circle';
+import WarningIcon from '@atlaskit/icon/glyph/warning';
+import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb';
+import DownloadIcon from '@atlaskit/icon/glyph/download';
+import FolderIcon from '@atlaskit/icon/glyph/folder';
+
 export interface ScriptEditorProps {
   script?: Script;
   onSave?: (script: Script) => void;
@@ -276,7 +288,7 @@ const mockScript: Script = {
   id: '1',
   title: 'Summer Skincare Routine for Teens',
   content: `[HOOK - First 3 seconds]
-"Wait, you're using WHAT on your face this summer? 😱"
+"Wait, you're using WHAT on your face this summer? *shocked*"
 
 [PROBLEM - Seconds 3-6]
 "If you're still using heavy moisturizers in this heat, your skin is probably feeling gross and oily..."
@@ -289,7 +301,7 @@ const mockScript: Script = {
 3. SPF 30+ moisturizer (non-comedogenic!)"
 
 [CALL TO ACTION - Seconds 12-15]
-"Try this for one week and comment your before/after! Follow for more teen skincare tips 💫"`,
+"Try this for one week and comment your before/after! Follow for more teen skincare tips *sparkles*"`,
   platform: 'tiktok',
   length: 'short',
   style: 'engaging',
@@ -302,9 +314,9 @@ const mockScript: Script = {
 
 const InsightIcon: React.FC<{ type: ScriptInsight['type'] }> = ({ type }) => {
   const icons = {
-    success: '✅',
-    warning: '⚠️',
-    suggestion: '💡'
+    success: <SuccessIcon label="Success" />,
+    warning: <WarningIcon label="Warning" />,
+    suggestion: <LightbulbIcon label="Suggestion" />
   };
   
   return <span className="insight-icon">{icons[type]}</span>;
@@ -358,11 +370,11 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           <p className="header-subtitle">Ready for refinement</p>
         </div>
         <div className="header-actions">
-          <Button variant="subtle" onClick={onRegenerate} isDisabled={isLoading}>
-            🔄 Regenerate
+          <Button variant="subtle" onClick={onRegenerate} isDisabled={isLoading} iconBefore={<RefreshIcon label="" />}>
+            Regenerate
           </Button>
-          <Button variant="subtle" onClick={handleVoicePreview}>
-            🎤 Voice Preview
+          <Button variant="subtle" onClick={handleVoicePreview} iconBefore={<AudioIcon label="" />}>
+            Voice Preview
           </Button>
         </div>
       </div>
@@ -391,7 +403,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           </div>
 
           <div className="script-structure-guide">
-            <h3 className="guide-title">📝 Script Structure Guide</h3>
+            <h3 className="guide-title"><DocumentIcon label="" /> Script Structure Guide</h3>
             <div className="guide-sections">
               <div className="guide-section">
                 <span className="section-tag">[HOOK]</span>
@@ -415,7 +427,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
         <Card appearance="subtle" spacing="comfortable" css={insightsStyles}>
           <div className="insights-header">
-            <span className="insights-icon" aria-hidden="true">🔍</span>
+            <span className="insights-icon"><SearchIcon label="Insights" /></span>
             <h2>Script Insights</h2>
           </div>
 
@@ -431,9 +443,9 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           </div>
 
           <div className="script-stats">
-            <h3 className="stats-title">📊 Script Stats</h3>
+            <h3 className="stats-title"><ChartIcon label="" /> Script Stats</h3>
             <p className="stats-content">
-              <span className="stats-icon" aria-hidden="true">📊</span>
+              <span className="stats-icon"><ChartIcon label="Stats" /></span>
               {editableScript.estimatedDuration} seconds • {editableScript.wordCount} words • {editableScript.platform} optimized
             </p>
           </div>
@@ -441,11 +453,11 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
       </div>
 
       <CardFooter css={actionsStyles}>
-        <Button variant="subtle" onClick={handleExport} className="action-button">
-          📤 Export
+        <Button variant="subtle" onClick={handleExport} className="action-button" iconBefore={<DownloadIcon label="" />}>
+          Export
         </Button>
-        <Button variant="secondary" onClick={handleSave} className="action-button">
-          💾 Save to Library
+        <Button variant="secondary" onClick={handleSave} className="action-button" iconBefore={<FolderIcon label="" />}>
+          Save to Library
         </Button>
       </CardFooter>
     </div>

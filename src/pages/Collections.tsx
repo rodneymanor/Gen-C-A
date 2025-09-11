@@ -7,6 +7,21 @@ import { CollectionCard } from '../components/collections/CollectionCard';
 import { VideoGrid } from '../components/collections/VideoGrid';
 import type { Collection, ContentItem } from '../types';
 
+// Atlassian Design System Icons
+import SearchIcon from '@atlaskit/icon/glyph/search';
+import DownloadIcon from '@atlaskit/icon/glyph/download';
+import AddIcon from '@atlaskit/icon/glyph/add';
+import RefreshIcon from '@atlaskit/icon/glyph/refresh';
+import SettingsIcon from '@atlaskit/icon/glyph/settings';
+import ChartIcon from '@atlaskit/icon/glyph/graph-line';
+import MobileIcon from '@atlaskit/icon/glyph/mobile';
+import ImageIcon from '@atlaskit/icon/glyph/image';
+import VideoIcon from '@atlaskit/icon/glyph/vid-play';
+import CalendarIcon from '@atlaskit/icon/glyph/calendar';
+import StarIcon from '@atlaskit/icon/glyph/star';
+import StarFilledIcon from '@atlaskit/icon/glyph/star-filled';
+import NatureIcon from '@atlaskit/icon/glyph/emoji/nature';
+
 const collectionsStyles = css`
   max-width: 1200px;
   margin: 0 auto;
@@ -145,7 +160,7 @@ const favoritesStyles = css`
       .favorite-name {
         font-size: var(--font-size-body-small);
         font-weight: var(--font-weight-medium);
-        color: var(--color-warning-800);
+        color: var(--color-text-primary);
         margin: 0;
       }
     }
@@ -425,7 +440,7 @@ export const Collections: React.FC = () => {
             <Card appearance="subtle" spacing="comfortable">
               <div style={{ marginBottom: 'var(--space-4)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
-                  <span style={{ fontSize: '24px' }}>🌴</span>
+                  <NatureIcon label="Collection theme" />
                   <div>
                     <h2 style={{ margin: 0, fontSize: 'var(--font-size-h4)', fontWeight: 'var(--font-weight-semibold)' }}>
                       {selectedCollection.name}
@@ -449,14 +464,26 @@ export const Collections: React.FC = () => {
                 <Button variant="primary" fullWidth>
                   + Add Videos
                 </Button>
-                <Button variant="secondary" fullWidth>
-                  🔄 Bulk Actions
+                <Button 
+                  variant="secondary" 
+                  fullWidth
+                  iconBefore={<RefreshIcon label="" />}
+                >
+                  Bulk Actions
                 </Button>
-                <Button variant="subtle" fullWidth>
-                  ⚙️ Collection Settings
+                <Button 
+                  variant="subtle" 
+                  fullWidth
+                  iconBefore={<SettingsIcon label="" />}
+                >
+                  Collection Settings
                 </Button>
-                <Button variant="subtle" fullWidth>
-                  📊 Analytics
+                <Button 
+                  variant="subtle" 
+                  fullWidth
+                  iconBefore={<ChartIcon label="" />}
+                >
+                  Analytics
                 </Button>
               </div>
             </Card>
@@ -466,20 +493,32 @@ export const Collections: React.FC = () => {
             <div className="video-search">
               <Input
                 placeholder="Search videos..."
-                iconBefore="🔍"
+                iconBefore={<SearchIcon label="" />}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <div className="video-filters">
-              <Button variant={platformFilter === 'tiktok' ? 'primary' : 'subtle'} size="small">
-                📱 TikTok
+              <Button 
+                variant={platformFilter === 'tiktok' ? 'primary' : 'subtle'} 
+                size="small"
+                iconBefore={<MobileIcon label="" />}
+              >
+                TikTok
               </Button>
-              <Button variant={platformFilter === 'instagram' ? 'primary' : 'subtle'} size="small">
-                📸 Instagram
+              <Button 
+                variant={platformFilter === 'instagram' ? 'primary' : 'subtle'} 
+                size="small"
+                iconBefore={<ImageIcon label="" />}
+              >
+                Instagram
               </Button>
-              <Button variant="subtle" size="small">
-                📅 Newest
+              <Button 
+                variant="subtle" 
+                size="small"
+                iconBefore={<CalendarIcon label="" />}
+              >
+                Newest
               </Button>
             </div>
           </div>
@@ -504,11 +543,19 @@ export const Collections: React.FC = () => {
           <p className="subtitle">Organize your video content</p>
         </div>
         <div className="header-actions">
-          <Button variant="secondary" onClick={handleImportVideos}>
-            📥 Import Videos
+          <Button 
+            variant="secondary" 
+            onClick={handleImportVideos}
+            iconBefore={<DownloadIcon label="" />}
+          >
+            Import Videos
           </Button>
-          <Button variant="primary" onClick={handleCreateCollection}>
-            + Create Collection
+          <Button 
+            variant="primary" 
+            onClick={handleCreateCollection}
+            iconBefore={<AddIcon label="" />}
+          >
+            Create Collection
           </Button>
         </div>
       </div>
@@ -517,7 +564,7 @@ export const Collections: React.FC = () => {
         <div className="search-container">
           <Input
             placeholder="Search collections..."
-            iconBefore="🔍"
+            iconBefore={<SearchIcon label="" />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -526,14 +573,26 @@ export const Collections: React.FC = () => {
           <Button variant={platformFilter === 'all' ? 'primary' : 'subtle'} size="small">
             All
           </Button>
-          <Button variant={platformFilter === 'tiktok' ? 'primary' : 'subtle'} size="small">
-            📱 TikTok
+          <Button 
+            variant={platformFilter === 'tiktok' ? 'primary' : 'subtle'} 
+            size="small"
+            iconBefore={<MobileIcon label="" />}
+          >
+            TikTok
           </Button>
-          <Button variant={platformFilter === 'instagram' ? 'primary' : 'subtle'} size="small">
-            📸 Instagram
+          <Button 
+            variant={platformFilter === 'instagram' ? 'primary' : 'subtle'} 
+            size="small"
+            iconBefore={<ImageIcon label="" />}
+          >
+            Instagram
           </Button>
-          <Button variant={platformFilter === 'youtube' ? 'primary' : 'subtle'} size="small">
-            🎥 YouTube
+          <Button 
+            variant={platformFilter === 'youtube' ? 'primary' : 'subtle'} 
+            size="small"
+            iconBefore={<VideoIcon label="" />}
+          >
+            YouTube
           </Button>
         </div>
         <div className="sort-container">
@@ -558,13 +617,13 @@ export const Collections: React.FC = () => {
 
       <div css={favoritesStyles}>
         <div className="favorites-header">
-          <span className="favorites-icon">⭐</span>
+          <StarFilledIcon label="Favorites" />
           <h2>Favorites</h2>
         </div>
         <div className="favorites-grid">
           {favorites.map(favorite => (
             <div key={favorite} className="favorite-item">
-              <span className="favorite-icon">⭐</span>
+              <StarIcon label="" />
               <p className="favorite-name">{favorite}</p>
             </div>
           ))}
@@ -588,7 +647,7 @@ export const Collections: React.FC = () => {
             />
           ))}
           <Card css={newCollectionCardStyles} onClick={handleCreateCollection}>
-            <div className="new-icon">+</div>
+            <div className="new-icon"><AddIcon label="Create new collection" size="xlarge" /></div>
             <h3 className="new-title">Create New Collection</h3>
             <p className="new-description">
               Create a new collection to organize your video content

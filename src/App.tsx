@@ -1,10 +1,14 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeProvider';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Collections } from './pages/Collections';
 import { Write } from './pages/Write';
 import { Library } from './pages/Library';
+import { Enhanced } from './pages/Enhanced';
+import { Videos } from './pages/Videos';
+import { ChannelsPage } from './pages/ChannelsPage';
 import './styles/globals.css';
 import type { User } from './types';
 
@@ -44,7 +48,7 @@ const mockUser: User = {
 
 function App() {
   return (
-    <>
+    <ThemeProvider>
       <Router>
         <Layout user={mockUser}>
           <Routes>
@@ -52,11 +56,14 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/collections" element={<Collections />} />
             <Route path="/library" element={<Library />} />
+            <Route path="/videos" element={<Videos />} />
+            <Route path="/channels" element={<ChannelsPage />} />
             <Route path="/write" element={<Write />} />
             <Route path="/brand-hub" element={<BrandHub />} />
             <Route path="/extensions" element={<Extensions />} />
             <Route path="/mobile" element={<Mobile />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/enhanced" element={<Enhanced />} />
             
             {/* Default redirect to dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -66,7 +73,7 @@ function App() {
           </Routes>
         </Layout>
       </Router>
-    </>
+    </ThemeProvider>
   );
 }
 

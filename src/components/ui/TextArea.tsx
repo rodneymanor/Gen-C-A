@@ -71,7 +71,7 @@ const getTextAreaStyles = (
   &:focus {
     outline: none;
     border-color: var(--input-border-focus);
-    box-shadow: 0 0 0 3px var(--color-primary-100);
+    box-shadow: var(--focus-ring-shadow);
   }
   
   &:hover:not(:focus):not(:disabled) {

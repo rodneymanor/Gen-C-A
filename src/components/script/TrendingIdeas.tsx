@@ -3,6 +3,14 @@ import { css } from '@emotion/react';
 import { Card, CardHeader, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { formatCount } from '../../utils/format';
+import { token } from '@atlaskit/tokens';
+
+// Atlassian Design System Icons
+import StarIcon from '@atlaskit/icon/glyph/star';
+import WorldIcon from '@atlaskit/icon/glyph/world';
+import StarFilledIcon from '@atlaskit/icon/glyph/star-filled';
+import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb-filled';
+import FrequentIcon from '@atlaskit/icon/glyph/emoji/frequent';
 
 interface TrendingIdea {
   id: string;
@@ -151,6 +159,22 @@ const exploreMoreStyles = css`
   }
 `;
 
+// Helper function to map emoji strings to professional icons with theme-aware colors
+const getEmojiIcon = (emoji: string) => {
+  const iconColor = token('color.icon');
+  
+  switch (emoji) {
+    case '🔥':
+      return <FrequentIcon label="Trending" size="medium" primaryColor={iconColor} />;
+    case '🌟':
+      return <StarFilledIcon label="Featured" size="medium" primaryColor={token('color.icon.warning')} />;
+    case '💡':
+      return <LightbulbIcon label="Idea" size="medium" primaryColor={token('color.icon.discovery')} />;
+    default:
+      return <StarIcon label="Trending" size="medium" primaryColor={iconColor} />;
+  }
+};
+
 const defaultIdeas: TrendingIdea[] = [
   {
     id: '1',
@@ -185,7 +209,9 @@ export const TrendingIdeas: React.FC<TrendingIdeasProps> = ({
       <div className="trending-header">
         <div className="header-content">
           <h2>
-            <span className="trending-icon" aria-hidden="true">✨</span>
+            <span className="trending-icon" aria-hidden="true">
+              <StarIcon label="" size="medium" primaryColor={token('color.icon')} />
+            </span>
             Daily Inspiration
           </h2>
           <p className="trending-subtitle">Trending Today</p>
@@ -209,7 +235,7 @@ export const TrendingIdeas: React.FC<TrendingIdeasProps> = ({
             aria-label={`Use trending idea: ${idea.title}`}
           >
             <span className="trending-emoji" aria-hidden="true">
-              {idea.emoji}
+              {getEmojiIcon(idea.emoji)}
             </span>
             
             <div className="trending-content">
@@ -230,7 +256,9 @@ export const TrendingIdeas: React.FC<TrendingIdeasProps> = ({
       </div>
       
       <div css={exploreMoreStyles}>
-        <div className="explore-icon" aria-hidden="true">🚀</div>
+        <div className="explore-icon" aria-hidden="true">
+          <WorldIcon label="" size="large" primaryColor="white" />
+        </div>
         <h3 className="explore-title">Explore More Ideas</h3>
         <p className="explore-description">
           Get personalized content suggestions based on your brand
