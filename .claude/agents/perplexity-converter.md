@@ -19,7 +19,7 @@ Convert components to Perplexity's aesthetic (flat design, subtle depth, typogra
 #### Colors (Strategic Brand Alignment)
 ```css
 /* Map Perplexity concepts to your existing tokens */
-Perplexity Turquoise → var(--color-primary-500) /* Claude orange #d4814a */
+Perplexity Turquoise → var(--color-primary-500) /* Bloom Blue #0B5CFF */
 Perplexity Offblack → var(--color-neutral-900) /* #091e42 */
 Perplexity Paper White → var(--color-surface) /* Semantic token */
 Perplexity Text → var(--color-text-primary) /* Existing semantic */

@@ -95,7 +95,7 @@ const headerStyles = css`
     .logo {
       width: 32px;
       height: 32px;
-      background: var(--color-primary-500);  /* Claude orange - flat design */
+      background: var(--color-primary-500);  /* Bloom Blue - flat design */
       border-radius: var(--radius-medium);
       display: flex;
       align-items: center;

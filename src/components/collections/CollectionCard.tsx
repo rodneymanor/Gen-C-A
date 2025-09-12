@@ -25,7 +25,7 @@ const collectionCardStyles = css`
   
   /* Perplexity Flat Design - Minimal hover effect */
   &:hover {
-    border-color: var(--color-primary-500);  /* Claude orange accent */
+    border-color: var(--color-primary-500);  /* Bloom Blue accent */
     /* Removed: transform and dramatic shadow for flat design */
   }
   
@@ -117,7 +117,7 @@ const actionButtonStyles = css`
   }
   
   &.favorited {
-    color: var(--color-primary-500); /* Claude orange for favorited */
+    color: var(--color-primary-500); /* Bloom Blue for favorited */
   }
   
   &:focus-visible {

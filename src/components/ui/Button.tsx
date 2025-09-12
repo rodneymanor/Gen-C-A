@@ -53,7 +53,7 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
   
   /* Variant styles - Perplexity Flat Design */
   ${variant === 'primary' && css`
-    background: var(--button-primary-bg);  /* Claude orange preserved */
+    background: var(--button-primary-bg);  /* Bloom Blue preserved */
     color: var(--button-primary-text);
     /* REMOVED: All shadows for flat design */
     

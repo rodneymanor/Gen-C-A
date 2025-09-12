@@ -70,7 +70,7 @@ const getTextAreaStyles = (
   
   &:focus {
     outline: none;
-    border-color: var(--input-border-focus); /* Claude orange focus */
+    border-color: var(--input-border-focus); /* Bloom Blue focus */
     /* REMOVED: box-shadow for flat design - only border change */
   }
   
@@ -191,7 +191,7 @@ const aiSuggestionsStyles = css`
       line-height: var(--line-height-normal);
       
       &:hover {
-        border-color: var(--color-primary-500); /* Claude orange hover */
+        border-color: var(--color-primary-500); /* Bloom Blue hover */
         background: var(--color-primary-50);
         /* No shadows - flat design */
       }

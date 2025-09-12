@@ -150,7 +150,7 @@ const favoritesStyles = css`
       transition: var(--transition-colors);
       
       &:hover {
-        border-color: var(--color-primary-500);  /* Claude orange accent on hover */
+        border-color: var(--color-primary-500);  /* Bloom Blue accent on hover */
         /* REMOVED: Background and transform for flat design */
       }
       
@@ -214,7 +214,7 @@ const newCollectionCardStyles = css`
   
   /* Perplexity Flat Design - Minimal hover */
   &:hover {
-    border-color: var(--color-primary-500);  /* Claude orange accent */
+    border-color: var(--color-primary-500);  /* Bloom Blue accent */
     /* REMOVED: Background and transform for flat design */
   }
   
@@ -462,13 +462,50 @@ export const Collections: React.FC = () => {
             <Card appearance="raised" spacing="comfortable">
               <h3 style={{ margin: '0 0 var(--space-4) 0', fontSize: 'var(--font-size-h5)' }}>Actions</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                <Button variant="primary" fullWidth>
+                <Button 
+                  variant="primary" 
+                  fullWidth
+                  css={css`
+                    background: #0B5CFF;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: var(--radius-medium);
+                    padding: var(--space-3) var(--space-6);
+                    font-weight: var(--font-weight-semibold);
+                    min-height: var(--touch-target-comfortable);
+                    transition: var(--transition-button);
+                    box-shadow: var(--shadow-subtle);
+                    
+                    &:hover {
+                      background: #0A52E6;
+                      box-shadow: var(--shadow-card);
+                      transform: translateY(-1px);
+                    }
+                    
+                    &:active {
+                      background: #0947CC;
+                      transform: translateY(0);
+                    }
+                  `}
+                >
                   + Add Videos
                 </Button>
                 <Button 
                   variant="secondary" 
                   fullWidth
                   iconBefore={<RefreshIcon label="" />}
+                  css={css`
+                    background: transparent;
+                    color: #0B5CFF;
+                    border: var(--border-width-thin) solid #0B5CFF;
+                    border-radius: var(--radius-medium);
+                    font-weight: var(--font-weight-medium);
+                    
+                    &:hover {
+                      background: rgba(11, 92, 255, 0.08);
+                      border-color: #0A52E6;
+                    }
+                  `}
                 >
                   Bulk Actions
                 </Button>
@@ -476,6 +513,18 @@ export const Collections: React.FC = () => {
                   variant="subtle" 
                   fullWidth
                   iconBefore={<SettingsIcon label="" />}
+                  css={css`
+                    background: transparent;
+                    color: var(--color-text-secondary);
+                    border: none;
+                    font-weight: var(--font-weight-medium);
+                    text-decoration: none;
+                    
+                    &:hover {
+                      color: var(--color-text-primary);
+                      text-decoration: underline;
+                    }
+                  `}
                 >
                   Collection Settings
                 </Button>
@@ -483,6 +532,18 @@ export const Collections: React.FC = () => {
                   variant="subtle" 
                   fullWidth
                   iconBefore={<ChartIcon label="" />}
+                  css={css`
+                    background: transparent;
+                    color: var(--color-text-secondary);
+                    border: none;
+                    font-weight: var(--font-weight-medium);
+                    text-decoration: none;
+                    
+                    &:hover {
+                      color: var(--color-text-primary);
+                      text-decoration: underline;
+                    }
+                  `}
                 >
                   Analytics
                 </Button>
@@ -501,20 +562,56 @@ export const Collections: React.FC = () => {
             </div>
             <div className="video-filters">
               <Button 
-                variant={platformFilter === 'tiktok' ? 'primary' : 'subtle'} 
+                variant={platformFilter === 'tiktok' ? 'secondary' : 'subtle'} 
                 size="small"
+                css={platformFilter === 'tiktok' ? css`
+                  background: transparent;
+                  color: #0B5CFF;
+                  border: var(--border-width-thin) solid #0B5CFF;
+                  border-radius: var(--radius-medium);
+                  font-weight: var(--font-weight-medium);
+                  
+                  &:hover {
+                    background: rgba(11, 92, 255, 0.08);
+                    border-color: #0A52E6;
+                  }
+                ` : undefined}
               >
                 TikTok
               </Button>
               <Button 
-                variant={platformFilter === 'instagram' ? 'primary' : 'subtle'} 
+                variant={platformFilter === 'instagram' ? 'secondary' : 'subtle'} 
                 size="small"
+                css={platformFilter === 'instagram' ? css`
+                  background: transparent;
+                  color: #0B5CFF;
+                  border: var(--border-width-thin) solid #0B5CFF;
+                  border-radius: var(--radius-medium);
+                  font-weight: var(--font-weight-medium);
+                  
+                  &:hover {
+                    background: rgba(11, 92, 255, 0.08);
+                    border-color: #0A52E6;
+                  }
+                ` : undefined}
               >
                 Instagram
               </Button>
               <Button 
                 variant="subtle" 
                 size="small"
+                css={css`
+                  background: transparent;
+                  color: var(--color-text-secondary);
+                  border: none;
+                  font-weight: var(--font-weight-medium);
+                  text-decoration: none;
+                  
+                  &:hover {
+                    color: var(--color-text-primary);
+                    text-decoration: underline;
+                  }
+                `}
               >
                 Newest
               </Button>
@@ -542,7 +639,7 @@ export const Collections: React.FC = () => {
         </div>
         <div className="header-actions">
           <Button 
-            variant="secondary" 
+            variant="subtle" 
             onClick={handleImportVideos}
             iconBefore={<DownloadIcon label="" />}
           >
@@ -552,6 +649,28 @@ export const Collections: React.FC = () => {
             variant="primary" 
             onClick={handleCreateCollection}
             iconBefore={<AddIcon label="" />}
+            css={css`
+              background: #0B5CFF;
+              color: #ffffff;
+              border: none;
+              border-radius: var(--radius-medium);
+              padding: var(--space-3) var(--space-6);
+              font-weight: var(--font-weight-semibold);
+              min-height: var(--touch-target-comfortable);
+              transition: var(--transition-button);
+              box-shadow: var(--shadow-subtle);
+              
+              &:hover {
+                background: #0A52E6;
+                box-shadow: var(--shadow-card);
+                transform: translateY(-1px);
+              }
+              
+              &:active {
+                background: #0947CC;
+                transform: translateY(0);
+              }
+            `}
           >
             Create Collection
           </Button>
@@ -568,24 +687,75 @@ export const Collections: React.FC = () => {
           />
         </div>
         <div className="filter-buttons">
-          <Button variant={platformFilter === 'all' ? 'primary' : 'subtle'} size="small">
+          <Button 
+            variant={platformFilter === 'all' ? 'secondary' : 'subtle'} 
+            size="small"
+            css={platformFilter === 'all' ? css`
+              background: transparent;
+              color: #0B5CFF;
+              border: var(--border-width-thin) solid #0B5CFF;
+              border-radius: var(--radius-medium);
+              font-weight: var(--font-weight-medium);
+              
+              &:hover {
+                background: rgba(11, 92, 255, 0.08);
+                border-color: #0A52E6;
+              }
+            ` : undefined}
+          >
             All
           </Button>
           <Button 
-            variant={platformFilter === 'tiktok' ? 'primary' : 'subtle'} 
+            variant={platformFilter === 'tiktok' ? 'secondary' : 'subtle'} 
             size="small"
+            css={platformFilter === 'tiktok' ? css`
+              background: transparent;
+              color: #0B5CFF;
+              border: var(--border-width-thin) solid #0B5CFF;
+              border-radius: var(--radius-medium);
+              font-weight: var(--font-weight-medium);
+              
+              &:hover {
+                background: rgba(11, 92, 255, 0.08);
+                border-color: #0A52E6;
+              }
+            ` : undefined}
           >
             TikTok
           </Button>
           <Button 
-            variant={platformFilter === 'instagram' ? 'primary' : 'subtle'} 
+            variant={platformFilter === 'instagram' ? 'secondary' : 'subtle'} 
             size="small"
+            css={platformFilter === 'instagram' ? css`
+              background: transparent;
+              color: #0B5CFF;
+              border: var(--border-width-thin) solid #0B5CFF;
+              border-radius: var(--radius-medium);
+              font-weight: var(--font-weight-medium);
+              
+              &:hover {
+                background: rgba(11, 92, 255, 0.08);
+                border-color: #0A52E6;
+              }
+            ` : undefined}
           >
             Instagram
           </Button>
           <Button 
-            variant={platformFilter === 'youtube' ? 'primary' : 'subtle'} 
+            variant={platformFilter === 'youtube' ? 'secondary' : 'subtle'} 
             size="small"
+            css={platformFilter === 'youtube' ? css`
+              background: transparent;
+              color: #0B5CFF;
+              border: var(--border-width-thin) solid #0B5CFF;
+              border-radius: var(--radius-medium);
+              font-weight: var(--font-weight-medium);
+              
+              &:hover {
+                background: rgba(11, 92, 255, 0.08);
+                border-color: #0A52E6;
+              }
+            ` : undefined}
           >
             YouTube
           </Button>

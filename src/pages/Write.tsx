@@ -307,24 +307,18 @@ ${request.prompt.toLowerCase().includes('skincare') ?
 
       {view === 'generate' ? (
         <>
-          <div css={headerStyles}>
-            <h1>AI Script Writer</h1>
-            <p className="header-subtitle">
-              Create engaging content with AI assistance. Describe your video idea and let our AI craft the perfect script for your platform and audience.
-            </p>
-          </div>
 
           <div css={contentStyles}>
-            <TrendingIdeas
-              onUseIdea={handleUseIdea}
-              onExploreMore={handleExploreMore}
-            />
-            
             <ScriptGenerator
               onGenerate={handleGenerate}
               onVoiceInput={handleVoiceInput}
               isLoading={generationState.isGenerating}
               personas={mockPersonas}
+            />
+            
+            <TrendingIdeas
+              onUseIdea={handleUseIdea}
+              onExploreMore={handleExploreMore}
             />
           </div>
         </>

@@ -23,7 +23,7 @@ The Gen.C Alpha design system draws inspiration from Claude's clean, conversatio
 --color-primary-200: #f7dcc7;   /* Subtle warm tint */
 --color-primary-300: #f0c4a0;   /* Light accent */
 --color-primary-400: #e6a576;   /* Medium warm accent */
---color-primary-500: #d4814a;   /* Primary brand color */
+--color-primary-500: #0B5CFF;   /* Primary brand color */
 --color-primary-600: #b86430;   /* Dark primary */
 --color-primary-700: #9a4d1f;   /* Darker primary */
 --color-primary-800: #7d3b14;   /* Deep primary */

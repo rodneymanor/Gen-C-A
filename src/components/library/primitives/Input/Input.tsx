@@ -77,7 +77,7 @@ const getInputStyles = (
   
   &:focus {
     outline: none;
-    border-color: var(--input-border-focus); /* Claude orange focus */
+    border-color: var(--input-border-focus); /* Bloom Blue focus */
     /* REMOVED: box-shadow for flat design - only border change */
   }
   

@@ -493,7 +493,7 @@ export const Library: React.FC = () => {
         </div>
         <div className="header-actions">
           <Button 
-            variant="secondary"
+            variant="subtle"
             iconBefore={<DownloadIcon label="" />}
           >
             Import
@@ -501,6 +501,28 @@ export const Library: React.FC = () => {
           <Button 
             variant="primary"
             iconBefore={<AddIcon label="" />}
+            css={css`
+              background: #0B5CFF;
+              color: #ffffff;
+              border: none;
+              border-radius: var(--radius-medium);
+              padding: var(--space-3) var(--space-6);
+              font-weight: var(--font-weight-semibold);
+              min-height: var(--touch-target-comfortable);
+              transition: var(--transition-button);
+              box-shadow: var(--shadow-subtle);
+              
+              &:hover {
+                background: #0A52E6;
+                box-shadow: var(--shadow-card);
+                transform: translateY(-1px);
+              }
+              
+              &:active {
+                background: #0947CC;
+                transform: translateY(0);
+              }
+            `}
           >
             Add Content
           </Button>
@@ -521,9 +543,21 @@ export const Library: React.FC = () => {
           {filters.map(filter => (
             <Button
               key={filter.key}
-              variant={activeFilter === filter.key ? 'primary' : 'subtle'}
+              variant={activeFilter === filter.key ? 'secondary' : 'subtle'}
               size="small"
               onClick={() => setActiveFilter(filter.key)}
+              css={activeFilter === filter.key ? css`
+                background: transparent;
+                color: #0B5CFF;
+                border: var(--border-width-thin) solid #0B5CFF;
+                border-radius: var(--radius-medium);
+                font-weight: var(--font-weight-medium);
+                
+                &:hover {
+                  background: rgba(11, 92, 255, 0.08);
+                  border-color: #0A52E6;
+                }
+              ` : undefined}
             >
               {filter.label}
             </Button>
@@ -563,7 +597,7 @@ export const Library: React.FC = () => {
                 <p className="empty-description">
                   Try adjusting your search or filters to find what you're looking for
                 </p>
-                <Button variant="primary">
+                <Button variant="secondary">
                   Clear Filters
                 </Button>
               </div>
@@ -622,6 +656,28 @@ export const Library: React.FC = () => {
                 variant="primary" 
                 fullWidth
                 iconBefore={<ViewIcon label="" />}
+                css={css`
+                  background: #0B5CFF;
+                  color: #ffffff;
+                  border: none;
+                  border-radius: var(--radius-medium);
+                  padding: var(--space-3) var(--space-6);
+                  font-weight: var(--font-weight-semibold);
+                  min-height: var(--touch-target-comfortable);
+                  transition: var(--transition-button);
+                  box-shadow: var(--shadow-subtle);
+                  
+                  &:hover {
+                    background: #0A52E6;
+                    box-shadow: var(--shadow-card);
+                    transform: translateY(-1px);
+                  }
+                  
+                  &:active {
+                    background: #0947CC;
+                    transform: translateY(0);
+                  }
+                `}
               >
                 View
               </Button>
@@ -629,6 +685,18 @@ export const Library: React.FC = () => {
                 variant="secondary" 
                 fullWidth
                 iconBefore={<EditIcon label="" />}
+                css={css`
+                  background: transparent;
+                  color: #0B5CFF;
+                  border: var(--border-width-thin) solid #0B5CFF;
+                  border-radius: var(--radius-medium);
+                  font-weight: var(--font-weight-medium);
+                  
+                  &:hover {
+                    background: rgba(11, 92, 255, 0.08);
+                    border-color: #0A52E6;
+                  }
+                `}
               >
                 Edit
               </Button>
@@ -636,6 +704,18 @@ export const Library: React.FC = () => {
                 variant="subtle" 
                 fullWidth
                 iconBefore={<UploadIcon label="" />}
+                css={css`
+                  background: transparent;
+                  color: var(--color-text-secondary);
+                  border: none;
+                  font-weight: var(--font-weight-medium);
+                  text-decoration: none;
+                  
+                  &:hover {
+                    color: var(--color-text-primary);
+                    text-decoration: underline;
+                  }
+                `}
               >
                 Download
               </Button>
@@ -643,6 +723,18 @@ export const Library: React.FC = () => {
                 variant="subtle" 
                 fullWidth
                 iconBefore={<FolderIcon label="" />}
+                css={css`
+                  background: transparent;
+                  color: var(--color-text-secondary);
+                  border: none;
+                  font-weight: var(--font-weight-medium);
+                  text-decoration: none;
+                  
+                  &:hover {
+                    color: var(--color-text-primary);
+                    text-decoration: underline;
+                  }
+                `}
               >
                 Add to Collection
               </Button>

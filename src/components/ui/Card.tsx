@@ -56,7 +56,7 @@ const getCardStyles = (
   `}
   
   ${appearance === 'selected' && css`
-    border: 2px solid var(--color-primary-500);  /* Claude orange preserved */
+    border: 2px solid var(--color-primary-500);  /* Bloom Blue preserved */
     /* REMOVED: Shadow - use border + background only */
     background: var(--color-primary-50);
   `}

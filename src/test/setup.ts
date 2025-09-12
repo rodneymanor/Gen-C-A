@@ -72,16 +72,16 @@ const mockCSSVariables = css`
     --color-neutral-800: #262626;
     --color-neutral-900: #171717;
 
-    --color-primary-50: #fef7ed;
-    --color-primary-100: #fdedd3;
-    --color-primary-200: #fbd9a5;
-    --color-primary-300: #f9c16d;
-    --color-primary-400: #f7a632;
-    --color-primary-500: #d4814a;
-    --color-primary-600: #c2693c;
-    --color-primary-700: #a0542f;
-    --color-primary-800: #7f4322;
-    --color-primary-900: #632d0c;
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-200: #bfdbfe;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
+    --color-primary-500: #0B5CFF;
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+    --color-primary-800: #1e40af;
+    --color-primary-900: #1e3a8a;
 
     --color-error-400: #f87171;
     --color-error-500: #ef4444;
@@ -104,7 +104,7 @@ const mockCSSVariables = css`
     --button-primary-bg: var(--color-primary-500);
     --button-primary-bg-hover: var(--color-primary-600);
     --button-primary-text: white;
-    --button-primary-shadow: 0 2px 8px rgba(212, 129, 74, 0.3);
+    --button-primary-shadow: 0 2px 8px rgba(11, 92, 255, 0.3);
 
     --button-secondary-bg: white;
     --button-secondary-text: var(--color-neutral-700);
@@ -147,7 +147,7 @@ const mockCSSVariables = css`
     --shadow-elevated: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     --shadow-ai: 0 4px 14px 0 rgba(102, 126, 234, 0.39);
 
-    --focus-ring: 0 0 0 3px rgba(212, 129, 74, 0.3);
+    --focus-ring: 0 0 0 3px rgba(11, 92, 255, 0.3);
 
     /* Transitions */
     --transition-all: all 0.2s ease-in-out;

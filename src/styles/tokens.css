@@ -1,6 +1,6 @@
 /* ========================================
    Gen.C Alpha Design System Tokens
-   Enhanced Organization - Preserving Claude Colors
+   Enhanced Organization - Bloom Blue Brand Color
    ======================================== */
 
 :root {
@@ -8,17 +8,17 @@
      FOUNDATION COLOR PALETTE (Preserve All Values ✅)
      ======================================== */
   
-  /* Claude-Inspired Primary Scale - PRESERVED */
-  --color-primary-50: #fef7f0;    /* Lightest primary tint */
-  --color-primary-100: #fceee1;   /* Very light primary */
-  --color-primary-200: #f7dcc7;   /* Light primary */
-  --color-primary-300: #f0c4a0;   /* Soft primary */
-  --color-primary-400: #e6a576;   /* Medium-light primary */
-  --color-primary-500: #d4814a;   /* Base primary - Claude orange */
-  --color-primary-600: #b86430;   /* Medium-dark primary */
-  --color-primary-700: #9a4d1f;   /* Dark primary */
-  --color-primary-800: #7d3b14;   /* Darker primary */
-  --color-primary-900: #632d0c;   /* Darkest primary */
+  /* Bloom Blue Primary Scale - UPDATED */
+  --color-primary-50: #eff6ff;    /* Lightest primary tint */
+  --color-primary-100: #dbeafe;   /* Very light primary */
+  --color-primary-200: #bfdbfe;   /* Light primary */
+  --color-primary-300: #93c5fd;   /* Soft primary */
+  --color-primary-400: #60a5fa;   /* Medium-light primary */
+  --color-primary-500: #0B5CFF;   /* Base primary - Bloom Blue */
+  --color-primary-600: #2563eb;   /* Medium-dark primary */
+  --color-primary-700: #1d4ed8;   /* Dark primary */
+  --color-primary-800: #1e40af;   /* Darker primary */
+  --color-primary-900: #1e3a8a;   /* Darkest primary */
 
   /* Neutral Gray Scale - PRESERVED */
   --color-neutral-0: #ffffff;     /* Pure white */
@@ -486,7 +486,7 @@
     --color-border-strong: var(--color-neutral-400);
     
     /* Keep Primary/Secondary Colors - They Work in Dark Mode */
-    /* --color-primary-500: #d4814a; ✅ Good contrast in dark */
+    /* --color-primary-500: #0B5CFF; ✅ Good contrast in dark */
     /* --color-secondary: Still works ✅ */
     
     /* Dark Mode Warning Colors - For Favorites and Status */
