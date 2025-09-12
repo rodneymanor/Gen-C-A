@@ -754,7 +754,7 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({
                 testId={`${testId}-search`}
               />
               <Button
-                variant="primary"
+                variant="secondary"
                 size="medium"
                 iconBefore={<Search size={16} />}
                 testId={`${testId}-search-button`}
@@ -768,17 +768,22 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({
               {filters.platforms.map(({ platform, enabled }) => (
                 <Button
                   key={platform}
-                  variant={enabled ? 'primary' : 'secondary'}
+                  variant={enabled ? 'secondary' : 'tertiary'}
                   size="medium"
                   onClick={() => handlePlatformToggle(platform)}
                   testId={`${testId}-filter-${platform}`}
+                  style={enabled ? {
+                    background: 'rgba(11, 92, 255, 0.08)',
+                    borderColor: '#0B5CFF',
+                    color: '#0B5CFF'
+                  } : undefined}
                 >
                   {platform.charAt(0).toUpperCase() + platform.slice(1)}
                 </Button>
               ))}
               
               <Button
-                variant="secondary"
+                variant="tertiary"
                 size="medium"
                 iconBefore={<Plus size={16} />}
                 testId={`${testId}-submit-channel`}
@@ -840,7 +845,7 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({
                   </p>
                   {filters.search || filters.platforms.some(p => p.enabled) ? (
                     <Button
-                      variant="secondary"
+                      variant="tertiary"
                       onClick={() => {
                         setFilters(prev => ({
                           ...prev,

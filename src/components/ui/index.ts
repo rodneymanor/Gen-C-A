@@ -11,6 +11,10 @@ export { PlatformIcon, InstagramIcon, YouTubeIcon, TikTokIcon, TwitterIcon, Link
 export { CreatorCard } from './CreatorCard';
 export { WatchlistSidebar } from './WatchlistSidebar';
 export { Pagination, DotPagination } from './Pagination';
+export { HemingwayEditor } from './HemingwayEditor';
+export { EditableTitle } from './EditableTitle';
+export { EditorSidebar } from './EditorSidebar';
+export { FloatingToolbar } from './FloatingToolbar';
 
 export type { ButtonProps } from './Button';
 export type { CardProps } from './Card';
@@ -23,3 +27,7 @@ export type { PlatformIconProps } from './PlatformIcon';
 export type { CreatorCardProps } from './CreatorCard';
 export type { WatchlistSidebarProps } from './WatchlistSidebar';
 export type { PaginationProps } from './Pagination';
+export type { HemingwayEditorProps } from './HemingwayEditor';
+export type { EditableTitleProps } from './EditableTitle';
+export type { EditorSidebarProps } from './EditorSidebar';
+export type { FloatingToolbarProps } from './FloatingToolbar';

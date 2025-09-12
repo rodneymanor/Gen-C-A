@@ -3,6 +3,7 @@ import { css } from '@emotion/react';
 import { TrendingIdeas } from '../components/script/TrendingIdeas';
 import { ScriptGenerator } from '../components/script/ScriptGenerator';
 import { ScriptEditor } from '../components/script/ScriptEditor';
+import { Button } from '../components/ui/Button';
 import type { AIGenerationRequest, AIGenerationResponse, Script, BrandPersona } from '../types';
 
 const writeStyles = css`
@@ -330,30 +331,13 @@ ${request.prompt.toLowerCase().includes('skincare') ?
             gap: 'var(--space-4)', 
             marginBottom: 'var(--space-6)' 
           }}>
-            <button
+            <Button
+              variant="tertiary"
+              size="medium"
               onClick={handleBackToGenerate}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-2)',
-                background: 'none',
-                border: 'none',
-                color: 'var(--color-primary-500)',
-                fontSize: 'var(--font-size-body)',
-                cursor: 'pointer',
-                padding: 'var(--space-2)',
-                borderRadius: 'var(--radius-medium)',
-                transition: 'var(--transition-all)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--color-primary-600)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--color-primary-500)';
-              }}
             >
               ← Back to Generator
-            </button>
+            </Button>
           </div>
           
           {generatedScript && (

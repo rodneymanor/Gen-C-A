@@ -22,6 +22,8 @@ import MobileIcon from '@atlaskit/icon/glyph/mobile';
 import SettingsIcon from '@atlaskit/icon/glyph/settings';
 import ArrowRightIcon from '@atlaskit/icon/glyph/arrow-right';
 import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left';
+import VideoIcon from '@atlaskit/icon/glyph/video-filled';
+import ChannelIcon from '@atlaskit/icon/glyph/people-group';
 
 export interface NavigationProps {
   isCollapsed?: boolean;
@@ -36,6 +38,8 @@ const navigationData: NavigationSection[] = [
       { path: '/dashboard', label: 'Dashboard', icon: <HomeIcon label="Dashboard" />, badge: '' },
       { path: '/collections', label: 'Collections', icon: <FolderIcon label="Collections" />, badge: '12' },
       { path: '/library', label: 'Library', icon: <BookIcon label="Library" />, badge: '247' },
+      { path: '/videos', label: 'Videos', icon: <VideoIcon label="Videos" />, badge: '' },
+      { path: '/channels', label: 'Channels', icon: <ChannelIcon label="Channels" />, badge: '24' },
       { path: '/write', label: 'Write', icon: <EditIcon label="Write" />, badge: '' },
     ]
   },
