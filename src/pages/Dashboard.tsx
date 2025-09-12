@@ -1,5 +1,6 @@
 import React from 'react';
 import { css } from '@emotion/react';
+import { useNavigate } from 'react-router-dom';
 
 // Lucide React Icons
 import { 
@@ -132,29 +133,6 @@ interface DashboardCard {
   action: () => void;
 }
 
-const dashboardCards: DashboardCard[] = [
-  {
-    id: 'collections',
-    title: 'Collections',
-    description: 'Get inspiration',
-    icon: <Folder size={48} />,
-    action: () => console.log('Collections clicked')
-  },
-  {
-    id: 'script-writing',
-    title: 'Write Script',
-    description: 'AI-powered script writing',
-    icon: <PenTool size={48} />,
-    action: () => console.log('Script writing clicked')
-  },
-  {
-    id: 'channels',
-    title: 'Channels',
-    description: 'Follow your favorite creators',
-    icon: <Radio size={48} />,
-    action: () => console.log('Channels clicked')
-  }
-];
 
 const DashboardCard: React.FC<{ card: DashboardCard }> = ({ card }) => (
   <div
@@ -179,6 +157,32 @@ const DashboardCard: React.FC<{ card: DashboardCard }> = ({ card }) => (
 );
 
 export const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+
+  const dashboardCards: DashboardCard[] = [
+    {
+      id: 'collections',
+      title: 'Collections',
+      description: 'Get inspiration',
+      icon: <Folder size={48} />,
+      action: () => navigate('/collections')
+    },
+    {
+      id: 'script-writing',
+      title: 'Write Script',
+      description: 'AI-powered script writing',
+      icon: <PenTool size={48} />,
+      action: () => navigate('/write')
+    },
+    {
+      id: 'channels',
+      title: 'Channels',
+      description: 'Follow your favorite creators',
+      icon: <Radio size={48} />,
+      action: () => navigate('/channels')
+    }
+  ];
+
   return (
     <div css={dashboardStyles}>
       {/* Hero Section */}
