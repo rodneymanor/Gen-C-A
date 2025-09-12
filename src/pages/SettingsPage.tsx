@@ -34,7 +34,7 @@ const tabsStyles = css`
 `;
 
 const contentAreaStyles = css`
-  background: ${token('color.background.neutral', '#f4f5f7')};
+  background: ${token('color.background.default', '#ffffff')};
   border-radius: ${token('border.radius.200', '0.5rem')};
   padding: ${token('space.400', '1rem')};
   box-shadow: ${token('elevation.shadow.raised', '0 4px 6px rgba(0, 0, 0, 0.07)')};
