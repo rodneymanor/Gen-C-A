@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { css } from '@emotion/react';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
-import { Plus, Check, Heart, Eye } from 'lucide-react';
+// Atlassian Design System Icons
+import AddIcon from '@atlaskit/icon/glyph/add';
+import CheckIcon from '@atlaskit/icon/glyph/check';
+import HeartIcon from '@atlaskit/icon/glyph/like';
+import EyeIcon from '@atlaskit/icon/glyph/watch';
 import { Creator } from '../../types';
 import { Card } from './Card';
 import { Avatar } from './Avatar';
@@ -235,7 +239,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({
                 {creator.name}
                 {creator.isVerified && (
                   <span css={verifiedBadgeStyles} aria-label="Verified">
-                    <Check size={14} />
+                    <CheckIcon label="" size="small" />
                   </span>
                 )}
               </h3>
@@ -254,7 +258,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({
               <Button
                 size="small"
                 variant={isInWatchlist ? 'primary' : 'secondary'}
-                iconBefore={isInWatchlist ? <Check size={14} /> : <Plus size={14} />}
+                iconBefore={isInWatchlist ? <CheckIcon label="" size="small" /> : <AddIcon label="" size="small" />}
                 onClick={handleWatchlistToggle}
                 aria-label={
                   isInWatchlist 
@@ -270,7 +274,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({
 
           <div css={metricsStyles}>
             <div css={followerCountStyles}>
-              <Eye size={16} aria-hidden="true" />
+              <EyeIcon label="" size="small" />
               <span>
                 {formatFollowerCount(creator.followerCount)} 
                 {creator.platform === 'youtube' ? ' subscribers' : ' followers'}
@@ -281,7 +285,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({
               <div css={metricsRowStyles}>
                 {creator.metrics.engagementRate && (
                   <span>
-                    <Heart size={12} aria-hidden="true" />
+                    <HeartIcon label="" size="small" />
                     {' '}{formatEngagementRate(creator.metrics.engagementRate)} engagement
                   </span>
                 )}

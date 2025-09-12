@@ -1,18 +1,17 @@
 import React from 'react';
 import { styled, css } from '@emotion/react';
 import { token } from '@atlaskit/tokens';
-import { 
-  BarChart3, 
-  FileText, 
-  ChevronRight,
-  AlertCircle,
-  TrendingUp,
-  Clock,
-  Type,
-  Hash,
-  FileX,
-  Users
-} from 'lucide-react';
+// Atlassian Design System Icons
+import ChartIcon from '@atlaskit/icon/glyph/graph-line';
+import DocumentIcon from '@atlaskit/icon/glyph/document';
+import ChevronRightIcon from '@atlaskit/icon/glyph/chevron-right';
+import WarningIcon from '@atlaskit/icon/glyph/warning';
+import TrendingIcon from '@atlaskit/icon/glyph/arrow-up';
+import ClockIcon from '@atlaskit/icon/glyph/recent';
+import TypeIcon from '@atlaskit/icon/glyph/text-style';
+import HashIcon from '@atlaskit/icon/glyph/emoji/symbols';
+import FileIcon from '@atlaskit/icon/glyph/document';
+import PeopleIcon from '@atlaskit/icon/glyph/people';
 import { Button } from './Button';
 
 export interface ReadabilityMetrics {
@@ -337,7 +336,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
           onClick={onToggleCollapse}
           aria-label="Close sidebar"
         >
-          <ChevronRight size={16} />
+          <ChevronRightIcon label="" size="small" />
         </Button>
       </SidebarHeader>
       
@@ -350,7 +349,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
           aria-controls="readability-panel"
           id="readability-tab"
         >
-          <BarChart3 size={16} />
+          <ChartIcon label="" size="small" />
           Readability
         </SidebarTab>
         <SidebarTab
@@ -361,7 +360,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
           aria-controls="writing-panel"
           id="writing-tab"
         >
-          <FileText size={16} />
+          <DocumentIcon label="" size="small" />
           Writing
         </SidebarTab>
       </SidebarTabs>
@@ -383,13 +382,13 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
             <IssuesList>
               <div className="issue-category">
                 <div className="issue-header">
-                  <AlertCircle size={16} />
+                  <WarningIcon label="" size="small" />
                   Writing Issues
                 </div>
                 
                 <div className={`issue-item ${readabilityMetrics.issues.hardToRead > 0 ? 'has-issues' : ''}`}>
                   <span className="issue-label">
-                    <TrendingUp size={14} />
+                    <TrendingIcon label="" size="small" />
                     Hard to read sentences
                   </span>
                   <span className="issue-count" count={readabilityMetrics.issues.hardToRead}>
@@ -399,7 +398,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                 
                 <div className={`issue-item ${readabilityMetrics.issues.veryHardToRead > 0 ? 'has-issues' : ''}`}>
                   <span className="issue-label">
-                    <AlertCircle size={14} />
+                    <WarningIcon label="" size="small" />
                     Very hard to read sentences
                   </span>
                   <span className="issue-count" count={readabilityMetrics.issues.veryHardToRead}>
@@ -409,7 +408,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                 
                 <div className={`issue-item ${readabilityMetrics.issues.adverbs > 0 ? 'has-issues' : ''}`}>
                   <span className="issue-label">
-                    <Type size={14} />
+                    <TypeIcon label="" size="small" />
                     Adverbs
                   </span>
                   <span className="issue-count" count={readabilityMetrics.issues.adverbs}>
@@ -419,7 +418,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                 
                 <div className={`issue-item ${readabilityMetrics.issues.passiveVoice > 0 ? 'has-issues' : ''}`}>
                   <span className="issue-label">
-                    <Users size={14} />
+                    <PeopleIcon label="" size="small" />
                     Passive voice
                   </span>
                   <span className="issue-count" count={readabilityMetrics.issues.passiveVoice}>
@@ -429,7 +428,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                 
                 <div className={`issue-item ${readabilityMetrics.issues.complexPhrases > 0 ? 'has-issues' : ''}`}>
                   <span className="issue-label">
-                    <Hash size={14} />
+                    <HashIcon label="" size="small" />
                     Complex phrases
                   </span>
                   <span className="issue-count" count={readabilityMetrics.issues.complexPhrases}>
@@ -449,25 +448,25 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
           >
             <StatsGrid>
               <StatCard>
-                <FileX className="stat-icon" size={20} />
+                <FileIcon label="" size="medium" />
                 <span className="stat-value">{writingStats.words.toLocaleString()}</span>
                 <span className="stat-label">Words</span>
               </StatCard>
               
               <StatCard>
-                <Type className="stat-icon" size={20} />
+                <TypeIcon label="" size="medium" />
                 <span className="stat-value">{writingStats.characters.toLocaleString()}</span>
                 <span className="stat-label">Characters</span>
               </StatCard>
               
               <StatCard>
-                <Hash className="stat-icon" size={20} />
+                <HashIcon label="" size="medium" />
                 <span className="stat-value">{writingStats.sentences}</span>
                 <span className="stat-label">Sentences</span>
               </StatCard>
               
               <StatCard>
-                <FileText className="stat-icon" size={20} />
+                <DocumentIcon label="" size="medium" />
                 <span className="stat-value">{writingStats.paragraphs}</span>
                 <span className="stat-label">Paragraphs</span>
               </StatCard>
@@ -477,7 +476,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                   {writingStats.readingTime} {writingStats.readingTime === 1 ? 'minute' : 'minutes'}
                 </span>
                 <span className="reading-time-label">
-                  <Clock size={16} />
+                  <ClockIcon label="" size="small" />
                   Reading time
                 </span>
               </ReadingTimeCard>
@@ -485,7 +484,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
             
             {writingStats.charactersNoSpaces > 0 && (
               <StatCard style={{ marginTop: token('space.200') }}>
-                <Type className="stat-icon" size={20} />
+                <TypeIcon label="" size="medium" />
                 <span className="stat-value">{writingStats.charactersNoSpaces.toLocaleString()}</span>
                 <span className="stat-label">Characters (no spaces)</span>
               </StatCard>

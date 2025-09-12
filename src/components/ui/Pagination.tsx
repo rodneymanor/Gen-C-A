@@ -2,7 +2,9 @@ import React from 'react';
 import { css } from '@emotion/react';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+// Atlassian Design System Icons
+import ChevronLeftIcon from '@atlaskit/icon/glyph/chevron-left';
+import ChevronRightIcon from '@atlaskit/icon/glyph/chevron-right';
 import { Button } from './Button';
 
 export interface PaginationProps {
@@ -237,7 +239,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             aria-label="Go to previous page"
             data-testid={`${testId}-previous`}
           >
-            <ChevronLeft size={16} />
+            <ChevronLeftIcon label="" size="small" />
             <span className="nav-text">Back</span>
           </motion.button>
         </div>
@@ -285,7 +287,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             data-testid={`${testId}-next`}
           >
             <span className="nav-text">Next</span>
-            <ChevronRight size={16} />
+            <ChevronRightIcon label="" size="small" />
           </motion.button>
         </div>
       )}

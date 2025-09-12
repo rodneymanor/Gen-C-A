@@ -2,15 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { css } from '@emotion/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  AlertCircle, 
-  Loader2,
-  Grid,
-  List
-} from 'lucide-react';
+// Atlassian Design System Icons
+import SearchIcon from '@atlaskit/icon/glyph/search';
+import FilterIcon from '@atlaskit/icon/glyph/filter';
+import AddIcon from '@atlaskit/icon/glyph/add';
+import WarningIcon from '@atlaskit/icon/glyph/warning';
+import SpinnerIcon from '@atlaskit/icon/glyph/refresh';
+import GridIcon from '@atlaskit/icon/glyph/app-switcher';
+import ListIcon from '@atlaskit/icon/glyph/list';
 import { 
   Creator, 
   Watchlist, 
@@ -736,7 +735,7 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({
                 Start a free trial
               </Button>
               <div css={processingNoteStyles}>
-                <AlertCircle size={14} />
+                <WarningIcon label="" size="small" />
                 <span>Why are some channels processing?</span>
               </div>
             </div>
@@ -749,14 +748,14 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({
                 placeholder="Search for channels"
                 value={filters.search}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                iconBefore={<Search size={16} />}
+                iconBefore={<SearchIcon label="" size="small" />}
                 fullWidth
                 testId={`${testId}-search`}
               />
               <Button
                 variant="secondary"
                 size="medium"
-                iconBefore={<Search size={16} />}
+                iconBefore={<SearchIcon label="" size="small" />}
                 testId={`${testId}-search-button`}
               >
                 Go
@@ -785,7 +784,7 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({
               <Button
                 variant="tertiary"
                 size="medium"
-                iconBefore={<Plus size={16} />}
+                iconBefore={<AddIcon label="" size="small" />}
                 testId={`${testId}-submit-channel`}
               >
                 Submit new channel
@@ -813,7 +812,7 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({
                   aria-label="Grid view"
                   title="Grid view"
                 >
-                  <Grid size={16} />
+                  <GridIcon label="" size="small" />
                 </button>
                 <button
                   data-active={viewMode === 'list'}
@@ -821,7 +820,7 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({
                   aria-label="List view"
                   title="List view"
                 >
-                  <List size={16} />
+                  <ListIcon label="" size="small" />
                 </button>
               </div>
             </div>
@@ -830,12 +829,12 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({
             <div css={gridContainerStyles}>
               {isLoading ? (
                 <div css={loadingStateStyles}>
-                  <Loader2 size={48} className="animate-spin" />
+                  <SpinnerIcon label="Loading" size="xlarge" />
                   <p>Loading channels...</p>
                 </div>
               ) : paginatedCreators.length === 0 ? (
                 <div css={emptyStateStyles}>
-                  <Search className="empty-icon" />
+                  <SearchIcon label="" />
                   <h3 className="empty-title">No channels found</h3>
                   <p className="empty-description">
                     {filters.search || filters.platforms.some(p => p.enabled) 

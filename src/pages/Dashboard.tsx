@@ -2,13 +2,11 @@ import React from 'react';
 import { css } from '@emotion/react';
 import { useNavigate } from 'react-router-dom';
 
-// Lucide React Icons
-import { 
-  Lightbulb,
-  Folder, 
-  PenTool, 
-  Radio
-} from 'lucide-react';
+// Atlassian Design System Icons
+import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb';
+import FolderIcon from '@atlaskit/icon/glyph/folder';
+import EditIcon from '@atlaskit/icon/glyph/edit';
+import RadioIcon from '@atlaskit/icon/glyph/radio';
 
 const dashboardStyles = css`
   max-width: 1200px;
@@ -164,21 +162,21 @@ export const Dashboard: React.FC = () => {
       id: 'collections',
       title: 'Collections',
       description: 'Get inspiration',
-      icon: <Folder size={48} />,
+      icon: <FolderIcon label="" size="xlarge" />,
       action: () => navigate('/collections')
     },
     {
       id: 'script-writing',
       title: 'Write Script',
       description: 'AI-powered script writing',
-      icon: <PenTool size={48} />,
+      icon: <EditIcon label="" size="xlarge" />,
       action: () => navigate('/write')
     },
     {
       id: 'channels',
       title: 'Channels',
       description: 'Follow your favorite creators',
-      icon: <Radio size={48} />,
+      icon: <RadioIcon label="" size="xlarge" />,
       action: () => navigate('/channels')
     }
   ];
@@ -191,7 +189,7 @@ export const Dashboard: React.FC = () => {
           <span className="hero-line-1">Ready to create something amazing?</span>
           <span className="hero-line-2">
             Let's write your script.
-            <Lightbulb size={32} />
+            <LightbulbIcon label="" size="large" />
           </span>
         </h1>
       </section>

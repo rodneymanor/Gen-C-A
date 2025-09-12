@@ -1,13 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { styled, css } from '@emotion/react';
 import { token } from '@atlaskit/tokens';
-import { 
-  Edit3, 
-  Eye, 
-  EyeOff, 
-  ChevronRight, 
-  ChevronLeft
-} from 'lucide-react';
+// Atlassian Design System Icons
+import EditIcon from '@atlaskit/icon/glyph/edit';
+import EyeIcon from '@atlaskit/icon/glyph/watch';
+import EyeOffIcon from '@atlaskit/icon/glyph/cross-circle';
+import ChevronRightIcon from '@atlaskit/icon/glyph/chevron-right';
+import ChevronLeftIcon from '@atlaskit/icon/glyph/chevron-left';
 import { Button } from './Button';
 import { EditableTitle } from './EditableTitle';
 import { EditorSidebar } from './EditorSidebar';
@@ -257,7 +256,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
       {/* Header */}
       <EditorHeader>
         <div style={{ display: 'flex', alignItems: 'center', gap: token('space.200') }}>
-          <Edit3 size={20} color={token('color.icon')} />
+          <EditIcon label="" size="medium" />
           <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
             Hemingway Editor
           </span>
@@ -270,7 +269,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
             onClick={toggleFocusMode}
             aria-label={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
           >
-            {focusMode ? <Eye size={16} /> : <EyeOff size={16} />}
+            {focusMode ? <EyeIcon label="" size="small" /> : <EyeOffIcon label="" size="small" />}
           </Button>
           
           <Button
@@ -279,7 +278,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
             onClick={toggleSidebar}
             aria-label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
           >
-            {sidebarCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            {sidebarCollapsed ? <ChevronLeftIcon label="" size="small" /> : <ChevronRightIcon label="" size="small" />}
           </Button>
         </HeaderActions>
       </EditorHeader>

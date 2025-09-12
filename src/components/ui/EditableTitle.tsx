@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { styled, css } from '@emotion/react';
 import { token } from '@atlaskit/tokens';
-import { Edit2 } from 'lucide-react';
+// Atlassian Design System Icons
+import EditTitleIcon from '@atlaskit/icon/glyph/edit';
 
 export interface EditableTitleProps {
   /** Initial title value */
@@ -250,7 +251,7 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
         aria-label="Edit title"
         tabIndex={-1}
       >
-        <Edit2 size={16} />
+        <EditTitleIcon label="" size="small" />
       </EditIcon>
       
       {maxLength && isEditing && (

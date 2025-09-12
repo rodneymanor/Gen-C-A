@@ -2,17 +2,16 @@ import React, { useState } from 'react';
 import { css } from '@emotion/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
-import { 
-  Plus, 
-  ChevronDown, 
-  ChevronRight, 
-  Users, 
-  Edit3, 
-  Trash2, 
-  Star,
-  Eye,
-  Filter
-} from 'lucide-react';
+// Atlassian Design System Icons
+import AddIcon from '@atlaskit/icon/glyph/add';
+import ChevronDownIcon from '@atlaskit/icon/glyph/chevron-down';
+import ChevronRightIcon from '@atlaskit/icon/glyph/chevron-right';
+import PeopleIcon from '@atlaskit/icon/glyph/people';
+import EditIcon from '@atlaskit/icon/glyph/edit';
+import TrashIcon from '@atlaskit/icon/glyph/trash';
+import StarIcon from '@atlaskit/icon/glyph/star';
+import EyeIcon from '@atlaskit/icon/glyph/watch';
+import FilterIcon from '@atlaskit/icon/glyph/filter';
 import { Watchlist, Creator } from '../../types';
 import { Button } from './Button';
 import { Card, CardHeader, CardContent } from './Card';
@@ -300,7 +299,7 @@ const WatchlistItem: React.FC<WatchlistItemProps> = ({
               }
             `}
           >
-            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            {isExpanded ? <ChevronDownIcon label="" size="small" /> : <ChevronRightIcon label="" size="small" />}
           </button>
           
           <div>
@@ -339,7 +338,7 @@ const WatchlistItem: React.FC<WatchlistItemProps> = ({
                 }
               `}
             >
-              <Edit3 size={14} />
+              <EditIcon label="" size="small" />
             </button>
             
             <button
@@ -367,7 +366,7 @@ const WatchlistItem: React.FC<WatchlistItemProps> = ({
                 }
               `}
             >
-              <Trash2 size={14} />
+              <TrashIcon label="" size="small" />
             </button>
           </div>
         </div>
@@ -469,7 +468,7 @@ export const WatchlistSidebar: React.FC<WatchlistSidebarProps> = ({
     >
       <div css={headerStyles}>
         <h2 css={titleStyles}>
-          <Star size={20} />
+          <StarIcon label="" size="medium" />
           Your Watchlists
         </h2>
         <p css={descriptionStyles}>
@@ -479,7 +478,7 @@ export const WatchlistSidebar: React.FC<WatchlistSidebarProps> = ({
         <Button
           variant="primary"
           size="small"
-          iconBefore={<Plus size={16} />}
+          iconBefore={<AddIcon label="" size="small" />}
           onClick={onCreateWatchlist}
           fullWidth
           testId={`${testId}-create-button`}
@@ -491,7 +490,7 @@ export const WatchlistSidebar: React.FC<WatchlistSidebarProps> = ({
       <div css={contentStyles}>
         {watchlists.length === 0 ? (
           <div css={emptyStateStyles}>
-            <Users className="empty-icon" />
+            <PeopleIcon label="" size="large" />
             <h3 className="empty-title">No watchlists yet</h3>
             <p className="empty-description">
               Create your first watchlist to start organizing your favorite creators!
@@ -499,7 +498,7 @@ export const WatchlistSidebar: React.FC<WatchlistSidebarProps> = ({
             <Button
               variant="primary"
               size="medium"
-              iconBefore={<Plus size={16} />}
+              iconBefore={<AddIcon label="" size="small" />}
               onClick={onCreateWatchlist}
               testId={`${testId}-empty-create-button`}
             >
@@ -528,7 +527,7 @@ export const WatchlistSidebar: React.FC<WatchlistSidebarProps> = ({
                 aria-label="Show all creators"
               >
                 <div css={watchlistInfoStyles}>
-                  <Filter size={16} />
+                  <FilterIcon label="" size="small" />
                   <div>
                     <h3 css={watchlistTitleStyles}>All Creators</h3>
                   </div>

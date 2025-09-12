@@ -1,26 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { styled, css } from '@emotion/react';
 import { token } from '@atlaskit/tokens';
-import { 
-  Clock,
-  RotateCcw,
-  RotateCw,
-  Sparkles,
-  ChevronDown,
-  Copy,
-  Wand2,
-  UserCheck,
-  Scissors,
-  Volume2,
-  Shuffle,
-  FileText,
-  Hash,
-  Timer,
-  Save,
-  Download,
-  Share2,
-  Settings
-} from 'lucide-react';
+// Atlassian Design System Icons
+import ClockIcon from '@atlaskit/icon/glyph/recent';
+import UndoIcon from '@atlaskit/icon/glyph/undo';
+import RedoIcon from '@atlaskit/icon/glyph/redo';
+import SparklesIcon from '@atlaskit/icon/glyph/star';
+import ChevronDownIcon from '@atlaskit/icon/glyph/chevron-down';
+import CopyIcon from '@atlaskit/icon/glyph/copy';
+import WandIcon from '@atlaskit/icon/glyph/edit';
+import UserIcon from '@atlaskit/icon/glyph/person';
+import ScissorsIcon from '@atlaskit/icon/glyph/editor/cut';
+import VolumeIcon from '@atlaskit/icon/glyph/audio';
+import ShuffleIcon from '@atlaskit/icon/glyph/app-switcher';
+import FileTextIcon from '@atlaskit/icon/glyph/document';
+import HashIcon from '@atlaskit/icon/glyph/emoji/symbols';
+import TimerIcon from '@atlaskit/icon/glyph/stopwatch';
+import SaveIcon from '@atlaskit/icon/glyph/check';
+import DownloadIcon from '@atlaskit/icon/glyph/download';
+import ShareIcon from '@atlaskit/icon/glyph/share';
+import SettingsIcon from '@atlaskit/icon/glyph/settings';
 import { Button } from './Button';
 
 export interface WritingStats {
@@ -353,17 +352,17 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       {/* Statistics Display */}
       <StatsDisplay>
         <div className="stat-item">
-          <FileText className="stat-icon" size={14} />
+          <FileTextIcon label="" size="small" />
           <span className="stat-value">{stats.words.toLocaleString()}</span>
           <span>words</span>
         </div>
         <div className="stat-item">
-          <Hash className="stat-icon" size={14} />
+          <HashIcon label="" size="small" />
           <span className="stat-value">{stats.characters.toLocaleString()}</span>
           <span>chars</span>
         </div>
         <div className="stat-item">
-          <Clock className="stat-icon" size={14} />
+          <ClockIcon label="" size="small" />
           <span className="stat-value">{stats.readingTime}</span>
           <span>min read</span>
         </div>
@@ -375,7 +374,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       {stats.lastSaved && (
         <>
           <LastSavedIndicator>
-            <Save size={12} />
+            <SaveIcon label="" size="small" />
             <span>Saved {formatLastSaved(stats.lastSaved)}</span>
           </LastSavedIndicator>
           <ToolbarDivider />
@@ -391,7 +390,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         aria-label="Undo"
         title="Undo (Ctrl+Z)"
       >
-        <RotateCcw size={16} />
+        <UndoIcon label="" size="small" />
       </Button>
       <Button
         variant="subtle"
@@ -401,7 +400,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         aria-label="Redo"
         title="Redo (Ctrl+Y)"
       >
-        <RotateCw size={16} />
+        <RedoIcon label="" size="small" />
       </Button>
       
       <ToolbarDivider />
@@ -414,7 +413,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         aria-label="Save"
         title="Save (Ctrl+S)"
       >
-        <Save size={16} />
+        <SaveIcon label="" size="small" />
       </Button>
       
       <Button
@@ -424,7 +423,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         aria-label="Export"
         title="Export document"
       >
-        <Download size={16} />
+        <DownloadIcon label="" size="small" />
       </Button>
       
       <Button
@@ -434,7 +433,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         aria-label="Share"
         title="Share document"
       >
-        <Share2 size={16} />
+        <ShareIcon label="" size="small" />
       </Button>
       
       <ToolbarDivider />
@@ -450,9 +449,9 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           aria-haspopup="true"
           aria-label="AI actions menu"
         >
-          <Sparkles size={16} style={{ marginRight: token('space.100') }} />
+          <SparklesIcon label="" size="small" />
           AI Actions
-          <ChevronDown 
+          <ChevronDownIcon 
             size={14} 
             style={{ 
               marginLeft: token('space.100'),
@@ -465,7 +464,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         <DropdownContent ref={dropdownRef} isOpen={isAIDropdownOpen}>
           <DropdownHeader>
             <h4>
-              <Sparkles size={16} />
+              <SparklesIcon label="" size="small" />
               AI Writing Assistant
             </h4>
             <p>Enhance your writing with AI-powered tools</p>
@@ -474,7 +473,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           <DropdownSection>
             <div className="section-label">Quick Actions</div>
             <DropdownButton onClick={() => handleAIActionClick('copy')}>
-              <Copy className="button-icon" size={16} />
+              <CopyIcon label="" size="small" />
               <div className="button-content">
                 <div className="button-title">Copy Text</div>
                 <div className="button-description">Copy selected text to clipboard</div>
@@ -482,7 +481,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             </DropdownButton>
             
             <DropdownButton onClick={() => handleAIActionClick('improve')}>
-              <Wand2 className="button-icon" size={16} />
+              <WandIcon label="" size="small" />
               <div className="button-content">
                 <div className="button-title">Improve Writing</div>
                 <div className="button-description">Enhance clarity and flow</div>
@@ -493,7 +492,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           <DropdownSection>
             <div className="section-label">Style & Tone</div>
             <DropdownButton onClick={() => handleAIActionClick('humanize')}>
-              <UserCheck className="button-icon" size={16} />
+              <UserIcon label="" size="small" />
               <div className="button-content">
                 <div className="button-title">Humanize</div>
                 <div className="button-description">Make text more conversational</div>
@@ -501,7 +500,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             </DropdownButton>
             
             <DropdownButton onClick={() => handleAIActionClick('shorten')}>
-              <Scissors className="button-icon" size={16} />
+              <ScissorsIcon label="" size="small" />
               <div className="button-content">
                 <div className="button-title">Shorten</div>
                 <div className="button-description">Make text more concise</div>
@@ -509,7 +508,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             </DropdownButton>
             
             <DropdownButton onClick={() => handleAIActionClick('tone-professional')}>
-              <Volume2 className="button-icon" size={16} />
+              <VolumeIcon label="" size="small" />
               <div className="button-content">
                 <div className="button-title">Professional Tone</div>
                 <div className="button-description">Adjust for business writing</div>
@@ -517,7 +516,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             </DropdownButton>
             
             <DropdownButton onClick={() => handleAIActionClick('tone-casual')}>
-              <Volume2 className="button-icon" size={16} />
+              <VolumeIcon label="" size="small" />
               <div className="button-content">
                 <div className="button-title">Casual Tone</div>
                 <div className="button-description">Make it more relaxed</div>
@@ -528,7 +527,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           <DropdownSection>
             <div className="section-label">Creative</div>
             <DropdownButton onClick={() => handleAIActionClick('remix')}>
-              <Shuffle className="button-icon" size={16} />
+              <ShuffleIcon label="" size="small" />
               <div className="button-content">
                 <div className="button-title">Remix</div>
                 <div className="button-description">Rewrite with fresh perspective</div>
