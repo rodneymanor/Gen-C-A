@@ -3,7 +3,7 @@ import { css } from '@emotion/react';
 import { Card, CardHeader, CardContent, CardFooter } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { formatDate, getPlatformIcon } from '../../utils/format';
+import { getPlatformIcon } from '../../utils/format';
 import type { Collection } from '../../types';
 import { token } from '@atlaskit/tokens';
 
@@ -184,9 +184,6 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({
             >
               {collection.name}
             </h3>
-            <p className="collection-meta">
-              Created {formatDate(collection.created)}
-            </p>
           </div>
         </div>
       </CardHeader>
