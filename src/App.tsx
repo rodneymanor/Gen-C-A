@@ -11,6 +11,7 @@ import { Library } from './pages/Library';
 import { Enhanced } from './pages/Enhanced';
 import { Videos } from './pages/Videos';
 import { ChannelsPage } from './pages/ChannelsPage';
+import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/Login';
 import RegisterPage from './pages/Register';
 import './styles/globals.css';
@@ -19,7 +20,6 @@ import './styles/globals.css';
 const BrandHub = () => <div>Brand Hub - Coming Soon</div>;
 const Extensions = () => <div>Extensions - Coming Soon</div>;
 const Mobile = () => <div>Mobile - Coming Soon</div>;
-const Settings = () => <div>Settings - Coming Soon</div>;
 
 function App() {
   return (
@@ -107,7 +107,7 @@ function App() {
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Layout>
-                  <Settings />
+                  <SettingsPage />
                 </Layout>
               </ProtectedRoute>
             } />
