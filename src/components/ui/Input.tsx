@@ -70,19 +70,19 @@ const getInputStyles = (
     --input-bg: var(--color-neutral-50);
   `}
   
-  /* States */
+  /* Perplexity Flat Design States */
   &::placeholder {
     color: var(--input-placeholder);
   }
   
   &:focus {
     outline: none;
-    border-color: var(--input-border-focus);
-    box-shadow: var(--focus-ring-shadow);
+    border-color: var(--input-border-focus); /* Claude orange focus */
+    /* REMOVED: box-shadow for flat design - only border change */
   }
   
   &:hover:not(:focus):not(:disabled) {
-    border-color: var(--color-neutral-400);
+    border-color: var(--color-neutral-400); /* Subtle hover without shadows */
   }
   
   &:disabled {
@@ -91,14 +91,14 @@ const getInputStyles = (
     cursor: not-allowed;
   }
   
-  /* Error state */
+  /* Error state - Perplexity Flat Design */
   ${hasError && css`
     border-color: var(--color-error-400);
     background: var(--color-error-50);
     
     &:focus {
       border-color: var(--color-error-400);
-      box-shadow: var(--focus-ring-error);
+      /* REMOVED: box-shadow for flat design - only border change */
     }
   `}
 `;
