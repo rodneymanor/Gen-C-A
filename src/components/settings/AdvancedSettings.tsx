@@ -7,6 +7,7 @@ import Select from '@atlaskit/select';
 import SectionMessage from '@atlaskit/section-message';
 import ModalDialog, { ModalTransition } from '@atlaskit/modal-dialog';
 import { User } from '../../types';
+import { ThemeToggle } from '../ui/ThemeToggle';
 
 interface AdvancedSettingsProps {
   user: User;
@@ -216,12 +217,7 @@ export function AdvancedSettings({ user }: AdvancedSettingsProps) {
             <div className="setting-description">Choose your preferred color theme</div>
           </div>
           <div className="setting-control">
-            <Select
-              options={themeOptions}
-              value={themeOptions.find(option => option.value === settings.theme)}
-              onChange={(option) => handleSettingChange('theme', option?.value)}
-              placeholder="Select theme"
-            />
+            <ThemeToggle />
           </div>
         </div>
 

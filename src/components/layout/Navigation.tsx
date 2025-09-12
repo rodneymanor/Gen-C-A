@@ -7,7 +7,6 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Avatar } from '../ui/Avatar';
 import { Card } from '../ui/Card';
-import { ThemeToggle } from '../ui/ThemeToggle';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useAuth } from '../../contexts/AuthContext';
 import type { NavigationItem, NavigationSection, User } from '../../types';
@@ -495,12 +494,6 @@ export const Navigation: React.FC<NavigationProps> = ({
         </div>
         
         <div css={footerStyles}>
-          {!isCollapsed && (
-            <div style={{ padding: '0.5rem 1rem', marginBottom: '0.5rem' }}>
-              <ThemeToggle />
-            </div>
-          )}
-          
           <NavItem
             item={{ path: '/settings', label: 'Settings', icon: <SettingsIcon label="Settings" />, badge: '' }}
             isActive={location.pathname === '/settings'}
