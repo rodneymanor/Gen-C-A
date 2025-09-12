@@ -317,10 +317,10 @@ export const RegisterForm: React.FC = () => {
       <div className="form-actions">
         <Button
           type="submit"
-          appearance="primary"
+          variant="primary"
           isLoading={loading}
           isDisabled={loading || !!success}
-          shouldFitContainer
+          fullWidth
         >
           {loading ? 'Creating Account...' : 'Create Account'}
         </Button>
@@ -331,10 +331,10 @@ export const RegisterForm: React.FC = () => {
         
         <Button
           type="button"
-          appearance="subtle"
+          variant="secondary"
           onClick={handleGoogleSignup}
           isDisabled={loading || !!success}
-          shouldFitContainer
+          fullWidth
         >
           Continue with Google
         </Button>

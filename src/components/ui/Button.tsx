@@ -5,7 +5,7 @@ import clsx from 'clsx';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children?: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'ai-powered' | 'creative' | 'subtle' | 'warning' | 'danger';
+  variant?: 'primary' | 'secondary' | 'tertiary' | 'destructive' | 'ai-powered' | 'creative' | 'subtle' | 'warning' | 'danger';
   size?: 'small' | 'medium' | 'large';
   isLoading?: boolean;
   isDisabled?: boolean;
@@ -51,30 +51,93 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
     gap: var(--space-3);
   `}
   
-  /* Variant styles - Perplexity Flat Design */
+  /* Perplexity Button Hierarchy - Bloom Blue Primary */
   ${variant === 'primary' && css`
-    background: var(--button-primary-bg);  /* Bloom Blue preserved */
-    color: var(--button-primary-text);
-    /* REMOVED: All shadows for flat design */
+    background: #0B5CFF;  /* Perplexity Bloom Blue */
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    font-weight: var(--font-weight-semibold);
+    min-height: var(--touch-target-comfortable, 44px);
     
     &:hover:not(:disabled) {
-      background: var(--button-primary-bg-hover);
-      /* REMOVED: Shadow and transform - flat hover only */
+      background: #0A52E6;  /* Darker Bloom Blue */
+      box-shadow: 0 2px 8px rgba(11, 92, 255, 0.2);
+      transform: translateY(-1px);
     }
     
     &:active {
-      background: var(--color-primary-700);  /* Slightly darker on press */
+      background: #0947CC;  /* Even darker */
+      transform: translateY(0);
+    }
+    
+    &:focus-visible {
+      outline: 2px solid #0B5CFF;
+      outline-offset: 2px;
     }
   `}
   
   ${variant === 'secondary' && css`
-    background: var(--button-secondary-bg);
-    color: var(--button-secondary-text);
-    border: 1px solid var(--button-secondary-border);
+    background: transparent;
+    color: #0B5CFF;  /* Bloom Blue text */
+    border: 1px solid #0B5CFF;
+    font-weight: var(--font-weight-medium);
+    min-height: var(--touch-target-comfortable, 44px);
     
     &:hover:not(:disabled) {
-      background: var(--button-secondary-bg-hover);
-      border-color: var(--color-neutral-400);
+      background: rgba(11, 92, 255, 0.08);  /* Very light Bloom Blue */
+      border-color: #0A52E6;
+    }
+    
+    &:active {
+      background: rgba(11, 92, 255, 0.12);
+    }
+    
+    &:focus-visible {
+      outline: 2px solid #0B5CFF;
+      outline-offset: 2px;
+    }
+  `}
+  
+  ${variant === 'tertiary' && css`
+    background: transparent;
+    color: var(--color-text-secondary, #6B7280);
+    border: none;
+    font-weight: var(--font-weight-medium);
+    text-decoration: none;
+    padding: var(--space-2) var(--space-4);
+    
+    &:hover:not(:disabled) {
+      color: var(--color-text-primary, #1F2937);
+      text-decoration: underline;
+    }
+    
+    &:focus-visible {
+      outline: 2px solid #0B5CFF;
+      outline-offset: 2px;
+      border-radius: var(--radius-small);
+    }
+  `}
+  
+  ${variant === 'destructive' && css`
+    background: #DC2626;  /* Red for destructive actions */
+    color: #ffffff;
+    border: none;
+    font-weight: var(--font-weight-medium);
+    min-height: var(--touch-target-comfortable, 44px);
+    margin-left: var(--space-8);  /* Separate from primary actions */
+    
+    &:hover:not(:disabled) {
+      background: #B91C1C;
+    }
+    
+    &:active {
+      background: #991B1B;
+    }
+    
+    &:focus-visible {
+      outline: 2px solid #DC2626;
+      outline-offset: 2px;
     }
   `}
   

@@ -205,10 +205,10 @@ export const LoginForm: React.FC = () => {
       <div className="form-actions">
         <Button
           type="submit"
-          appearance="primary"
+          variant="primary"
           isLoading={loading}
           isDisabled={loading}
-          shouldFitContainer
+          fullWidth
         >
           {loading ? 'Signing In...' : 'Sign In'}
         </Button>
@@ -219,10 +219,10 @@ export const LoginForm: React.FC = () => {
         
         <Button
           type="button"
-          appearance="subtle"
+          variant="secondary"
           onClick={handleGoogleLogin}
           isDisabled={loading}
-          shouldFitContainer
+          fullWidth
         >
           Continue with Google
         </Button>
