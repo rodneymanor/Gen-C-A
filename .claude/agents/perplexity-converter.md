@@ -18,30 +18,30 @@ Convert components to Perplexity's aesthetic (flat design, subtle depth, typogra
 
 #### Colors (Strategic Brand Alignment)
 ```css
-/* Map Perplexity concepts to your existing tokens */
-Perplexity Turquoise → var(--color-primary-500) /* Bloom Blue #0B5CFF */
-Perplexity Offblack → var(--color-neutral-900) /* #091e42 */
-Perplexity Paper White → var(--color-surface) /* Semantic token */
-Perplexity Text → var(--color-text-primary) /* Existing semantic */
-Perplexity Borders → var(--color-border) /* Existing border system */
+/* Map Perplexity concepts to Atlaskit tokens */
+Perplexity Turquoise → token('color.background.brand.bold', '#0B5CFF') /* Primary brand */
+Perplexity Offblack → token('color.text', '#172b4d') /* Primary text */
+Perplexity Paper White → token('color.background.neutral', '#f4f5f7') /* Light background */
+Perplexity Text → token('color.text', '#172b4d') /* Standard text */
+Perplexity Borders → token('color.border', '#e4e6ea') /* Standard borders */
 ```
 
-#### Shadows (Already Perfect)
+#### Shadows (Atlaskit Elevation System)
 ```css
-/* Your existing shadows match Perplexity principles */
-Perplexity Subtle → var(--shadow-subtle) /* 0 1px 3px rgba(0,0,0,0.06) */
-Perplexity Card → var(--shadow-card) /* 0 4px 6px rgba(0,0,0,0.07) */
-Perplexity Hover → var(--shadow-elevated) /* 0 10px 15px rgba(0,0,0,0.08) */
+/* Use Atlaskit elevation tokens for subtle shadows */
+Perplexity Subtle → token('elevation.shadow.raised', '0 1px 3px rgba(0,0,0,0.06)')
+Perplexity Card → token('elevation.shadow.raised', '0 4px 6px rgba(0,0,0,0.07)')
+Perplexity Hover → token('elevation.shadow.overlay', '0 10px 15px rgba(0,0,0,0.08)')
 ```
 
-#### Spacing (Direct Match)
+#### Spacing (Atlaskit Spacing System)
 ```css
-/* Perfect alignment with existing grid */
-Perplexity XS → var(--space-1) /* 4px */
-Perplexity SM → var(--space-2) /* 8px */
-Perplexity MD → var(--space-4) /* 16px */
-Perplexity LG → var(--space-6) /* 24px */
-Perplexity XL → var(--space-8) /* 32px */
+/* Use Atlaskit spacing tokens with fallbacks */
+Perplexity XS → token('space.050', '0.125rem') /* 2px */
+Perplexity SM → token('space.100', '0.25rem') /* 4px */
+Perplexity MD → token('space.200', '0.5rem') /* 8px */
+Perplexity LG → token('space.300', '0.75rem') /* 12px */
+Perplexity XL → token('space.400', '1rem') /* 16px */
 ```
 
 ## Conversion Process
@@ -60,52 +60,52 @@ Perplexity XL → var(--space-8) /* 32px */
 
 ### 3. Implement with Existing Tokens
 ```typescript
-// Example: Perplexity-style card using existing tokens
-const PerplexityCard = styled.div`
-  background: var(--color-surface);
-  border: var(--border-default);
-  border-radius: var(--radius-medium);
-  padding: var(--space-6);
-  box-shadow: var(--shadow-card);
-  color: var(--color-text-primary);
-  transition: var(--transition-card);
+// Example: Perplexity-style card using Atlaskit tokens
+const PerplexityCard = css`
+  background: ${token('color.background.neutral', '#f4f5f7')};
+  border: 1px solid ${token('color.border', '#e4e6ea')};
+  border-radius: ${token('border.radius.200', '0.5rem')};
+  padding: ${token('space.300', '0.75rem')};
+  box-shadow: ${token('elevation.shadow.raised', '0 4px 6px rgba(0, 0, 0, 0.07)')};
+  color: ${token('color.text', '#172b4d')};
+  transition: all 0.25s ease;
   
   &:hover {
-    box-shadow: var(--shadow-elevated);
+    box-shadow: ${token('elevation.shadow.overlay', '0 10px 15px rgba(0, 0, 0, 0.08)')};
   }
 `;
 
-// Strategic Claude orange accent (Perplexity "turquoise")
-const AccentElement = styled.div`
-  background: var(--color-primary-500);
-  color: var(--color-text-on-primary);
-  border-radius: var(--radius-medium);
-  padding: var(--space-2) var(--space-4);
-  font-weight: var(--font-weight-medium);
-  font-size: var(--font-size-body-small);
+// Strategic brand accent
+const AccentElement = css`
+  background: ${token('color.background.brand.bold', '#0B5CFF')};
+  color: ${token('color.text.inverse', '#ffffff')};
+  border-radius: ${token('border.radius.200', '0.5rem')};
+  padding: ${token('space.100', '0.25rem')} ${token('space.200', '0.5rem')};
+  font-weight: ${token('font.weight.medium', '500')};
+  font-size: 14px;
 `;
 
 // Button with Perplexity principles
-const PerplexityButton = styled.button`
-  background: var(--color-primary-500);
-  color: var(--color-text-on-primary);
+const PerplexityButton = css`
+  background: ${token('color.background.brand.bold', '#0B5CFF')};
+  color: ${token('color.text.inverse', '#ffffff')};
   border: none;
-  border-radius: var(--radius-medium);
-  padding: var(--space-3) var(--space-6);
-  font-weight: var(--font-weight-medium);
-  min-height: var(--touch-target-comfortable);
-  transition: var(--transition-button);
-  box-shadow: var(--shadow-subtle);
+  border-radius: ${token('border.radius.200', '0.5rem')};
+  padding: ${token('space.200', '0.5rem')} ${token('space.300', '0.75rem')};
+  font-weight: ${token('font.weight.medium', '500')};
+  min-height: 40px;
+  transition: all 0.25s ease;
+  box-shadow: ${token('elevation.shadow.raised', '0 1px 3px rgba(0, 0, 0, 0.06)')};
   
   &:hover {
-    background: var(--color-primary-600);
-    box-shadow: var(--shadow-card);
+    background: ${token('color.background.brand.bold.hovered', '#0052CC')};
+    box-shadow: ${token('elevation.shadow.raised', '0 4px 6px rgba(0, 0, 0, 0.07)')};
     transform: translateY(-1px);
   }
   
   &:focus-visible {
-    outline: var(--focus-ring-primary);
-    outline-offset: var(--focus-ring-offset);
+    outline: 2px solid ${token('color.border.focused', '#388BFF')};
+    outline-offset: 2px;
   }
 `;
 ```

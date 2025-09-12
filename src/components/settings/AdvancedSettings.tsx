@@ -40,9 +40,9 @@ const fontSizeOptions = [
   { label: 'Large', value: 'large' },
 ];
 
-// Component styles
+// Component styles - Perplexity flat design using proper tokens
 const sectionStyles = css`
-  margin-bottom: ${token('space.400')};
+  margin-bottom: ${token('space.500', '1.25rem')};
 
   &:last-child {
     margin-bottom: 0;
@@ -52,18 +52,18 @@ const sectionStyles = css`
 const sectionTitleStyles = css`
   font-size: 18px;
   font-weight: 600;
-  color: ${token('color.text.medium')};
-  margin-bottom: ${token('space.300')};
-  padding-bottom: ${token('space.100')};
-  border-bottom: 2px solid ${token('color.border')};
+  color: ${token('color.text', '#172b4d')};
+  margin-bottom: ${token('space.300', '0.75rem')};
+  padding-bottom: ${token('space.100', '0.25rem')};
+  border-bottom: 1px solid ${token('color.border', '#e4e6ea')};
 `;
 
 const settingItemStyles = css`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: ${token('space.300')} 0;
-  border-bottom: 1px solid ${token('color.border')};
+  padding: ${token('space.300', '0.75rem')} 0;
+  border-bottom: 1px solid ${token('color.border', '#e4e6ea')};
 
   &:last-child {
     border-bottom: none;
@@ -71,18 +71,18 @@ const settingItemStyles = css`
 
   .setting-info {
     flex: 1;
-    margin-right: ${token('space.300')};
+    margin-right: ${token('space.300', '0.75rem')};
 
     .setting-title {
       font-size: 16px;
       font-weight: 500;
-      color: ${token('color.text')};
-      margin-bottom: ${token('space.050')};
+      color: ${token('color.text', '#172b4d')};
+      margin-bottom: ${token('space.050', '0.125rem')};
     }
 
     .setting-description {
       font-size: 14px;
-      color: ${token('color.text.subtlest')};
+      color: ${token('color.text.subtlest', '#97a0af')};
     }
   }
 
@@ -97,22 +97,22 @@ const settingItemStyles = css`
 `;
 
 const dangerZoneStyles = css`
-  border: 2px solid ${token('color.border.danger')};
-  border-radius: ${token('border.radius.200')};
-  padding: ${token('space.300')};
-  background: ${token('color.background.neutral')};
+  border: 1px solid ${token('color.border.danger', '#bf2600')};
+  border-radius: ${token('border.radius.200', '0.5rem')};
+  padding: ${token('space.300', '0.75rem')};
+  background: ${token('color.background.neutral', '#f4f5f7')};
 
   h4 {
-    color: ${token('color.text.danger')};
-    margin-bottom: ${token('space.200')};
+    color: ${token('color.text.danger', '#bf2600')};
+    margin-bottom: ${token('space.200', '0.5rem')};
   }
 `;
 
 const formActionsStyles = css`
   display: flex;
   justify-content: flex-end;
-  padding-top: ${token('space.300')};
-  border-top: 1px solid ${token('color.border')};
+  padding-top: ${token('space.300', '0.75rem')};
+  border-top: 1px solid ${token('color.border', '#e4e6ea')};
 `;
 
 export function AdvancedSettings({ user }: AdvancedSettingsProps) {
@@ -389,8 +389,8 @@ export function AdvancedSettings({ user }: AdvancedSettingsProps) {
 
         <div css={css`
           display: flex;
-          gap: ${token('space.200')};
-          margin-top: ${token('space.300')};
+          gap: ${token('space.200', '0.5rem')};
+          margin-top: ${token('space.300', '0.75rem')};
           
           @media (max-width: 768px) {
             flex-direction: column;
@@ -415,7 +415,7 @@ export function AdvancedSettings({ user }: AdvancedSettingsProps) {
       <div css={sectionStyles}>
         <div css={dangerZoneStyles}>
           <h4>Danger Zone</h4>
-          <p css={css`margin-bottom: ${token('space.300')};`}>
+          <p css={css`margin-bottom: ${token('space.300', '0.75rem')};`}>
             Once you delete your account, there is no going back. Please be certain.
           </p>
           <Button 

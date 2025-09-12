@@ -16,28 +16,28 @@ import { AdvancedSettings } from '../components/settings/AdvancedSettings';
 const pageStyles = css`
   max-width: 1200px;
   margin: 0 auto;
-  padding: ${token('space.0')};
+  padding: ${token('space.400', '1rem')};
 `;
 
 const headerStyles = css`
-  margin-bottom: ${token('space.400')};
+  margin-bottom: ${token('space.400', '1rem')};
 `;
 
 const tabsStyles = css`
   .atlaskit-tabs__tab {
-    font-weight: ${token('font.weight.medium')};
+    font-weight: ${token('font.weight.medium', '500')};
   }
   
   .atlaskit-tabs__content {
-    padding-top: ${token('space.300')};
+    padding-top: ${token('space.300', '0.75rem')};
   }
 `;
 
 const contentAreaStyles = css`
-  background: ${token('color.background.neutral')};
-  border-radius: ${token('border.radius.200')};
-  padding: ${token('space.400')};
-  box-shadow: ${token('elevation.shadow.raised')};
+  background: ${token('color.background.neutral', '#f4f5f7')};
+  border-radius: ${token('border.radius.200', '0.5rem')};
+  padding: ${token('space.400', '1rem')};
+  box-shadow: ${token('elevation.shadow.raised', '0 4px 6px rgba(0, 0, 0, 0.07)')};
 `;
 
 // Tab configuration
@@ -63,8 +63,8 @@ export default function SettingsPage() {
       <div css={headerStyles}>
         <PageHeader>Settings</PageHeader>
         <p css={css`
-          color: ${token('color.text.subtlest')};
-          margin-top: ${token('space.100')};
+          color: ${token('color.text.subtlest', '#97a0af')};
+          margin-top: ${token('space.100', '0.25rem')};
           font-size: 14px;
         `}>
           Manage your account and preferences
