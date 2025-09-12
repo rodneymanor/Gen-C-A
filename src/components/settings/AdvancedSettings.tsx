@@ -50,8 +50,8 @@ const sectionStyles = css`
 `;
 
 const sectionTitleStyles = css`
-  font-size: ${token('font.size.300')};
-  font-weight: ${token('font.weight.semibold')};
+  font-size: 18px;
+  font-weight: 600;
   color: ${token('color.text.medium')};
   margin-bottom: ${token('space.300')};
   padding-bottom: ${token('space.100')};
@@ -74,14 +74,14 @@ const settingItemStyles = css`
     margin-right: ${token('space.300')};
 
     .setting-title {
-      font-size: ${token('font.size.200')};
-      font-weight: ${token('font.weight.medium')};
+      font-size: 16px;
+      font-weight: 500;
       color: ${token('color.text')};
       margin-bottom: ${token('space.050')};
     }
 
     .setting-description {
-      font-size: ${token('font.size.100')};
+      font-size: 14px;
       color: ${token('color.text.subtlest')};
     }
   }
@@ -100,7 +100,7 @@ const dangerZoneStyles = css`
   border: 2px solid ${token('color.border.danger')};
   border-radius: ${token('border.radius.200')};
   padding: ${token('space.300')};
-  background: ${token('color.background.danger.subtlest')};
+  background: ${token('color.background.neutral')};
 
   h4 {
     color: ${token('color.text.danger')};
@@ -380,7 +380,7 @@ export function AdvancedSettings({ user }: AdvancedSettingsProps) {
       <div css={sectionStyles}>
         <h3 css={sectionTitleStyles}>Data Management</h3>
         
-        <SectionMessage appearance="info">
+        <SectionMessage>
           <p>
             You can export all your data or request account deletion. 
             These actions may take some time to complete.
@@ -430,8 +430,8 @@ export function AdvancedSettings({ user }: AdvancedSettingsProps) {
       {/* Form Actions */}
       <div css={formActionsStyles}>
         <ButtonGroup>
-          <Button appearance="primary" onClick={handleSave} isLoading={isLoading}>
-            Save Settings
+          <Button appearance="primary" onClick={handleSave}>
+            {isLoading ? 'Saving...' : 'Save Settings'}
           </Button>
           <Button appearance="subtle">
             Reset to Defaults
@@ -443,19 +443,18 @@ export function AdvancedSettings({ user }: AdvancedSettingsProps) {
       <ModalTransition>
         {isExportModalOpen && (
           <ModalDialog
-            heading="Export Your Data"
             onClose={() => setIsExportModalOpen(false)}
             actions={[
               { text: 'Cancel', onClick: () => setIsExportModalOpen(false) },
               { 
-                text: 'Export Data', 
+                text: isLoading ? 'Exporting...' : 'Export Data', 
                 appearance: 'primary',
-                onClick: handleExportData,
-                isLoading
+                onClick: handleExportData
               },
             ]}
           >
             <div>
+              <h2>Export Your Data</h2>
               <p>
                 This will create a downloadable file containing all your Gen.C data including:
               </p>
@@ -466,7 +465,7 @@ export function AdvancedSettings({ user }: AdvancedSettingsProps) {
                 <li>Settings and preferences</li>
                 <li>API keys and usage data</li>
               </ul>
-              <SectionMessage appearance="info">
+              <SectionMessage>
                 <p>The export may take a few minutes to generate depending on how much data you have.</p>
               </SectionMessage>
             </div>
@@ -478,20 +477,19 @@ export function AdvancedSettings({ user }: AdvancedSettingsProps) {
       <ModalTransition>
         {isDeleteModalOpen && (
           <ModalDialog
-            heading="Delete Account"
             onClose={() => setIsDeleteModalOpen(false)}
             actions={[
               { text: 'Cancel', onClick: () => setIsDeleteModalOpen(false) },
               { 
-                text: 'Delete My Account', 
+                text: isLoading ? 'Deleting...' : 'Delete My Account', 
                 appearance: 'danger',
-                onClick: handleDeleteAccount,
-                isLoading
+                onClick: handleDeleteAccount
               },
             ]}
           >
             <div>
-              <SectionMessage appearance="error">
+              <h2>Delete Account</h2>
+              <SectionMessage>
                 <p>
                   <strong>This action cannot be undone.</strong>
                 </p>

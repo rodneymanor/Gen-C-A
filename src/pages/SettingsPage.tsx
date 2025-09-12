@@ -74,6 +74,7 @@ export default function SettingsPage() {
       {/* Tab Navigation and Content */}
       <div css={tabsStyles}>
         <Tabs
+          id="settings-tabs"
           onChange={(index: number) => setSelectedTabIndex(index)}
           selected={selectedTabIndex}
         >
