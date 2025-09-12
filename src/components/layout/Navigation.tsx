@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { css } from '@emotion/react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 import { Button } from '../ui/Button';
@@ -9,6 +9,7 @@ import { Avatar } from '../ui/Avatar';
 import { Card } from '../ui/Card';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { useResponsive } from '../../hooks/useResponsive';
+import { useAuth } from '../../contexts/AuthContext';
 import type { NavigationItem, NavigationSection, User } from '../../types';
 
 // Atlassian Design System Icons
@@ -298,6 +299,19 @@ const NavItem: React.FC<{
 );
 
 const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isCollapsed }) => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [showMenu, setShowMenu] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   return (
     <div css={userMenuStyles(isCollapsed)} className="user-menu-trigger">
       <Avatar
@@ -306,10 +320,22 @@ const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isColl
         size="medium"
         variant="circular"
       />
-      <div className="user-info">
-        <p className="user-name">{user.name}</p>
-        <p className="user-plan">{user.plan} Plan</p>
-      </div>
+      {!isCollapsed && (
+        <>
+          <div className="user-info">
+            <p className="user-name">{user.name}</p>
+            <p className="user-plan">{user.plan} Plan</p>
+          </div>
+          <Button
+            appearance="subtle"
+            size="small"
+            onClick={handleLogout}
+            style={{ marginLeft: 'auto' }}
+          >
+            Sign Out
+          </Button>
+        </>
+      )}
     </div>
   );
 };

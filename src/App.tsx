@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeProvider';
+import { AuthProvider } from './contexts/AuthContext';
 import { Layout } from './components/layout/Layout';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Dashboard } from './pages/Dashboard';
 import { Collections } from './pages/Collections';
 import { Write } from './pages/Write';
@@ -9,8 +11,9 @@ import { Library } from './pages/Library';
 import { Enhanced } from './pages/Enhanced';
 import { Videos } from './pages/Videos';
 import { ChannelsPage } from './pages/ChannelsPage';
+import LoginPage from './pages/Login';
+import RegisterPage from './pages/Register';
 import './styles/globals.css';
-import type { User } from './types';
 
 // Placeholder components for missing routes
 const BrandHub = () => <div>Brand Hub - Coming Soon</div>;
@@ -18,61 +21,113 @@ const Extensions = () => <div>Extensions - Coming Soon</div>;
 const Mobile = () => <div>Mobile - Coming Soon</div>;
 const Settings = () => <div>Settings - Coming Soon</div>;
 
-// Mock user data - in a real app this would come from authentication context
-const mockUser: User = {
-  id: '1',
-  name: 'Sarah Chen',
-  email: 'sarah@example.com',
-  avatar: '',
-  role: 'creator',
-  plan: 'premium',
-  preferences: {
-    theme: 'light',
-    language: 'en',
-    notifications: {
-      email: true,
-      push: true,
-      inApp: true,
-      frequency: 'immediate'
-    },
-    accessibility: {
-      reducedMotion: false,
-      highContrast: false,
-      fontSize: 'medium',
-      screenReaderOptimized: false
-    }
-  }
-};
-
-
-
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <Layout user={mockUser}>
+      <AuthProvider>
+        <Router>
           <Routes>
-            {/* Main routes */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/collections" element={<Collections />} />
-            <Route path="/library" element={<Library />} />
-            <Route path="/videos" element={<Videos />} />
-            <Route path="/channels" element={<ChannelsPage />} />
-            <Route path="/write" element={<Write />} />
-            <Route path="/brand-hub" element={<BrandHub />} />
-            <Route path="/extensions" element={<Extensions />} />
-            <Route path="/mobile" element={<Mobile />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/enhanced" element={<Enhanced />} />
+            {/* Public routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            
+            {/* Protected routes wrapped in Layout */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/collections" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Collections />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/library" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Library />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/videos" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Videos />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/channels" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ChannelsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/write" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Write />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/brand-hub" element={
+              <ProtectedRoute>
+                <Layout>
+                  <BrandHub />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/extensions" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Extensions />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/mobile" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Mobile />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Settings />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/enhanced" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Enhanced />
+                </Layout>
+              </ProtectedRoute>
+            } />
             
             {/* Default redirect to dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             
-            {/* Catch all route - 404 */}
+            {/* Catch all route - redirect to dashboard (will trigger auth flow if not logged in) */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
-        </Layout>
-      </Router>
+        </Router>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

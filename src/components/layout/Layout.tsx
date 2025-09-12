@@ -4,14 +4,13 @@ import { Outlet } from 'react-router-dom';
 import { Navigation } from './Navigation';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useLiveAnnouncer } from '../../hooks/useFocusManagement';
-import type { User } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 import { token } from '@atlaskit/tokens';
 
 // Atlassian Design System Icons
 import MenuIcon from '@atlaskit/icon/glyph/menu';
 
 export interface LayoutProps {
-  user: User;
   children?: React.ReactNode;
 }
 
@@ -111,33 +110,8 @@ const skipLinkStyles = css`
   }
 `;
 
-// Mock user data for development
-const mockUser: User = {
-  id: '1',
-  name: 'Sarah Chen',
-  email: 'sarah@example.com',
-  avatar: '',
-  role: 'creator',
-  plan: 'premium',
-  preferences: {
-    theme: 'light',
-    language: 'en',
-    notifications: {
-      email: true,
-      push: true,
-      inApp: true,
-      frequency: 'immediate'
-    },
-    accessibility: {
-      reducedMotion: false,
-      highContrast: false,
-      fontSize: 'medium',
-      screenReaderOptimized: false
-    }
-  }
-};
-
-export const Layout: React.FC<LayoutProps> = ({ user = mockUser, children }) => {
+export const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { currentUser } = useAuth();
   const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
   const { isMobile } = useResponsive();
   const { announce } = useLiveAnnouncer();
@@ -165,7 +139,7 @@ export const Layout: React.FC<LayoutProps> = ({ user = mockUser, children }) => 
       <Navigation
         isCollapsed={isMobile ? false : isNavigationCollapsed}
         onToggleCollapse={handleToggleNavigation}
-        user={user}
+        user={currentUser!}
       />
       
       {/* Main Content Area */}
