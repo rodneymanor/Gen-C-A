@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { css } from '@emotion/react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -25,6 +25,7 @@ import ArrowRightIcon from '@atlaskit/icon/glyph/arrow-right';
 import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left';
 import VideoIcon from '@atlaskit/icon/glyph/video-filled';
 import ChannelIcon from '@atlaskit/icon/glyph/people-group';
+import MoreIcon from '@atlaskit/icon/glyph/more';
 
 export interface NavigationProps {
   isCollapsed?: boolean;
@@ -223,6 +224,7 @@ const footerStyles = css`
 `;
 
 const userMenuStyles = (isCollapsed: boolean) => css`
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -236,7 +238,6 @@ const userMenuStyles = (isCollapsed: boolean) => css`
   &:hover {
     background: var(--color-neutral-100);
   }
-  
   
   .user-info {
     flex: 1;
@@ -259,6 +260,64 @@ const userMenuStyles = (isCollapsed: boolean) => css`
       font-size: var(--font-size-caption);
       color: var(--color-neutral-600);
       margin: 0;
+    }
+  }
+
+  .more-button {
+    background: none;
+    border: none;
+    padding: var(--space-1);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    color: var(--color-neutral-600);
+    opacity: ${isCollapsed ? '0' : '1'};
+    transition: var(--transition-all);
+    
+    &:hover {
+      background: var(--color-neutral-200);
+      color: var(--color-neutral-800);
+    }
+    
+    &:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: -50px;
+    right: 0;
+    background: var(--color-neutral-0);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--elevation-shadow-raised);
+    padding: var(--space-1);
+    min-width: 120px;
+    z-index: 1000;
+
+    .dropdown-item {
+      display: block;
+      width: 100%;
+      padding: var(--space-2) var(--space-3);
+      background: none;
+      border: none;
+      text-align: left;
+      color: var(--color-neutral-700);
+      font-size: var(--font-size-body-small);
+      border-radius: var(--radius-small);
+      cursor: pointer;
+      transition: var(--transition-colors);
+
+      &:hover {
+        background: var(--color-neutral-100);
+        color: var(--color-neutral-800);
+      }
+
+      &:focus-visible {
+        outline: none;
+        box-shadow: var(--focus-ring);
+      }
     }
   }
 `;
@@ -302,6 +361,23 @@ const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isColl
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
 
   const handleLogout = async () => {
     try {
@@ -310,10 +386,20 @@ const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isColl
     } catch (error) {
       console.error('Logout failed:', error);
     }
+    setShowMenu(false);
+  };
+
+  const toggleMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu(!showMenu);
+  };
+
+  const handleMenuClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
   };
 
   return (
-    <div css={userMenuStyles(isCollapsed)} className="user-menu-trigger">
+    <div ref={menuRef} css={userMenuStyles(isCollapsed)} className="user-menu-trigger">
       <Avatar
         src={user.avatar}
         name={user.name}
@@ -326,14 +412,21 @@ const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isColl
             <p className="user-name">{user.name}</p>
             <p className="user-plan">{user.plan} Plan</p>
           </div>
-          <Button
-            appearance="subtle"
-            size="small"
-            onClick={handleLogout}
-            style={{ marginLeft: 'auto' }}
+          <button
+            className="more-button"
+            onClick={toggleMenu}
+            aria-label="User menu"
+            aria-expanded={showMenu}
           >
-            Sign Out
-          </Button>
+            <MoreIcon label="More options" />
+          </button>
+          {showMenu && (
+            <div className="dropdown-menu" onClick={handleMenuClick}>
+              <button className="dropdown-item" onClick={handleLogout}>
+                Sign Out
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
