@@ -141,7 +141,7 @@ const planCardStyles = css`
       content: 'Recommended';
       position: absolute;
       top: -${token('space.150')};
-      left: ${token('space.300')};
+      right: ${token('space.300')};
       background: ${token('color.background.brand.bold')};
       color: ${token('color.text.inverse')};
       padding: ${token('space.050')} ${token('space.200')};

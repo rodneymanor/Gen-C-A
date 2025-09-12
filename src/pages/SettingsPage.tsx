@@ -8,7 +8,6 @@ import { useAuth } from '../contexts/AuthContext';
 // Import tab components (we'll create these)
 import { AccountSettings } from '../components/settings/AccountSettings';
 import { BillingSettings } from '../components/settings/BillingSettings';
-import { NotificationSettings } from '../components/settings/NotificationSettings';
 import { ApiKeySettings } from '../components/settings/ApiKeySettings';
 import { AdvancedSettings } from '../components/settings/AdvancedSettings';
 
@@ -44,7 +43,6 @@ const contentAreaStyles = css`
 const TABS = [
   { id: 'account', label: 'Account', component: AccountSettings },
   { id: 'billing', label: 'Billing', component: BillingSettings },
-  { id: 'notifications', label: 'Notifications', component: NotificationSettings },
   { id: 'api-keys', label: 'API Keys', component: ApiKeySettings },
   { id: 'advanced', label: 'Advanced', component: AdvancedSettings },
 ] as const;
