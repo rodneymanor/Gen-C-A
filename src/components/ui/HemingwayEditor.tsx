@@ -56,8 +56,8 @@ const EditorContainer = styled.div<{ focusMode: boolean }>`
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: ${token('color.background.neutral', '#f4f5f7')};
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
+  font-family: var(--font-family-primary, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif);
   position: relative;
 
   ${(props: any) => props.focusMode && css`
@@ -81,10 +81,10 @@ const EditorHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: ${token('space.200', '0.5rem')} ${token('space.300', '0.75rem')};
-  border-bottom: 1px solid ${token('color.border', '#e4e6ea')};
-  background: ${token('color.background.neutral', '#f4f5f7')};
+  border-bottom: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
+  background: var(--color-surface-elevated, ${token('color.background.neutral', '#fafbfc')});
   z-index: 10;
-  box-shadow: ${token('elevation.shadow.raised', '0 1px 3px rgba(0,0,0,0.06)')};
+  box-shadow: var(--shadow-subtle, none);
 `;
 
 const HeaderActions = styled.div`
@@ -98,7 +98,7 @@ const EditorMain = styled.div<{ sidebarCollapsed: boolean }>`
   grid-template-columns: ${(props: any) => props.sidebarCollapsed ? '1fr' : '1fr 320px'};
   flex: 1;
   overflow: hidden;
-  background: ${token('color.background.neutral', '#f4f5f7')};
+  background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
   transition: grid-template-columns 250ms ease;
   gap: 0;
 
@@ -116,7 +116,7 @@ const EditorContent = styled.div<{ sidebarCollapsed: boolean }>`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: ${token('color.background.neutral', '#f4f5f7')};
+  background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
   min-width: 0; /* Prevents grid item from overflowing */
 
   /* Grid takes care of sizing, no need for margins */
@@ -126,23 +126,25 @@ const EditorContent = styled.div<{ sidebarCollapsed: boolean }>`
 const TextEditor = styled.textarea`
   flex: 1;
   padding: ${token('space.400', '1rem')};
-  font-size: 1rem;
-  line-height: 1.6;
-  color: ${token('color.text', '#172b4d')};
-  background: ${token('color.background.neutral', '#f4f5f7')};
+  font-size: var(--font-size-body, 1rem);
+  line-height: var(--line-height-relaxed, 1.6);
+  color: var(--color-text-primary, ${token('color.text', '#172b4d')});
+  background: var(--color-surface, ${token('color.background.input', '#ffffff')});
   border: none;
   resize: none;
   outline: none;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  transition: all 0.25s ease;
+  font-family: var(--font-family-primary, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif);
+  transition: var(--transition-colors, all 0.25s ease);
 
   &::placeholder {
-    color: ${token('color.text.subtlest', '#8993a4')};
+    color: var(--color-text-tertiary, ${token('color.text.subtlest', '#8993a4')});
   }
 
   &:focus {
-    background: ${token('color.background.input', '#ffffff')};
-    box-shadow: ${token('elevation.shadow.raised', '0 4px 6px rgba(0, 0, 0, 0.07)')};
+    background: var(--color-surface-elevated, ${token('color.background.input', '#ffffff')});
+    box-shadow: var(--focus-ring-shadow, ${token('elevation.shadow.raised', '0 0 0 2px var(--color-primary-200)')});
+    outline: var(--focus-ring-primary, 2px solid var(--color-primary-500));
+    outline-offset: -2px;
   }
 
   /* Custom scrollbar */
@@ -151,16 +153,16 @@ const TextEditor = styled.textarea`
   }
 
   &::-webkit-scrollbar-track {
-    background: ${token('color.background.neutral.subtle', '#e4e6ea')};
-    border-radius: ${token('border.radius.200', '0.5rem')};
+    background: var(--color-surface-hover, ${token('color.background.neutral.subtle', '#e4e6ea')});
+    border-radius: var(--radius-medium, ${token('border.radius.200', '0.5rem')});
   }
 
   &::-webkit-scrollbar-thumb {
-    background: ${token('color.background.neutral.bold', '#8993a4')};
-    border-radius: ${token('border.radius.200', '0.5rem')};
+    background: var(--color-border, ${token('color.background.neutral.bold', '#8993a4')});
+    border-radius: var(--radius-medium, ${token('border.radius.200', '0.5rem')});
 
     &:hover {
-      background: ${token('color.background.brand.bold', '#0B5CFF')};
+      background: var(--color-border-strong, ${token('color.background.brand.bold', '#0B5CFF')});
     }
   }
 `;

@@ -56,8 +56,8 @@ export interface EditorSidebarProps {
 const SidebarContainer = styled.div<{ collapsed: boolean }>`
   display: ${props => props.collapsed ? 'none' : 'flex'};
   flex-direction: column;
-  background: ${token('color.background.neutral.subtle')};
-  border-left: 1px solid ${token('color.border')};
+  background: var(--color-surface-elevated, ${token('color.background.neutral.subtle', '#fafbfc')});
+  border-left: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
   overflow: hidden;
   min-width: 0; /* Prevents grid overflow */
   height: 100%;
@@ -65,7 +65,7 @@ const SidebarContainer = styled.div<{ collapsed: boolean }>`
   /* Mobile responsiveness - for grid row layout */
   @media (max-width: 768px) {
     border-left: none;
-    border-top: 1px solid ${token('color.border')};
+    border-top: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
     order: -1; /* Show above editor content on mobile */
     max-height: ${props => props.collapsed ? '0' : '300px'};
     overflow-y: auto;
@@ -77,46 +77,46 @@ const SidebarHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: ${token('space.200')} ${token('space.300')};
-  border-bottom: 1px solid ${token('color.border')};
-  background: ${token('color.background.neutral')};
-  
+  border-bottom: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
+  background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
+
   h3 {
     margin: 0;
-    fontSize: ${token('font.size.200')};
-    fontWeight: ${token('font.weight.semibold')};
-    color: ${token('color.text')};
+    fontSize: var(--font-size-body-large, ${token('font.size.200', '16px')});
+    fontWeight: var(--font-weight-semibold, ${token('font.weight.semibold', '600')});
+    color: var(--color-text-primary, ${token('color.text', '#172b4d')});
   }
 `;
 
 const SidebarTabs = styled.div`
   display: flex;
-  border-bottom: 1px solid ${token('color.border')};
-  background: ${token('color.background.neutral')};
+  border-bottom: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
+  background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
 `;
 
 const SidebarTab = styled.button<{ active: boolean }>`
   flex: 1;
   padding: ${token('space.200')} ${token('space.300')};
-  background: ${props => props.active ? token('color.background.neutral.subtle') : 'transparent'};
+  background: ${props => props.active ? 'var(--color-surface-hover, ' + token('color.background.neutral.subtle', '#f4f5f7') + ')' : 'transparent'};
   border: none;
-  border-bottom: 2px solid ${props => props.active ? token('color.border.brand') : 'transparent'};
-  color: ${props => props.active ? token('color.text') : token('color.text.subtle')};
-  font-weight: ${token('font.weight.medium')};
+  border-bottom: 2px solid ${props => props.active ? 'var(--color-primary-500, ' + token('color.border.brand', '#0B5CFF') + ')' : 'transparent'};
+  color: ${props => props.active ? 'var(--color-text-primary, ' + token('color.text', '#172b4d') + ')' : 'var(--color-text-secondary, ' + token('color.text.subtle', '#6b778c') + ')'};
+  font-weight: var(--font-weight-medium, ${token('font.weight.medium', '500')});
   cursor: pointer;
-  transition: all ${token('motion.duration.fast')} ${token('motion.easing.standard')};
+  transition: var(--transition-colors, all ${token('motion.duration.fast', '150ms')} ${token('motion.easing.standard', 'ease')});
   display: flex;
   align-items: center;
   justify-content: center;
   gap: ${token('space.100')};
-  font-size: ${token('font.size.075')};
-  
+  font-size: var(--font-size-body-small, ${token('font.size.075', '12px')});
+
   &:hover:not(:disabled) {
-    background: ${token('color.background.neutral.subtle.hovered')};
-    color: ${token('color.text')};
+    background: var(--color-surface-active, ${token('color.background.neutral.subtle.hovered', '#e4e6ea')});
+    color: var(--color-text-primary, ${token('color.text', '#172b4d')});
   }
-  
+
   &:focus {
-    outline: 2px solid ${token('color.border.focused')};
+    outline: var(--focus-ring-primary, 2px solid var(--color-primary-500));
     outline-offset: -2px;
   }
 `;
@@ -125,23 +125,23 @@ const SidebarContent = styled.div`
   flex: 1;
   padding: ${token('space.300')};
   overflow-y: auto;
-  
+
   /* Custom scrollbar */
   &::-webkit-scrollbar {
     width: 6px;
   }
-  
+
   &::-webkit-scrollbar-track {
-    background: ${token('color.background.neutral.subtle')};
-    border-radius: ${token('border.radius')};
+    background: var(--color-surface-hover, ${token('color.background.neutral.subtle', '#f4f5f7')});
+    border-radius: var(--radius-medium, ${token('border.radius', '8px')});
   }
-  
+
   &::-webkit-scrollbar-thumb {
-    background: ${token('color.background.neutral.bold')};
-    border-radius: ${token('border.radius')};
-    
+    background: var(--color-border, ${token('color.background.neutral.bold', '#8993a4')});
+    border-radius: var(--radius-medium, ${token('border.radius', '8px')});
+
     &:hover {
-      background: ${token('color.background.neutral.bolder')};
+      background: var(--color-border-strong, ${token('color.background.neutral.bolder', '#5e6c84')});
     }
   }
 `;
