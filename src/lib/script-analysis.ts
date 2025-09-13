@@ -55,7 +55,7 @@ export interface ScriptElements {
 
 /**
  * Parse script elements from content with inline labels
- * Handles formats like "(Hook)", "(Bridge)", "(Golden Nugget)", "(CTA)"
+ * Handles formats like "(Hook)", "(Bridge)", "(Golden Nugget)", "(CTA)" and "[HOOK - ...]", "[BRIDGE - ...]"
  */
 export function parseInlineLabels(content: string): ScriptElements {
   const result: ScriptElements = {
@@ -65,7 +65,57 @@ export function parseInlineLabels(content: string): ScriptElements {
     wta: "",
   };
 
-  // First try to split by inline labels that appear within the text
+  // First try to parse square bracket format used by script generator
+  // Example: "[HOOK - First 3 seconds]\nContent...\n\n[BRIDGE - Transition]\nContent..."
+  if (
+    content.includes("[HOOK") ||
+    content.includes("[BRIDGE") ||
+    content.includes("[GOLDEN NUGGET") ||
+    content.includes("[WTA")
+  ) {
+    console.log(`🔍 [parseInlineLabels] Parsing square bracket labels`);
+
+    // Split by sections with square bracket headers
+    const sections = content.split(/\n\s*\n/).filter(section => section.trim());
+
+    for (const section of sections) {
+      const lines = section.split('\n').map(line => line.trim()).filter(line => line);
+      if (lines.length === 0) continue;
+
+      const headerLine = lines[0];
+      const contentLines = lines.slice(1);
+      const contentText = contentLines.join('\n').trim();
+
+      // Match square bracket headers
+      const squareBracketMatch = headerLine.match(/^\[([^\]]+)\]/i);
+      if (squareBracketMatch) {
+        const label = squareBracketMatch[1].toLowerCase();
+
+        if (label.startsWith('hook')) {
+          result.hook = contentText;
+          console.log(`🪝 [parseInlineLabels] Found HOOK: "${contentText.substring(0, 50)}..."`);
+        } else if (label.startsWith('bridge')) {
+          result.bridge = contentText;
+          console.log(`🌉 [parseInlineLabels] Found BRIDGE: "${contentText.substring(0, 50)}..."`);
+        } else if (label.startsWith('golden nugget')) {
+          result.goldenNugget = contentText;
+          console.log(`💎 [parseInlineLabels] Found GOLDEN NUGGET: "${contentText.substring(0, 50)}..."`);
+        } else if (label.startsWith('wta') || label.startsWith('call to action')) {
+          result.wta = contentText;
+          console.log(`🎯 [parseInlineLabels] Found WTA: "${contentText.substring(0, 50)}..."`);
+        }
+      }
+    }
+
+    console.log(`🔍 [parseInlineLabels] Square bracket parsing result:`, result);
+
+    // If we got at least some components, return
+    if (result.hook || result.bridge || result.goldenNugget || result.wta) {
+      return result;
+    }
+  }
+
+  // Fallback: try to split by inline labels that appear within the text
   // Example: "Want unlimited income? (Hook) It's now possible... (Bridge) Content... (Golden Nugget) Share this! (CTA)"
   if (
     content.includes("(Hook)") ||

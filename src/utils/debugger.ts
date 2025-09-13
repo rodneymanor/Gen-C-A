@@ -3,6 +3,8 @@
  * Expert React Debugging Assistant for systematic debugging and root cause analysis
  */
 
+import React from 'react';
+
 export enum DEBUG_LEVELS {
   ERROR = 0,
   WARN = 1,
@@ -231,18 +233,18 @@ export function withDebugger<P extends object>(
   const displayName = WrappedComponent.displayName || WrappedComponent.name || 'Component';
 
   const WithDebuggerComponent = (props: P) => {
-    const debugger = useDebugger(displayName, debuggerOptions);
+    const debug = useDebugger(displayName, debuggerOptions);
     const renderCount = React.useRef(0);
 
     // Log mount/unmount
     React.useEffect(() => {
-      debugger.logMount(props);
-      return () => debugger.logUnmount();
+      debug.logMount(props);
+      return () => debug.logUnmount();
     }, []);
 
     // Log renders
     React.useEffect(() => {
-      debugger.logRender(++renderCount.current, props);
+      debug.logRender(++renderCount.current, props);
     });
 
     return React.createElement(WrappedComponent, props);
