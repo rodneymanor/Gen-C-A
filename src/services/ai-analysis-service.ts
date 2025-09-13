@@ -275,13 +275,18 @@ export class AIAnalysisService {
   }
 
   private isProviderConfigured(providerName: string): boolean {
+    const getEnvVar = (key: string) => {
+      return import.meta.env?.[`VITE_${key}`] || 
+             (typeof process !== 'undefined' && process.env?.[key]);
+    };
+
     switch (providerName.toLowerCase()) {
       case 'gemini':
-        return !!process.env.GEMINI_API_KEY;
+        return !!getEnvVar('GEMINI_API_KEY');
       case 'openai':
-        return !!process.env.OPENAI_API_KEY;
+        return !!getEnvVar('OPENAI_API_KEY');
       case 'claude':
-        return !!process.env.ANTHROPIC_API_KEY;
+        return !!getEnvVar('ANTHROPIC_API_KEY');
       default:
         return false;
     }
@@ -346,7 +351,8 @@ class GeminiAIProvider implements AIProvider {
   }
 
   isAvailable(): boolean {
-    return !!process.env.GEMINI_API_KEY;
+    return !!(import.meta.env?.VITE_GEMINI_API_KEY || 
+             (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY));
   }
 
   getName(): string {
@@ -475,7 +481,8 @@ class OpenAIProvider implements AIProvider {
   }
 
   isAvailable(): boolean {
-    return !!process.env.OPENAI_API_KEY;
+    return !!(import.meta.env?.VITE_OPENAI_API_KEY || 
+             (typeof process !== 'undefined' && process.env?.OPENAI_API_KEY));
   }
 
   getName(): string {
@@ -559,7 +566,8 @@ class ClaudeProvider implements AIProvider {
   }
 
   isAvailable(): boolean {
-    return !!process.env.ANTHROPIC_API_KEY;
+    return !!(import.meta.env?.VITE_ANTHROPIC_API_KEY || 
+             (typeof process !== 'undefined' && process.env?.ANTHROPIC_API_KEY));
   }
 
   getName(): string {
