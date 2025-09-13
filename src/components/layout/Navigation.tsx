@@ -34,12 +34,12 @@ const navigationData: NavigationSection[] = [
   {
     section: 'Content',
     items: [
-      { path: '/dashboard', label: 'Dashboard', icon: <HomeIcon label="Dashboard" /> },
+      { path: '/dashboard', label: 'Home', icon: <HomeIcon label="Home" /> },
+      { path: '/write', label: 'Write', icon: <EditIcon label="Write" /> },
       { path: '/collections', label: 'Collections', icon: <FolderIcon label="Collections" /> },
       { path: '/library', label: 'Library', icon: <BookIcon label="Library" /> },
       { path: '/videos', label: 'Videos', icon: <VideoIcon label="Videos" /> },
       { path: '/channels', label: 'Channels', icon: <ChannelIcon label="Channels" /> },
-      { path: '/write', label: 'Write', icon: <EditIcon label="Write" /> },
     ]
   },
   {
