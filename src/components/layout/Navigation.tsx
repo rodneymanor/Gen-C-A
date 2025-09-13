@@ -18,7 +18,6 @@ import PeopleIcon from '@atlaskit/icon/glyph/people';
 import AddonIcon from '@atlaskit/icon/glyph/addon';
 import MobileIcon from '@atlaskit/icon/glyph/mobile';
 import SettingsIcon from '@atlaskit/icon/glyph/settings';
-import ArrowRightIcon from '@atlaskit/icon/glyph/arrow-right';
 import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left';
 import LayoutTwoColumnsSidebarLeftIcon from '@atlaskit/icon/core/migration/layout-two-columns-sidebar-left--editor-layout-two-left-sidebar';
 import VideoIcon from '@atlaskit/icon/glyph/video-filled';
@@ -458,7 +457,22 @@ export const Navigation: React.FC<NavigationProps> = ({
 
           <div className="brand">
             {isCollapsed ? (
-              <LayoutTwoColumnsSidebarLeftIcon label="Gen.C Logo" size="large" />
+              <button
+                onClick={onToggleCollapse}
+                aria-label="Expand navigation"
+                css={css`
+                  background: none;
+                  border: none;
+                  padding: 0;
+                  cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: inherit;
+                `}
+              >
+                <LayoutTwoColumnsSidebarLeftIcon label="Gen.C Logo" />
+              </button>
             ) : (
               <div css={expandedLogoStyles}>
                 <span>Gen</span>
