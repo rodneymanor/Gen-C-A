@@ -51,7 +51,7 @@ async function createTestUser() {
     // Test user details
     const testUserData = {
       email: 'test@example.com',
-      password: 'test',
+      password: 'testpass',
       displayName: 'Test User',
       uid: 'test-user-super-admin'
     };
@@ -162,7 +162,7 @@ function showManualSteps() {
   console.log('3. Go to Authentication > Users');
   console.log('4. Add user:');
   console.log('   - Email: test@example.com');
-  console.log('   - Password: test');
+  console.log('   - Password: testpass');
   console.log('5. Copy the User UID');
   console.log('6. Go to Firestore Database');
   console.log('7. Create document in "users" collection with the UID as document ID');
