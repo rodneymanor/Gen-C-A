@@ -41,46 +41,6 @@ const contentStyles = css`
   gap: var(--space-8);
 `;
 
-const variantSelectorStyles = css`
-  background: var(--color-primary-50);
-  border: 1px solid var(--color-primary-200);
-  border-radius: var(--radius-large);
-  padding: var(--space-4);
-  margin-bottom: var(--space-6);
-
-  .selector-header {
-    font-size: var(--font-size-body-small);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-primary-700);
-    margin: 0 0 var(--space-3) 0;
-  }
-
-  .variant-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .variant-button {
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-primary-300);
-    background: var(--color-neutral-0);
-    border-radius: var(--radius-medium);
-    font-size: var(--font-size-body-small);
-    color: var(--color-primary-700);
-    cursor: pointer;
-    transition: var(--transition-all);
-
-    &:hover {
-      background: var(--color-primary-100);
-    }
-
-    &.active {
-      background: var(--color-primary-500);
-      color: var(--color-neutral-0);
-    }
-  }
-`;
 
 const loadingOverlayStyles = css`
   position: fixed;
@@ -193,7 +153,6 @@ export const Write: React.FC = () => {
     progress: 0,
     stage: ''
   });
-  const [buttonVariant, setButtonVariant] = useState<'bottom-center' | 'bottom-right' | 'right-side' | 'under-input'>('bottom-center');
 
   const simulateGeneration = async (request: AIGenerationRequest): Promise<Script> => {
     const stages = [
@@ -395,43 +354,11 @@ ${result.script.wta}`;
         <>
 
           <div css={contentStyles}>
-            {/* Button Variant Selector - for testing purposes */}
-            <div css={variantSelectorStyles}>
-              <h3 className="selector-header">🧪 Testing: Button Placement Variants</h3>
-              <div className="variant-buttons">
-                <button
-                  className={`variant-button ${buttonVariant === 'bottom-center' ? 'active' : ''}`}
-                  onClick={() => setButtonVariant('bottom-center')}
-                >
-                  Bottom Center (Default)
-                </button>
-                <button
-                  className={`variant-button ${buttonVariant === 'bottom-right' ? 'active' : ''}`}
-                  onClick={() => setButtonVariant('bottom-right')}
-                >
-                  Bottom Right Corner
-                </button>
-                <button
-                  className={`variant-button ${buttonVariant === 'right-side' ? 'active' : ''}`}
-                  onClick={() => setButtonVariant('right-side')}
-                >
-                  Right Side of Input
-                </button>
-                <button
-                  className={`variant-button ${buttonVariant === 'under-input' ? 'active' : ''}`}
-                  onClick={() => setButtonVariant('under-input')}
-                >
-                  Under Input Field
-                </button>
-              </div>
-            </div>
-
             <ScriptGenerator
               onGenerate={handleGenerate}
               onVoiceInput={handleVoiceInput}
               isLoading={isLoading}
               personas={mockPersonas}
-              buttonVariant={buttonVariant}
             />
             
             <TrendingIdeas
