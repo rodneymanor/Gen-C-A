@@ -239,9 +239,6 @@ export const ScriptComponentEditor: React.FC<ScriptComponentEditorProps> = ({
               )}
             </ComponentHeader>
 
-            <ComponentDescription>
-              {config.description}
-            </ComponentDescription>
 
             <ComponentContent>
               {isEditing ? (
