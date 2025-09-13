@@ -225,7 +225,13 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   };
 
   const handleGenerate = () => {
-    if (!formData.prompt.trim()) return;
+    console.log("🎬 [ScriptGenerator] Generate button clicked");
+    console.log("📝 [ScriptGenerator] Current form data:", formData);
+    
+    if (!formData.prompt.trim()) {
+      console.log("❌ [ScriptGenerator] No prompt provided, aborting");
+      return;
+    }
     
     const request: AIGenerationRequest = {
       prompt: formData.prompt,
@@ -237,7 +243,9 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
       additionalSettings: {}
     };
     
+    console.log("📤 [ScriptGenerator] Calling onGenerate with request:", request);
     onGenerate?.(request);
+    console.log("✅ [ScriptGenerator] onGenerate call completed");
   };
 
   const selectedPersona = personas.find(p => p.id === formData.persona);

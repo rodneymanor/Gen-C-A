@@ -20,11 +20,18 @@ interface GenerateScriptResponse {
 }
 
 export async function POST(request: NextRequest) {
+  console.log("🎯 [API] /api/script/generate endpoint called");
+  
   try {
-    // Parse request body
-    const { idea, length = "60", persona }: GenerateScriptRequest = await request.json();
+    console.log("📦 [API] Parsing request body...");
+    const body = await request.json();
+    console.log("📄 [API] Raw request body:", body);
+    
+    const { idea, length = "60", persona }: GenerateScriptRequest = body;
+    console.log("🔍 [API] Parsed parameters:", { idea, length, persona });
 
     if (!idea || idea.trim().length === 0) {
+      console.log("❌ [API] Validation failed: idea is required");
       return Response.json(
         { success: false, error: "Script idea is required" },
         { status: 400 }
@@ -95,9 +102,12 @@ export async function POST(request: NextRequest) {
     };
 
     // Generate the script components
+    console.log("🤖 [API] Generating script components...");
     const script = generateScriptComponents(idea, length);
+    console.log("📝 [API] Generated script:", script);
 
     // Add some processing delay to simulate real AI generation
+    console.log("⏱️ [API] Adding processing delay...");
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
 
     const response: GenerateScriptResponse = {
@@ -105,6 +115,7 @@ export async function POST(request: NextRequest) {
       script
     };
 
+    console.log("✅ [API] Sending successful response:", response);
     return Response.json(response);
 
   } catch (error) {

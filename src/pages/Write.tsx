@@ -223,6 +223,8 @@ ${request.prompt.toLowerCase().includes('skincare') ?
   };
 
   const handleGenerate = async (request: AIGenerationRequest) => {
+    console.log("🎬 [Write] handleGenerate called with request:", request);
+    
     try {
       // Convert length to the format expected by the API
       const lengthMapping = {
@@ -231,13 +233,21 @@ ${request.prompt.toLowerCase().includes('skincare') ?
         'long': '60'
       };
       
+      const mappedLength = lengthMapping[request.length] as "15" | "20" | "30" | "45" | "60" | "90";
+      console.log("📏 [Write] Length mapping:", { original: request.length, mapped: mappedLength });
+      
+      console.log("🔄 [Write] Calling generateScript...");
       const result = await generateScript(
         request.prompt,
-        lengthMapping[request.length] as "15" | "20" | "30" | "45" | "60" | "90",
+        mappedLength,
         request.persona
       );
 
+      console.log("📋 [Write] Generate script result:", result);
+
       if (result.success && result.script) {
+        console.log("✅ [Write] Script generation successful, creating content...");
+        
         // Create script content for Hemingway editor from components
         const scriptContent = `[HOOK - First 3 seconds]
 ${result.script.hook}
@@ -251,6 +261,8 @@ ${result.script.goldenNugget}
 [WTA - Call to Action]
 ${result.script.wta}`;
 
+        console.log("📝 [Write] Generated script content:", scriptContent);
+
         // Navigate to editor with script content and metadata
         const params = new URLSearchParams({
           content: scriptContent,
@@ -260,10 +272,16 @@ ${result.script.wta}`;
           style: request.style
         });
         
-        navigate(`/editor?${params.toString()}`);
+        const editorUrl = `/editor?${params.toString()}`;
+        console.log("🧭 [Write] Navigating to:", editorUrl);
+        
+        navigate(editorUrl);
+        console.log("✅ [Write] Navigation completed");
+      } else {
+        console.error("❌ [Write] Script generation failed or incomplete:", result);
       }
     } catch (error) {
-      console.error('Generation failed:', error);
+      console.error('❌ [Write] Generation failed with exception:', error);
       // Error is already handled by the hook
     }
   };
