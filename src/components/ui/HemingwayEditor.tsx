@@ -13,6 +13,7 @@ import { EditableTitle } from './EditableTitle';
 import { EditorSidebar } from './EditorSidebar';
 import { FloatingToolbar } from './FloatingToolbar';
 import { ScriptComponentEditor } from './ScriptComponentEditor';
+import { InteractiveScript } from '../writing-analysis/interactive-script';
 
 // Re-export interfaces from child components for convenience
 export type { ReadabilityMetrics, WritingStats } from './EditorSidebar';
@@ -39,6 +40,8 @@ export interface HemingwayEditorProps {
   isScriptMode?: boolean;
   /** Callback when script elements change */
   onScriptElementsChange?: (elements: ScriptElements) => void;
+  /** Whether to enable AI-powered interactive script editing */
+  enableAIActions?: boolean;
 }
 
 interface ScriptElements {
@@ -165,6 +168,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   scriptElements = null,
   isScriptMode = false,
   onScriptElementsChange,
+  enableAIActions = false,
 }) => {
   // State management
   const [content, setContent] = useState(initialContent);
@@ -246,6 +250,75 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
     setTitle(newTitle);
     onTitleChange?.(newTitle);
   }, [onTitleChange]);
+
+  // Helper function to convert script elements to formatted text for InteractiveScript
+  const formatScriptElementsToText = useCallback((elements: ScriptElements): string => {
+    const sections = [];
+
+    if (elements.hook) {
+      sections.push(`[HOOK - First 3 seconds]\n${elements.hook}`);
+    }
+
+    if (elements.bridge) {
+      sections.push(`[BRIDGE - Transition]\n${elements.bridge}`);
+    }
+
+    if (elements.goldenNugget) {
+      sections.push(`[GOLDEN NUGGET - Main Value]\n${elements.goldenNugget}`);
+    }
+
+    if (elements.wta) {
+      sections.push(`[WTA - Call to Action]\n${elements.wta}`);
+    }
+
+    return sections.join('\n\n');
+  }, []);
+
+  // Helper function to parse formatted text back to script elements
+  const parseTextToScriptElements = useCallback((text: string): ScriptElements => {
+    const result: ScriptElements = {
+      hook: '',
+      bridge: '',
+      goldenNugget: '',
+      wta: ''
+    };
+
+    // Split by sections with square bracket headers
+    const sections = text.split(/\n\s*\n/).filter(section => section.trim());
+
+    for (const section of sections) {
+      const lines = section.split('\n').map(line => line.trim()).filter(line => line);
+      if (lines.length === 0) continue;
+
+      const headerLine = lines[0];
+      const contentLines = lines.slice(1);
+      const contentText = contentLines.join('\n').trim();
+
+      // Match square bracket headers
+      const squareBracketMatch = headerLine.match(/^\[([^\]]+)\]/i);
+      if (squareBracketMatch) {
+        const label = squareBracketMatch[1].toLowerCase();
+
+        if (label.startsWith('hook')) {
+          result.hook = contentText;
+        } else if (label.startsWith('bridge')) {
+          result.bridge = contentText;
+        } else if (label.startsWith('golden nugget')) {
+          result.goldenNugget = contentText;
+        } else if (label.startsWith('wta') || label.startsWith('call to action')) {
+          result.wta = contentText;
+        }
+      }
+    }
+
+    return result;
+  }, []);
+
+  // Handle script updates from InteractiveScript
+  const handleInteractiveScriptUpdate = useCallback((updatedScript: string) => {
+    const updatedElements = parseTextToScriptElements(updatedScript);
+    onScriptElementsChange?.(updatedElements);
+  }, [parseTextToScriptElements, onScriptElementsChange]);
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed(prev => !prev);
@@ -337,11 +410,18 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
           
           {/* Content Editor - Script Mode or Text Mode */}
           {isScriptMode && scriptElements ? (
-            <ScriptComponentEditor
-              scriptElements={scriptElements}
-              onScriptElementsChange={onScriptElementsChange || (() => {})}
-              readOnly={false}
-            />
+            enableAIActions ? (
+              <InteractiveScript
+                script={formatScriptElementsToText(scriptElements)}
+                onScriptUpdate={handleInteractiveScriptUpdate}
+              />
+            ) : (
+              <ScriptComponentEditor
+                scriptElements={scriptElements}
+                onScriptElementsChange={onScriptElementsChange || (() => {})}
+                readOnly={false}
+              />
+            )
           ) : (
             <TextEditor
               ref={textareaRef}

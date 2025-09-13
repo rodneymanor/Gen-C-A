@@ -126,6 +126,7 @@ export default function HemingwayEditorPage() {
       scriptElements={scriptElements}
       isScriptMode={isScriptMode}
       onScriptElementsChange={handleScriptElementsChange}
+      enableAIActions={isScriptMode} // Enable AI actions when in script mode
     />
   );
 }
