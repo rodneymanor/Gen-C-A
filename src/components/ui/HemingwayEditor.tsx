@@ -82,7 +82,7 @@ const EditorHeader = styled.div`
   justify-content: space-between;
   padding: ${token('space.200', '0.5rem')} ${token('space.300', '0.75rem')};
   border-bottom: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
-  background: var(--color-surface-elevated, ${token('color.background.neutral', '#fafbfc')});
+  background: var(--card-bg, var(--color-surface, ${token('color.background.neutral', '#ffffff')}));
   z-index: 10;
   box-shadow: var(--shadow-subtle, none);
 `;

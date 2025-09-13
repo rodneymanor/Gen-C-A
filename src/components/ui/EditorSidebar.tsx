@@ -56,7 +56,7 @@ export interface EditorSidebarProps {
 const SidebarContainer = styled.div<{ collapsed: boolean }>`
   display: ${props => props.collapsed ? 'none' : 'flex'};
   flex-direction: column;
-  background: var(--color-surface-elevated, ${token('color.background.neutral.subtle', '#fafbfc')});
+  background: var(--card-bg, var(--color-surface, ${token('color.background.neutral', '#ffffff')}));
   border-left: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
   overflow: hidden;
   min-width: 0; /* Prevents grid overflow */
