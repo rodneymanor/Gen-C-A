@@ -12,6 +12,7 @@ import { Button } from './Button';
 import { EditableTitle } from './EditableTitle';
 import { EditorSidebar } from './EditorSidebar';
 import { FloatingToolbar } from './FloatingToolbar';
+import { ScriptComponentEditor } from './ScriptComponentEditor';
 
 // Re-export interfaces from child components for convenience
 export type { ReadabilityMetrics, WritingStats } from './EditorSidebar';
@@ -32,6 +33,19 @@ export interface HemingwayEditorProps {
   onTitleChange?: (title: string) => void;
   /** Custom class name for the editor */
   className?: string;
+  /** Script elements for structured script editing */
+  scriptElements?: ScriptElements | null;
+  /** Whether the editor is in script mode */
+  isScriptMode?: boolean;
+  /** Callback when script elements change */
+  onScriptElementsChange?: (elements: ScriptElements) => void;
+}
+
+interface ScriptElements {
+  hook: string;
+  bridge: string;
+  goldenNugget: string;
+  wta: string;
 }
 
 // Styled Components
@@ -148,6 +162,9 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   onContentChange,
   onTitleChange,
   className,
+  scriptElements = null,
+  isScriptMode = false,
+  onScriptElementsChange,
 }) => {
   // State management
   const [content, setContent] = useState(initialContent);
@@ -156,15 +173,38 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   const [focusMode, setFocusMode] = useState(initialFocusMode);
   const [activeTab, setActiveTab] = useState<'readability' | 'writing'>('readability');
   
+  // Log script mode status
+  useEffect(() => {
+    console.log('🎬 [HemingwayEditor] Script mode status:', {
+      isScriptMode,
+      hasScriptElements: !!scriptElements,
+      scriptElementsKeys: scriptElements ? Object.keys(scriptElements) : []
+    });
+  }, [isScriptMode, scriptElements]);
+  
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  // Calculate writing statistics
-  const words = content.trim().split(/\s+/).filter(word => word.length > 0).length;
-  const characters = content.length;
-  const charactersNoSpaces = content.replace(/\s/g, '').length;
-  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
-  const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
+  // Calculate writing statistics - handle both script and regular mode
+  const getContentForStats = () => {
+    if (isScriptMode && scriptElements) {
+      // Combine all script elements for statistics
+      return [
+        scriptElements.hook,
+        scriptElements.bridge,
+        scriptElements.goldenNugget,
+        scriptElements.wta
+      ].filter(Boolean).join(' ');
+    }
+    return content;
+  };
+
+  const statsContent = getContentForStats();
+  const words = statsContent.trim().split(/\s+/).filter(word => word.length > 0).length;
+  const characters = statsContent.length;
+  const charactersNoSpaces = statsContent.replace(/\s/g, '').length;
+  const sentences = statsContent.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+  const paragraphs = statsContent.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
   const readingTime = Math.ceil(words / 200); // 200 wpm average
   
   // Mock readability data for demonstration
@@ -295,14 +335,22 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
             ariaLabel="Document title"
           />
           
-          {/* Text Editor */}
-          <TextEditor
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => handleContentChange(e.target.value)}
-            placeholder="Write your story here..."
-            aria-label="Document content"
-          />
+          {/* Content Editor - Script Mode or Text Mode */}
+          {isScriptMode && scriptElements ? (
+            <ScriptComponentEditor
+              scriptElements={scriptElements}
+              onScriptElementsChange={onScriptElementsChange || (() => {})}
+              readOnly={false}
+            />
+          ) : (
+            <TextEditor
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => handleContentChange(e.target.value)}
+              placeholder="Write your story here..."
+              aria-label="Document content"
+            />
+          )}
         </EditorContent>
 
         {/* Sidebar */}
