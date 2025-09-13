@@ -58,31 +58,6 @@ const navigationData: NavigationSection[] = [
   }
 ];
 
-const sidebarWrapperStyles = css`
-  display: flex;
-  align-items: flex-start;
-  height: 100vh;
-`;
-
-const sidebarArrowStyles = css`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 40px;
-  background: var(--color-neutral-100);
-  border: 1px solid var(--color-neutral-200);
-  border-left: none;
-  border-radius: 0 var(--radius-small) var(--radius-small) 0;
-  cursor: pointer;
-  transition: var(--transition-all);
-  margin-top: var(--space-4);
-
-  &:hover {
-    background: var(--color-neutral-200);
-  }
-`;
-
 const expandedLogoStyles = css`
   display: flex;
   align-items: center;
@@ -130,16 +105,18 @@ const sidebarStyles = (isCollapsed: boolean, isMobile: boolean) => css`
 const headerStyles = css`
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--space-3);
   padding: var(--space-4);
   border-bottom: 1px solid var(--color-neutral-200);
   min-height: 64px;
-  
+
   .brand {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    
+    flex: 1;
+    justify-content: center;
+
     .logo {
       width: 32px;
       height: 32px;
@@ -152,7 +129,7 @@ const headerStyles = css`
       font-weight: var(--font-weight-bold);
       flex-shrink: 0;
     }
-    
+
     h1 {
       font-size: var(--font-size-h5);
       font-weight: var(--font-weight-semibold);
@@ -457,19 +434,26 @@ export const Navigation: React.FC<NavigationProps> = ({
         <div css={overlayStyles} onClick={onToggleCollapse} />
       )}
 
-      <div css={sidebarWrapperStyles}>
-        <motion.nav
-          css={sidebarStyles(isCollapsed, isMobile)}
-          initial={false}
-          animate={{
-            width: isMobile ? (isCollapsed ? 0 : 280) : (isCollapsed ? 64 : 280)
-          }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-          className="main-navigation"
-          role="navigation"
-          aria-label="Main navigation"
-        >
+      <motion.nav
+        css={sidebarStyles(isCollapsed, isMobile)}
+        initial={false}
+        animate={{
+          width: isMobile ? (isCollapsed ? 0 : 280) : (isCollapsed ? 64 : 280)
+        }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className="main-navigation"
+        role="navigation"
+        aria-label="Main navigation"
+      >
         <div css={headerStyles}>
+          <Button
+            variant="subtle"
+            size="small"
+            onClick={onToggleCollapse}
+            iconBefore={isCollapsed ? <ArrowRightIcon label="" /> : <ArrowLeftIcon label="" />}
+            aria-label={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          />
+
           <div className="brand">
             {isCollapsed ? (
               <LayoutTwoColumnsSidebarLeftIcon label="Gen.C Logo" size="large" />
@@ -481,14 +465,6 @@ export const Navigation: React.FC<NavigationProps> = ({
               </div>
             )}
           </div>
-
-          <Button
-            variant="subtle"
-            size="small"
-            onClick={onToggleCollapse}
-            iconBefore={isCollapsed ? <ArrowRightIcon label="" /> : <ArrowLeftIcon label="" />}
-            aria-label={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-          />
         </div>
         
         <div css={contentStyles}>
@@ -523,22 +499,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             <UserMenu user={user} isCollapsed={isCollapsed} />
           </div>
         </div>
-        </motion.nav>
-
-        {!isMobile && (
-          <button
-            css={sidebarArrowStyles}
-            onClick={onToggleCollapse}
-            aria-label={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-          >
-            {isCollapsed ? (
-              <ArrowRightIcon label="" size="small" />
-            ) : (
-              <ArrowLeftIcon label="" size="small" />
-            )}
-          </button>
-        )}
-      </div>
+      </motion.nav>
     </>
   );
 };
