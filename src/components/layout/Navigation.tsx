@@ -115,7 +115,7 @@ const headerStyles = css`
     align-items: center;
     gap: var(--space-3);
     flex: 1;
-    justify-content: center;
+    justify-content: left;
 
     .logo {
       width: 32px;
@@ -446,13 +446,15 @@ export const Navigation: React.FC<NavigationProps> = ({
         aria-label="Main navigation"
       >
         <div css={headerStyles}>
-          <Button
-            variant="subtle"
-            size="small"
-            onClick={onToggleCollapse}
-            iconBefore={isCollapsed ? <ArrowRightIcon label="" /> : <ArrowLeftIcon label="" />}
-            aria-label={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-          />
+          {!isCollapsed && (
+            <Button
+              variant="subtle"
+              size="small"
+              onClick={onToggleCollapse}
+              iconBefore={<ArrowLeftIcon label="" />}
+              aria-label="Collapse navigation"
+            />
+          )}
 
           <div className="brand">
             {isCollapsed ? (
