@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { styled, css } from '@emotion/react';
+import { css } from '@emotion/react';
+import styled from '@emotion/styled';
 import { token } from '@atlaskit/tokens';
 // Atlassian Design System Icons
 import ClockIcon from '@atlaskit/icon/glyph/recent';
@@ -10,7 +11,7 @@ import ChevronDownIcon from '@atlaskit/icon/glyph/chevron-down';
 import CopyIcon from '@atlaskit/icon/glyph/copy';
 import WandIcon from '@atlaskit/icon/glyph/edit';
 import UserIcon from '@atlaskit/icon/glyph/person';
-import ScissorsIcon from '@atlaskit/icon/glyph/editor/cut';
+import ScissorsIcon from '@atlaskit/icon/glyph/shortcut';
 import VolumeIcon from '@atlaskit/icon/glyph/audio';
 import ShuffleIcon from '@atlaskit/icon/glyph/app-switcher';
 import FileTextIcon from '@atlaskit/icon/glyph/document';

@@ -12,6 +12,7 @@ import { Enhanced } from './pages/Enhanced';
 import { Videos } from './pages/Videos';
 import { ChannelsPage } from './pages/ChannelsPage';
 import SettingsPage from './pages/SettingsPage';
+import HemingwayEditorPage from './pages/HemingwayEditorPage';
 import LoginPage from './pages/Login';
 import RegisterPage from './pages/Register';
 import './styles/globals.css';
@@ -116,6 +117,14 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Enhanced />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/editor" element={
+              <ProtectedRoute>
+                <Layout>
+                  <HemingwayEditorPage />
                 </Layout>
               </ProtectedRoute>
             } />

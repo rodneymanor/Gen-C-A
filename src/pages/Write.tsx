@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { css } from '@emotion/react';
 import { TrendingIdeas } from '../components/script/TrendingIdeas';
 import { ScriptGenerator } from '../components/script/ScriptGenerator';
 import { ScriptEditor } from '../components/script/ScriptEditor';
 import { Button } from '../components/ui/Button';
+import { useScriptGeneration } from '../hooks/use-script-generation';
 import type { AIGenerationRequest, AIGenerationResponse, Script, BrandPersona } from '../types';
 
 const writeStyles = css`
@@ -141,6 +143,8 @@ interface GenerationState {
 }
 
 export const Write: React.FC = () => {
+  const navigate = useNavigate();
+  const { generateScript, isLoading, error } = useScriptGeneration();
   const [view, setView] = useState<'generate' | 'edit'>('generate');
   const [generatedScript, setGeneratedScript] = useState<Script | null>(null);
   const [generationState, setGenerationState] = useState<GenerationState>({
@@ -219,25 +223,48 @@ ${request.prompt.toLowerCase().includes('skincare') ?
   };
 
   const handleGenerate = async (request: AIGenerationRequest) => {
-    setGenerationState({
-      isGenerating: true,
-      progress: 0,
-      stage: 'Initializing...'
-    });
-
     try {
-      const script = await simulateGeneration(request);
-      setGeneratedScript(script);
-      setView('edit');
+      // Convert length to the format expected by the API
+      const lengthMapping = {
+        'short': '15',
+        'medium': '30', 
+        'long': '60'
+      };
+      
+      const result = await generateScript(
+        request.prompt,
+        lengthMapping[request.length] as "15" | "20" | "30" | "45" | "60" | "90",
+        request.persona
+      );
+
+      if (result.success && result.script) {
+        // Create script content for Hemingway editor from components
+        const scriptContent = `[HOOK - First 3 seconds]
+${result.script.hook}
+
+[BRIDGE - Transition]
+${result.script.bridge}
+
+[GOLDEN NUGGET - Main Value]
+${result.script.goldenNugget}
+
+[WTA - Call to Action]
+${result.script.wta}`;
+
+        // Navigate to editor with script content and metadata
+        const params = new URLSearchParams({
+          content: scriptContent,
+          title: `Generated Script: ${request.prompt.slice(0, 50)}...`,
+          platform: request.platform,
+          length: request.length,
+          style: request.style
+        });
+        
+        navigate(`/editor?${params.toString()}`);
+      }
     } catch (error) {
       console.error('Generation failed:', error);
-      // Handle error state here
-    } finally {
-      setGenerationState({
-        isGenerating: false,
-        progress: 0,
-        stage: ''
-      });
+      // Error is already handled by the hook
     }
   };
 
@@ -283,25 +310,23 @@ ${request.prompt.toLowerCase().includes('skincare') ?
   return (
     <div css={writeStyles}>
       {/* Loading Overlay */}
-      {generationState.isGenerating && (
+      {isLoading && (
         <div css={loadingOverlayStyles}>
           <div className="loading-content">
             <div className="loading-icon" aria-hidden="true">✨</div>
             <h2 className="loading-title">Generating Your Script</h2>
-            <p className="loading-stage">{generationState.stage}</p>
+            <p className="loading-stage">AI is crafting your perfect script...</p>
             
             <div className="loading-progress">
               <div 
                 className="progress-bar"
-                style={{ width: `${generationState.progress}%` }}
+                style={{ width: '100%', animation: 'pulse 2s infinite' }}
               />
             </div>
             
-            {generationState.estimatedTimeRemaining && (
-              <p className="loading-eta">
-                About {generationState.estimatedTimeRemaining} seconds remaining
-              </p>
-            )}
+            <p className="loading-eta">
+              This usually takes a few seconds
+            </p>
           </div>
         </div>
       )}
@@ -313,7 +338,7 @@ ${request.prompt.toLowerCase().includes('skincare') ?
             <ScriptGenerator
               onGenerate={handleGenerate}
               onVoiceInput={handleVoiceInput}
-              isLoading={generationState.isGenerating}
+              isLoading={isLoading}
               personas={mockPersonas}
             />
             

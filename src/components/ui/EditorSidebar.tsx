@@ -1,5 +1,6 @@
 import React from 'react';
-import { styled, css } from '@emotion/react';
+import { css } from '@emotion/react';
+import styled from '@emotion/styled';
 import { token } from '@atlaskit/tokens';
 // Atlassian Design System Icons
 import ChartIcon from '@atlaskit/icon/glyph/graph-line';
@@ -8,7 +9,7 @@ import ChevronRightIcon from '@atlaskit/icon/glyph/chevron-right';
 import WarningIcon from '@atlaskit/icon/glyph/warning';
 import TrendingIcon from '@atlaskit/icon/glyph/arrow-up';
 import ClockIcon from '@atlaskit/icon/glyph/recent';
-import TypeIcon from '@atlaskit/icon/glyph/text-style';
+import TypeIcon from '@atlaskit/icon/glyph/edit';
 import HashIcon from '@atlaskit/icon/glyph/emoji/symbols';
 import FileIcon from '@atlaskit/icon/glyph/document';
 import PeopleIcon from '@atlaskit/icon/glyph/people';

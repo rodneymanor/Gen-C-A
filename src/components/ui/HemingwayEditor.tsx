@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { styled, css } from '@emotion/react';
+import { css } from '@emotion/react';
+import styled from '@emotion/styled';
 import { token } from '@atlaskit/tokens';
 // Atlassian Design System Icons
 import EditIcon from '@atlaskit/icon/glyph/edit';

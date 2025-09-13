@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { HemingwayEditor } from '../components/ui/HemingwayEditor';
 
 const initialContent = `The sun shone brightly over the quiet village. Children played in the streets while their parents watched from nearby porches. It was a perfect day for a walk in the countryside.
@@ -12,18 +13,38 @@ The result was surprising. The sentences became clearer. The story began to take
 As the afternoon wore on, Sarah found herself completely absorbed in her work. The outside world faded away, leaving only her characters and their journey. This was what she had been searching for all along - that perfect state of flow where writing becomes effortless.`;
 
 export default function HemingwayEditorPage() {
-  const handleContentChange = (content: string) => {
-    console.log('Content changed:', content.length, 'characters');
+  const [searchParams] = useSearchParams();
+  const [content, setContent] = useState(initialContent);
+  const [title, setTitle] = useState("The Writer's Journey");
+
+  // Initialize from URL parameters if present
+  useEffect(() => {
+    const paramContent = searchParams.get('content');
+    const paramTitle = searchParams.get('title');
+    
+    if (paramContent) {
+      setContent(decodeURIComponent(paramContent));
+    }
+    
+    if (paramTitle) {
+      setTitle(decodeURIComponent(paramTitle));
+    }
+  }, [searchParams]);
+
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent);
+    console.log('Content changed:', newContent.length, 'characters');
   };
 
-  const handleTitleChange = (title: string) => {
-    console.log('Title changed:', title);
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle);
+    console.log('Title changed:', newTitle);
   };
 
   return (
     <HemingwayEditor
-      initialContent={initialContent}
-      initialTitle="The Writer's Journey"
+      initialContent={content}
+      initialTitle={title}
       initialSidebarCollapsed={false}
       initialFocusMode={false}
       onContentChange={handleContentChange}
