@@ -20,6 +20,7 @@ import MobileIcon from '@atlaskit/icon/glyph/mobile';
 import SettingsIcon from '@atlaskit/icon/glyph/settings';
 import ArrowRightIcon from '@atlaskit/icon/glyph/arrow-right';
 import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left';
+import LayoutTwoColumnsSidebarLeftIcon from '@atlaskit/icon/core/migration/layout-two-columns-sidebar-left--editor-layout-two-left-sidebar';
 import VideoIcon from '@atlaskit/icon/glyph/video-filled';
 import ChannelIcon from '@atlaskit/icon/glyph/people-group';
 import MoreIcon from '@atlaskit/icon/glyph/more';
@@ -57,6 +58,50 @@ const navigationData: NavigationSection[] = [
   }
 ];
 
+const sidebarWrapperStyles = css`
+  display: flex;
+  align-items: flex-start;
+  height: 100vh;
+`;
+
+const sidebarArrowStyles = css`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 40px;
+  background: var(--color-neutral-100);
+  border: 1px solid var(--color-neutral-200);
+  border-left: none;
+  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+  cursor: pointer;
+  transition: var(--transition-all);
+  margin-top: var(--space-4);
+
+  &:hover {
+    background: var(--color-neutral-200);
+  }
+`;
+
+const expandedLogoStyles = css`
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+
+  span {
+    color: var(--color-neutral-800);
+    font-size: var(--font-size-h5);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .logo-dot {
+    background: var(--color-primary-500);
+    height: 8px;
+    width: 8px;
+    border-radius: var(--radius-pill);
+  }
+`;
+
 const sidebarStyles = (isCollapsed: boolean, isMobile: boolean) => css`
   display: flex;
   flex-direction: column;
@@ -66,7 +111,7 @@ const sidebarStyles = (isCollapsed: boolean, isMobile: boolean) => css`
   transition: var(--transition-all);
   position: ${isMobile ? 'fixed' : 'relative'};
   z-index: 100;
-  
+
   ${isMobile ? css`
     /* Mobile: fixed positioned overlay */
     left: 0;
@@ -411,24 +456,32 @@ export const Navigation: React.FC<NavigationProps> = ({
       {isMobile && !isCollapsed && (
         <div css={overlayStyles} onClick={onToggleCollapse} />
       )}
-      
-      <motion.nav
-        css={sidebarStyles(isCollapsed, isMobile)}
-        initial={false}
-        animate={{
-          width: isMobile ? (isCollapsed ? 0 : 280) : (isCollapsed ? 64 : 280)
-        }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="main-navigation"
-        role="navigation"
-        aria-label="Main navigation"
-      >
+
+      <div css={sidebarWrapperStyles}>
+        <motion.nav
+          css={sidebarStyles(isCollapsed, isMobile)}
+          initial={false}
+          animate={{
+            width: isMobile ? (isCollapsed ? 0 : 280) : (isCollapsed ? 64 : 280)
+          }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          className="main-navigation"
+          role="navigation"
+          aria-label="Main navigation"
+        >
         <div css={headerStyles}>
           <div className="brand">
-            <div className="logo" aria-hidden="true">G</div>
-            {!isCollapsed && <h1>Gen.C Alpha</h1>}
+            {isCollapsed ? (
+              <LayoutTwoColumnsSidebarLeftIcon label="Gen.C Logo" size="large" />
+            ) : (
+              <div css={expandedLogoStyles}>
+                <span>Gen</span>
+                <div className="logo-dot"></div>
+                <span>C</span>
+              </div>
+            )}
           </div>
-          
+
           <Button
             variant="subtle"
             size="small"
@@ -470,7 +523,22 @@ export const Navigation: React.FC<NavigationProps> = ({
             <UserMenu user={user} isCollapsed={isCollapsed} />
           </div>
         </div>
-      </motion.nav>
+        </motion.nav>
+
+        {!isMobile && (
+          <button
+            css={sidebarArrowStyles}
+            onClick={onToggleCollapse}
+            aria-label={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          >
+            {isCollapsed ? (
+              <ArrowRightIcon label="" size="small" />
+            ) : (
+              <ArrowLeftIcon label="" size="small" />
+            )}
+          </button>
+        )}
+      </div>
     </>
   );
 };
