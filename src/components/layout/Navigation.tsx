@@ -4,9 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
 import { Avatar } from '../ui/Avatar';
-import { Card } from '../ui/Card';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useAuth } from '../../contexts/AuthContext';
 import type { NavigationItem, NavigationSection, User } from '../../types';
@@ -36,25 +34,25 @@ const navigationData: NavigationSection[] = [
   {
     section: 'Content',
     items: [
-      { path: '/dashboard', label: 'Dashboard', icon: <HomeIcon label="Dashboard" />, badge: '' },
-      { path: '/collections', label: 'Collections', icon: <FolderIcon label="Collections" />, badge: '12' },
-      { path: '/library', label: 'Library', icon: <BookIcon label="Library" />, badge: '247' },
-      { path: '/videos', label: 'Videos', icon: <VideoIcon label="Videos" />, badge: '' },
-      { path: '/channels', label: 'Channels', icon: <ChannelIcon label="Channels" />, badge: '24' },
-      { path: '/write', label: 'Write', icon: <EditIcon label="Write" />, badge: '' },
+      { path: '/dashboard', label: 'Dashboard', icon: <HomeIcon label="Dashboard" /> },
+      { path: '/collections', label: 'Collections', icon: <FolderIcon label="Collections" /> },
+      { path: '/library', label: 'Library', icon: <BookIcon label="Library" /> },
+      { path: '/videos', label: 'Videos', icon: <VideoIcon label="Videos" /> },
+      { path: '/channels', label: 'Channels', icon: <ChannelIcon label="Channels" /> },
+      { path: '/write', label: 'Write', icon: <EditIcon label="Write" /> },
     ]
   },
   {
     section: 'Brand',
     items: [
-      { path: '/brand-hub', label: 'Brand Hub', icon: <PeopleIcon label="Brand Hub" />, badge: '5' }
+      { path: '/brand-hub', label: 'Brand Hub', icon: <PeopleIcon label="Brand Hub" /> }
     ]
   },
   {
     section: 'Tools',
     items: [
-      { path: '/extensions', label: 'Extensions', icon: <AddonIcon label="Extensions" />, badge: '' },
-      { path: '/mobile', label: 'Mobile Shortcuts', icon: <MobileIcon label="Mobile Shortcuts" />, badge: '' }
+      { path: '/extensions', label: 'Extensions', icon: <AddonIcon label="Extensions" /> },
+      { path: '/mobile', label: 'Mobile Shortcuts', icon: <MobileIcon label="Mobile Shortcuts" /> }
     ]
   }
 ];
@@ -185,31 +183,9 @@ const navItemStyles = (isActive: boolean, isCollapsed: boolean) => css`
     transition: var(--transition-colors);
   }
   
-  .nav-badge {
-    margin-left: auto;
-    opacity: ${isCollapsed ? '0' : '1'};
-  }
-  
   ${isCollapsed && css`
     justify-content: center;
     padding: var(--space-3);
-    
-    .collapsed-badge {
-      position: absolute;
-      top: -4px;
-      right: -4px;
-      background: var(--color-primary-500);
-      color: white;
-      border-radius: var(--radius-full);
-      font-size: 10px;
-      padding: 2px 4px;
-      min-width: 16px;
-      height: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: var(--font-weight-bold);
-    }
   `}
 `;
 
@@ -343,16 +319,6 @@ const NavItem: React.FC<{
   >
     <span className="nav-icon">{item.icon}</span>
     <span className="nav-label">{item.label}</span>
-    {item.badge && !isCollapsed && (
-      <div className="nav-badge">
-        <Badge variant={isActive ? 'primary' : 'neutral'} size="small">
-          {item.badge}
-        </Badge>
-      </div>
-    )}
-    {item.badge && isCollapsed && (
-      <span className="collapsed-badge">{item.badge}</span>
-    )}
   </Link>
 );
 
@@ -495,7 +461,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         
         <div css={footerStyles}>
           <NavItem
-            item={{ path: '/settings', label: 'Settings', icon: <SettingsIcon label="Settings" />, badge: '' }}
+            item={{ path: '/settings', label: 'Settings', icon: <SettingsIcon label="Settings" /> }}
             isActive={location.pathname === '/settings'}
             isCollapsed={isCollapsed}
           />

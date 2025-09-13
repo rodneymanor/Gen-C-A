@@ -184,7 +184,6 @@ export interface NavigationItem {
   path: string;
   label: string;
   icon: React.ReactNode;
-  badge?: string;
   children?: NavigationItem[];
 }
 
