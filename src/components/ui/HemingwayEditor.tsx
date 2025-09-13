@@ -116,7 +116,7 @@ const EditorContent = styled.div<{ sidebarCollapsed: boolean }>`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
+  background: var(--color-surface-elevated, ${token('color.background.neutral', '#fafbfc')});
   min-width: 0; /* Prevents grid item from overflowing */
 
   /* Grid takes care of sizing, no need for margins */
@@ -129,7 +129,7 @@ const TextEditor = styled.textarea`
   font-size: var(--font-size-body, 1rem);
   line-height: var(--line-height-relaxed, 1.6);
   color: var(--color-text-primary, ${token('color.text', '#172b4d')});
-  background: var(--color-surface, ${token('color.background.input', '#ffffff')});
+  background: var(--color-surface-elevated, ${token('color.background.input', '#fafbfc')});
   border: none;
   resize: none;
   outline: none;
