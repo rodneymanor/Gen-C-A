@@ -158,3 +158,166 @@ const mockCSSVariables = css`
 const styleElement = document.createElement('style');
 styleElement.textContent = mockCSSVariables.styles;
 document.head.appendChild(styleElement);
+
+// Mock Firebase Admin SDK for service testing
+vi.mock('firebase-admin/app', () => ({
+  initializeApp: vi.fn(() => ({
+    name: 'test-app',
+    options: {}
+  })),
+  getApp: vi.fn(() => ({
+    name: 'test-app',
+    options: {}
+  })),
+  cert: vi.fn()
+}))
+
+vi.mock('firebase-admin/auth', () => ({
+  getAuth: vi.fn(() => ({
+    verifyIdToken: vi.fn(),
+    createUser: vi.fn(),
+    updateUser: vi.fn(),
+    deleteUser: vi.fn(),
+    setCustomUserClaims: vi.fn(),
+    getUser: vi.fn(),
+    getUserByEmail: vi.fn(),
+    createCustomToken: vi.fn()
+  }))
+}))
+
+vi.mock('firebase-admin/firestore', () => ({
+  getFirestore: vi.fn(() => ({
+    collection: vi.fn(() => ({
+      doc: vi.fn(() => ({
+        get: vi.fn(),
+        set: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+        onSnapshot: vi.fn()
+      })),
+      add: vi.fn(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      get: vi.fn()
+    })),
+    batch: vi.fn(() => ({
+      set: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      commit: vi.fn()
+    })),
+    runTransaction: vi.fn()
+  }))
+}))
+
+// Mock Firebase Client SDK for service testing
+vi.mock('firebase/firestore', () => ({
+  getFirestore: vi.fn(),
+  doc: vi.fn(),
+  getDoc: vi.fn(),
+  setDoc: vi.fn(),
+  updateDoc: vi.fn(),
+  deleteDoc: vi.fn(),
+  collection: vi.fn(),
+  getDocs: vi.fn(),
+  addDoc: vi.fn(),
+  query: vi.fn(),
+  where: vi.fn(),
+  orderBy: vi.fn(),
+  limit: vi.fn(),
+  onSnapshot: vi.fn()
+}))
+
+vi.mock('firebase/auth', () => ({
+  getAuth: vi.fn(),
+  signInWithEmailAndPassword: vi.fn(),
+  signOut: vi.fn(),
+  onAuthStateChanged: vi.fn(),
+  createUserWithEmailAndPassword: vi.fn()
+}))
+
+// Global test utilities for service testing
+global.testUtils = {
+  createMockUser: (overrides = {}) => ({
+    uid: 'test-user-123',
+    email: 'test@example.com',
+    name: 'Test User',
+    role: 'user',
+    permissions: ['read:collections', 'write:collections'],
+    ...overrides
+  }),
+
+  createMockCollection: (overrides = {}) => ({
+    id: 'test-collection-123',
+    title: 'Test Collection',
+    description: 'Test collection description',
+    userId: 'test-user-123',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    videos: [],
+    isPublic: false,
+    ...overrides
+  }),
+
+  createMockVideo: (overrides = {}) => ({
+    id: 'test-video-123',
+    url: 'https://example.com/video.mp4',
+    title: 'Test Video',
+    description: 'Test video description',
+    platform: 'custom',
+    duration: 120,
+    thumbnail: 'https://example.com/thumbnail.jpg',
+    metadata: {},
+    processedAt: new Date().toISOString(),
+    ...overrides
+  }),
+
+  createMockRBACContext: (overrides = {}) => ({
+    userId: 'test-user-123',
+    role: 'user',
+    permissions: ['read:collections', 'write:collections'],
+    organizationId: null,
+    ...overrides
+  }),
+
+  delay: (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+}
+
+// Performance testing utilities
+global.performanceUtils = {
+  measureTime: async <T>(fn: () => Promise<T>): Promise<{ result: T; duration: number }> => {
+    const start = performance.now()
+    const result = await fn()
+    const end = performance.now()
+    return { result, duration: end - start }
+  },
+
+  expectPerformance: (duration: number, threshold: number, operation: string) => {
+    if (duration > threshold) {
+      console.warn(`Performance warning: ${operation} took ${duration}ms (threshold: ${threshold}ms)`)
+    }
+    expect(duration).toBeLessThan(threshold)
+  }
+}
+
+// Set test environment variables for services
+process.env.NODE_ENV = 'test'
+process.env.FIREBASE_PROJECT_ID = 'test-project'
+process.env.FIREBASE_PRIVATE_KEY = 'test-private-key'
+process.env.FIREBASE_CLIENT_EMAIL = 'test@service-account.iam.gserviceaccount.com'
+
+declare global {
+  var testUtils: {
+    createMockUser: (overrides?: any) => any
+    createMockCollection: (overrides?: any) => any
+    createMockVideo: (overrides?: any) => any
+    createMockRBACContext: (overrides?: any) => any
+    delay: (ms: number) => Promise<void>
+  }
+  
+  var performanceUtils: {
+    measureTime: <T>(fn: () => Promise<T>) => Promise<{ result: T; duration: number }>
+    expectPerformance: (duration: number, threshold: number, operation: string) => void
+  }
+}
