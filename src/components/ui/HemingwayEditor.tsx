@@ -56,18 +56,18 @@ const EditorContainer = styled.div<{ focusMode: boolean }>`
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: ${token('color.background.neutral')};
+  background: ${token('color.background.neutral', '#f4f5f7')};
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   position: relative;
-  
+
   ${(props: any) => props.focusMode && css`
     .editor-sidebar,
     .editor-toolbar {
       opacity: 0;
       pointer-events: none;
-      transition: opacity 250ms cubic-bezier(0.4, 0, 0.2, 1);
+      transition: opacity 250ms ease;
     }
-    
+
     &:hover .editor-sidebar,
     &:hover .editor-toolbar {
       opacity: 1;
@@ -80,22 +80,24 @@ const EditorHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: ${token('space.200')} ${token('space.300')};
-  border-bottom: 1px solid ${token('color.border')};
-  background: ${token('color.background.neutral')};
+  padding: ${token('space.200', '0.5rem')} ${token('space.300', '0.75rem')};
+  border-bottom: 1px solid ${token('color.border', '#e4e6ea')};
+  background: ${token('color.background.neutral', '#f4f5f7')};
   z-index: 10;
+  box-shadow: ${token('elevation.shadow.raised', '0 1px 3px rgba(0,0,0,0.06)')};
 `;
 
 const HeaderActions = styled.div`
   display: flex;
   align-items: center;
-  gap: ${token('space.100')};
+  gap: ${token('space.100', '0.25rem')};
 `;
 
 const EditorMain = styled.div<{ sidebarCollapsed: boolean }>`
   display: flex;
   flex: 1;
   overflow: hidden;
+  background: ${token('color.background.neutral', '#f4f5f7')};
 `;
 
 const EditorContent = styled.div<{ sidebarCollapsed: boolean }>`
@@ -103,17 +105,18 @@ const EditorContent = styled.div<{ sidebarCollapsed: boolean }>`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: margin-right 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: margin-right 250ms ease;
   margin-right: ${(props: any) => props.sidebarCollapsed ? '0' : '320px'};
-  
+  background: ${token('color.background.neutral', '#f4f5f7')};
+
   @media (max-width: 1024px) {
     margin-right: 0;
   }
-  
+
   @media (max-width: 768px) {
     margin-right: 0;
   }
-  
+
   @media (max-width: 480px) {
     margin-right: 0;
   }
@@ -122,36 +125,42 @@ const EditorContent = styled.div<{ sidebarCollapsed: boolean }>`
 
 const TextEditor = styled.textarea`
   flex: 1;
-  padding: ${token('space.400')};
+  padding: ${token('space.400', '1rem')};
   font-size: 1rem;
   line-height: 1.6;
-  color: ${token('color.text')};
-  background: ${token('color.background.neutral')};
+  color: ${token('color.text', '#172b4d')};
+  background: ${token('color.background.neutral', '#f4f5f7')};
   border: none;
   resize: none;
   outline: none;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  
+  transition: all 0.25s ease;
+
   &::placeholder {
-    color: ${token('color.text.subtlest')};
+    color: ${token('color.text.subtlest', '#8993a4')};
   }
-  
+
+  &:focus {
+    background: ${token('color.background.input', '#ffffff')};
+    box-shadow: ${token('elevation.shadow.raised', '0 4px 6px rgba(0, 0, 0, 0.07)')};
+  }
+
   /* Custom scrollbar */
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
-  
+
   &::-webkit-scrollbar-track {
-    background: ${token('color.background.neutral.subtle')};
-    border-radius: ${token('border.radius')};
+    background: ${token('color.background.neutral.subtle', '#e4e6ea')};
+    border-radius: ${token('border.radius.200', '0.5rem')};
   }
-  
+
   &::-webkit-scrollbar-thumb {
-    background: ${token('color.background.neutral.bold')};
-    border-radius: ${token('border.radius')};
-    
+    background: ${token('color.background.neutral.bold', '#8993a4')};
+    border-radius: ${token('border.radius.200', '0.5rem')};
+
     &:hover {
-      background: #6b778c;
+      background: ${token('color.background.brand.bold', '#0B5CFF')};
     }
   }
 `;
@@ -369,9 +378,13 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
     <EditorContainer focusMode={focusMode} className={className}>
       {/* Header */}
       <EditorHeader>
-        <div style={{ display: 'flex', alignItems: 'center', gap: token('space.200') }}>
-          <EditIcon label="" size="medium" />
-          <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: token('space.200', '0.5rem') }}>
+          <EditIcon label="" size="medium" primaryColor={token('color.background.brand.bold', '#0B5CFF')} />
+          <span style={{
+            fontWeight: token('font.weight.medium', '500'),
+            fontSize: '0.875rem',
+            color: token('color.text', '#172b4d')
+          }}>
             Hemingway Editor
           </span>
         </div>

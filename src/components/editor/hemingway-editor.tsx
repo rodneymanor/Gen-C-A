@@ -593,7 +593,10 @@ export function HemingwayEditor({
   }
 
   return (
-    <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+    <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`} style={{
+      background: 'var(--color-background-neutral, #f4f5f7)',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
+    }}>
       {/* Floating Expand Button when sidebar is collapsed */}
       {sidebarCollapsed && (
         <Button
@@ -612,7 +615,11 @@ export function HemingwayEditor({
       <div className="main-content flex h-full flex-col">
         {/* Title Editor */}
         {showTitleEditor && (
-          <div className="border-b p-4">
+          <div className="border-b p-4" style={{
+            background: 'var(--color-background-neutral, #f4f5f7)',
+            borderColor: 'var(--color-border, #e4e6ea)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+          }}>
             {isEditingTitle ? (
               <div className="flex items-center gap-2">
                 <Input
@@ -622,6 +629,11 @@ export function HemingwayEditor({
                   className="border-none px-0 text-2xl font-bold shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                   placeholder="Enter title..."
                   autoFocus
+                  style={{
+                    color: 'var(--color-text, #172b4d)',
+                    background: 'transparent',
+                    fontWeight: 'var(--font-weight-semibold, 600)'
+                  }}
                 />
                 <Button
                   variant="ghost"
@@ -646,7 +658,10 @@ export function HemingwayEditor({
                 onClick={handleTitleEdit}
                 title="Click to edit title"
               >
-                <h1 className="text-2xl font-bold transition-colors group-hover:text-blue-600">
+                <h1 className="text-2xl font-bold transition-colors group-hover:text-blue-600" style={{
+                  color: 'var(--color-text, #172b4d)',
+                  fontWeight: 'var(--font-weight-semibold, 600)'
+                }}>
                   {title || "Untitled"}
                 </h1>
                 <Edit2 className="h-4 w-4 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
@@ -695,10 +710,17 @@ export function HemingwayEditor({
 
       {/* Right Sidebar - Statistics & Analysis */}
       {!sidebarCollapsed && (
-        <div className="right-sidebar bg-background/50 border-border/50 overflow-y-auto border-l backdrop-blur-sm">
+        <div className="right-sidebar bg-background/50 border-border/50 overflow-y-auto border-l backdrop-blur-sm" style={{
+          background: 'var(--color-background-neutral, #f4f5f7)',
+          borderColor: 'var(--color-border, #e4e6ea)',
+          boxShadow: '-1px 0 3px rgba(0,0,0,0.06)'
+        }}>
           <div className="sidebar-content">
             {/* Sidebar Header */}
-            <div className="hemingway-sidebar-header -m-4 mb-4 flex items-center justify-between p-3">
+            <div className="hemingway-sidebar-header -m-4 mb-4 flex items-center justify-between p-3" style={{
+              background: 'var(--color-background-neutral, #f4f5f7)',
+              borderBottom: '1px solid var(--color-border, #e4e6ea)'
+            }}>
               <h3 className="flex items-center gap-2 text-sm font-semibold">Analysis</h3>
               <Button
                 variant="ghost"

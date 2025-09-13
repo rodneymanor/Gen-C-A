@@ -189,16 +189,20 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = memo(
       <TooltipProvider>
         <div
           className={cn(
-            // Enhanced floating design with sidebar styling
+            // Perplexity flat design with subtle depth
             "floating-toolbar-responsive",
-            "bg-sidebar border-sidebar-border text-muted-foreground",
             "fixed bottom-6 left-1/2 z-[10000] -translate-x-1/2 transition-all duration-300",
-            "flex items-center gap-1 rounded-lg border px-3 py-2 shadow-lg",
-            // Hover effect for entire toolbar - subtle like sidebar
-            "hover:shadow-xl",
+            "flex items-center gap-1 rounded-lg border px-3 py-2",
             disabled && "pointer-events-none opacity-50",
             className,
           )}
+          style={{
+            background: 'var(--color-background-neutral, #f4f5f7)',
+            borderColor: 'var(--color-border, #e4e6ea)',
+            color: 'var(--color-text, #172b4d)',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+            backdropFilter: 'blur(8px)'
+          }}
           role="toolbar"
           aria-label="Editor actions"
         >
@@ -218,7 +222,10 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = memo(
           {/* Primary Actions Group */}
           <div className="mr-2 flex items-center gap-1">
             {/* Undo/Redo Group */}
-            <div className="border-border/10 bg-muted/30 flex items-center rounded-lg border p-1">
+            <div className="flex items-center rounded-lg border p-1" style={{
+              borderColor: 'var(--color-border, #e4e6ea)',
+              background: 'var(--color-background-neutral-subtle, #ffffff)'
+            }}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -254,12 +261,28 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = memo(
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex h-8 shrink-0 items-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors"
+                      className="flex h-8 shrink-0 items-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors"
                       disabled={disabled}
+                      style={{
+                        color: 'var(--color-text-inverse, #ffffff)',
+                        background: 'var(--color-background-brand-bold, #0B5CFF)',
+                        borderRadius: 'var(--border-radius-200, 0.5rem)',
+                        fontWeight: 'var(--font-weight-medium, 500)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--color-background-brand-bold-hovered, #0052CC)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 6px 8px rgba(0, 0, 0, 0.08)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'var(--color-background-brand-bold, #0B5CFF)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     >
-                      <Sparkles className="h-4 w-4 shrink-0" />
-                      <span className="text-sm font-medium">AI</span>
-                      <ChevronDown className="h-4 w-4 shrink-0" />
+                      <Sparkles className="h-4 w-4 shrink-0" style={{ color: 'var(--color-text-inverse, #ffffff)' }} />
+                      <span className="text-sm font-medium" style={{ color: 'var(--color-text-inverse, #ffffff)' }}>AI</span>
+                      <ChevronDown className="h-4 w-4 shrink-0" style={{ color: 'var(--color-text-inverse, #ffffff)' }} />
                     </button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
