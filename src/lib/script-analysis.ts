@@ -401,21 +401,11 @@ export const HOOK_TYPES = [
   { id: "emotional", label: "Emotional Hook", description: "Appeal to emotions" },
 ] as const;
 
-// Import the new action provider
-import { ScriptActionProvider, type ScriptElement as NewScriptElement } from "./contextual-actions";
-
 // Generate contextual actions for an element
 export const generateContextualActions = (element: ScriptElement): ContextualAction[] => {
-  // Convert to new format and use ScriptActionProvider
-  const newElement: NewScriptElement = {
-    ...element,
-    confidence: element.confidence,
-  };
+  const actions: ContextualAction[] = [];
 
-  const provider = new ScriptActionProvider();
-  return provider.getActions(newElement);
-
-  // Add element-specific legacy actions for backward compatibility
+  // Add element-specific actions based on type
   switch (element.type) {
     case "hook":
       actions.push({
@@ -424,6 +414,20 @@ export const generateContextualActions = (element: ScriptElement): ContextualAct
         label: "Improve Hook",
         icon: "🪝",
         description: "Make this hook more engaging and attention-grabbing",
+      });
+      actions.push({
+        id: "rewrite_hook",
+        type: "rewrite_hook",
+        label: "Rewrite Hook",
+        icon: "✏️",
+        description: "Rewrite this hook in a different style",
+        hasDropdown: true,
+        dropdownOptions: HOOK_TYPES.map(type => ({
+          id: type.id,
+          label: type.label,
+          description: type.description,
+          icon: "🔄"
+        }))
       });
       break;
 
@@ -440,7 +444,7 @@ export const generateContextualActions = (element: ScriptElement): ContextualAct
     case "golden-nugget":
       actions.push({
         id: "enhance_nugget",
-        type: "enhance_nugget",
+        type: "custom",
         label: "Enhance Value",
         icon: "💎",
         description: "Make this insight more valuable and actionable",
@@ -457,6 +461,23 @@ export const generateContextualActions = (element: ScriptElement): ContextualAct
       });
       break;
   }
+
+  // Add common actions for all elements
+  actions.push({
+    id: "edit",
+    type: "edit",
+    label: "Edit",
+    icon: "✏️",
+    description: "Edit this element directly",
+  });
+  
+  actions.push({
+    id: "humanize",
+    type: "humanize",
+    label: "Humanize",
+    icon: "👤",
+    description: "Make this content sound more human and natural",
+  });
 
   return actions;
 };
