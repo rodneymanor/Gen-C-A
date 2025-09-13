@@ -94,32 +94,32 @@ const HeaderActions = styled.div`
 `;
 
 const EditorMain = styled.div<{ sidebarCollapsed: boolean }>`
-  display: flex;
+  display: grid;
+  grid-template-columns: ${(props: any) => props.sidebarCollapsed ? '1fr' : '1fr 320px'};
   flex: 1;
   overflow: hidden;
   background: ${token('color.background.neutral', '#f4f5f7')};
-`;
-
-const EditorContent = styled.div<{ sidebarCollapsed: boolean }>`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: margin-right 250ms ease;
-  margin-right: ${(props: any) => props.sidebarCollapsed ? '0' : '320px'};
-  background: ${token('color.background.neutral', '#f4f5f7')};
+  transition: grid-template-columns 250ms ease;
+  gap: 0;
 
   @media (max-width: 1024px) {
-    margin-right: 0;
+    grid-template-columns: ${(props: any) => props.sidebarCollapsed ? '1fr' : '1fr 280px'};
   }
 
   @media (max-width: 768px) {
-    margin-right: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: ${(props: any) => props.sidebarCollapsed ? '1fr' : 'auto 1fr'};
   }
+`;
 
-  @media (max-width: 480px) {
-    margin-right: 0;
-  }
+const EditorContent = styled.div<{ sidebarCollapsed: boolean }>`
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: ${token('color.background.neutral', '#f4f5f7')};
+  min-width: 0; /* Prevents grid item from overflowing */
+
+  /* Grid takes care of sizing, no need for margins */
 `;
 
 

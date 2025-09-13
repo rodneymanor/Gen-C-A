@@ -54,25 +54,21 @@ export interface EditorSidebarProps {
 }
 
 const SidebarContainer = styled.div<{ collapsed: boolean }>`
-  position: fixed;
-  right: 0;
-  top: 0;
-  width: ${props => props.collapsed ? '0' : '320px'};
-  height: 100vh;
+  display: ${props => props.collapsed ? 'none' : 'flex'};
+  flex-direction: column;
   background: ${token('color.background.neutral.subtle')};
   border-left: 1px solid ${token('color.border')};
-  transform: translateX(${props => props.collapsed ? '100%' : '0'});
-  transition: all ${token('motion.duration.medium')} ${token('motion.easing.standard')};
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
-  
-  /* Mobile responsiveness */
+  min-width: 0; /* Prevents grid overflow */
+  height: 100%;
+
+  /* Mobile responsiveness - for grid row layout */
   @media (max-width: 768px) {
-    width: ${props => props.collapsed ? '0' : '100vw'};
     border-left: none;
-    box-shadow: ${props => props.collapsed ? 'none' : token('elevation.shadow.overlay')};
+    border-top: 1px solid ${token('color.border')};
+    order: -1; /* Show above editor content on mobile */
+    max-height: ${props => props.collapsed ? '0' : '300px'};
+    overflow-y: auto;
   }
 `;
 
