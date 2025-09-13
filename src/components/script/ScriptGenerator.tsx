@@ -11,6 +11,7 @@ export interface ScriptGeneratorProps {
   onVoiceInput?: () => void;
   isLoading?: boolean;
   personas?: BrandPersona[];
+  buttonVariant?: 'bottom-center' | 'bottom-right' | 'right-side' | 'under-input';
 }
 
 const generatorStyles = css`
@@ -51,17 +52,19 @@ const generatorStyles = css`
 `;
 
 const promptSectionStyles = css`
+  position: relative;
+
   .prompt-textarea {
     min-height: 120px;
     resize: vertical;
   }
-  
+
   .prompt-suggestions {
     margin-top: var(--space-3);
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
-    
+
     .suggestion-chip {
       padding: var(--space-1) var(--space-3);
       background: var(--color-neutral-100);
@@ -71,12 +74,43 @@ const promptSectionStyles = css`
       color: var(--color-neutral-700);
       cursor: pointer;
       transition: var(--transition-all);
-      
+
       &:hover {
         background: var(--color-primary-50);
         border-color: var(--color-primary-300);
         color: var(--color-primary-700);
       }
+    }
+  }
+
+  .generate-button-bottom-right {
+    position: absolute;
+    bottom: var(--space-3);
+    right: var(--space-3);
+    z-index: 10;
+  }
+
+  .generate-button-right-side {
+    position: absolute;
+    top: 50%;
+    right: -60px;
+    transform: translateY(-50%);
+    z-index: 10;
+
+    @media (max-width: 1200px) {
+      position: static;
+      transform: none;
+      margin-top: var(--space-3);
+    }
+  }
+
+  .generate-button-under-input {
+    margin-top: var(--space-4);
+    display: flex;
+    gap: var(--space-3);
+
+    @media (max-width: 768px) {
+      flex-direction: column;
     }
   }
 `;
@@ -205,7 +239,8 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   onGenerate,
   onVoiceInput,
   isLoading = false,
-  personas = []
+  personas = [],
+  buttonVariant = 'bottom-center'
 }) => {
   const [formData, setFormData] = useState({
     prompt: '',
@@ -289,6 +324,63 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
               </button>
             ))}
           </div>
+
+          {/* Bottom Right Button Variant */}
+          {buttonVariant === 'bottom-right' && (
+            <div className="generate-button-bottom-right">
+              <Button
+                variant="ai-powered"
+                size="medium"
+                onClick={handleGenerate}
+                isLoading={isLoading}
+                isDisabled={!formData.prompt.trim()}
+                iconBefore="✨"
+              >
+                Generate
+              </Button>
+            </div>
+          )}
+
+          {/* Right Side Button Variant */}
+          {buttonVariant === 'right-side' && (
+            <div className="generate-button-right-side">
+              <Button
+                variant="ai-powered"
+                size="medium"
+                onClick={handleGenerate}
+                isLoading={isLoading}
+                isDisabled={!formData.prompt.trim()}
+                iconBefore="✨"
+              >
+                Generate Script
+              </Button>
+            </div>
+          )}
+
+          {/* Under Input Button Variant */}
+          {buttonVariant === 'under-input' && (
+            <div className="generate-button-under-input">
+              <Button
+                variant="ai-powered"
+                size="large"
+                onClick={handleGenerate}
+                isLoading={isLoading}
+                isDisabled={!formData.prompt.trim()}
+                iconBefore="✨"
+              >
+                Generate Script
+              </Button>
+              <Button
+                variant="secondary"
+                size="large"
+                onClick={onVoiceInput}
+                isDisabled={isLoading}
+                iconBefore="🎤"
+              >
+                Use Voice Input
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Settings Grid */}
@@ -487,30 +579,33 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
         </div>
       </div>
 
-      <CardFooter css={actionsStyles}>
-        <Button
-          variant="ai-powered"
-          size="large"
-          onClick={handleGenerate}
-          isLoading={isLoading}
-          isDisabled={!formData.prompt.trim()}
-          className="action-button"
-          iconBefore="✨"
-        >
-          Generate Script
-        </Button>
-        
-        <Button
-          variant="secondary"
-          size="large"
-          onClick={onVoiceInput}
-          isDisabled={isLoading}
-          className="action-button"
-          iconBefore="🎤"
-        >
-          Use Voice Input
-        </Button>
-      </CardFooter>
+      {/* Show default bottom center buttons only for bottom-center variant */}
+      {buttonVariant === 'bottom-center' && (
+        <CardFooter css={actionsStyles}>
+          <Button
+            variant="ai-powered"
+            size="large"
+            onClick={handleGenerate}
+            isLoading={isLoading}
+            isDisabled={!formData.prompt.trim()}
+            className="action-button"
+            iconBefore="✨"
+          >
+            Generate Script
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="large"
+            onClick={onVoiceInput}
+            isDisabled={isLoading}
+            className="action-button"
+            iconBefore="🎤"
+          >
+            Use Voice Input
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 };
