@@ -11,6 +11,8 @@ import { Library } from './pages/Library';
 import { Enhanced } from './pages/Enhanced';
 import { Videos } from './pages/Videos';
 import { ChannelsPage } from './pages/ChannelsPage';
+import { TranscriptionServicePage } from './pages/TranscriptionService';
+import { InstagramApiTest } from './pages/InstagramApiTest';
 import SettingsPage from './pages/SettingsPage';
 import HemingwayEditorPage from './pages/HemingwayEditorPage';
 import LoginPage from './pages/Login';
@@ -80,7 +82,23 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
-            
+
+            <Route path="/transcription" element={
+              <ProtectedRoute>
+                <Layout>
+                  <TranscriptionServicePage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/instagram-test" element={
+              <ProtectedRoute>
+                <Layout>
+                  <InstagramApiTest />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/brand-hub" element={
               <ProtectedRoute>
                 <Layout>
