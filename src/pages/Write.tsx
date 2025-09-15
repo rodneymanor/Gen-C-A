@@ -110,31 +110,7 @@ const loadingOverlayStyles = css`
   }
 `;
 
-// Mock personas data
-const mockPersonas: BrandPersona[] = [
-  {
-    id: '1',
-    name: 'Summer Lifestyle',
-    description: 'Energetic and fun personality for lifestyle content',
-    tone: 'Energetic & Fun',
-    voice: 'Casual and approachable',
-    targetAudience: 'Young adults (18-25)',
-    keywords: ['summer', 'lifestyle', 'fun', 'energetic'],
-    platforms: ['tiktok', 'instagram'],
-    created: new Date()
-  },
-  {
-    id: '2',
-    name: 'Fitness Influencer',
-    description: 'Motivational and inspiring voice for fitness content',
-    tone: 'Motivational & Inspiring',
-    voice: 'Encouraging and supportive',
-    targetAudience: 'Fitness enthusiasts (20-35)',
-    keywords: ['fitness', 'motivation', 'health', 'strength'],
-    platforms: ['youtube', 'instagram'],
-    created: new Date()
-  }
-];
+// Brand voices loaded from API; fallback to a small default list if none
 
 interface GenerationState {
   isGenerating: boolean;
@@ -148,6 +124,7 @@ export const Write: React.FC = () => {
   const { generateScript, isLoading, error } = useScriptGeneration();
   const [view, setView] = useState<'generate' | 'edit'>('generate');
   const [generatedScript, setGeneratedScript] = useState<Script | null>(null);
+  const [personas, setPersonas] = useState<BrandPersona[]>([]);
   const [generationState, setGenerationState] = useState<GenerationState>({
     isGenerating: false,
     progress: 0,
@@ -287,6 +264,37 @@ ${result.script.wta}`;
     }
   };
 
+  // Load brand voices from API on mount
+  React.useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/brand-voices/list');
+        const data = await res.json().catch(() => null);
+        if (isMounted && res.ok && data?.success && Array.isArray(data.voices)) {
+          // Map to BrandPersona
+          const mapped: BrandPersona[] = data.voices.map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            description: v.description || '',
+            tone: v.tone || 'Varied',
+            voice: v.voice || 'Derived from analysis',
+            targetAudience: v.targetAudience || 'General',
+            keywords: v.keywords || [],
+            platforms: v.platforms || ['tiktok'],
+            created: v.created ? new Date(v.created._seconds ? v.created._seconds * 1000 : v.created) : new Date(),
+          }));
+          setPersonas(mapped);
+        } else {
+          // Silent fallback
+        }
+      } catch (_) {
+        // Ignore errors; keep UI functional
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
   const handleVoiceInput = () => {
     console.log('Voice input requested');
     // In a real app, this would open the voice input modal
@@ -358,7 +366,7 @@ ${result.script.wta}`;
               onGenerate={handleGenerate}
               onVoiceInput={handleVoiceInput}
               isLoading={isLoading}
-              personas={mockPersonas}
+              personas={personas}
             />
             
             <TrendingIdeas

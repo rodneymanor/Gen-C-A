@@ -52,11 +52,11 @@ const headerStyles = css`
 const contentStyles = css`
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-6);
+  padding: 0;
   background: var(--color-neutral-50);
-  
+
   @media (max-width: 768px) {
-    padding: var(--space-4);
+    padding: 0;
   }
   
   /* Custom scrollbar for content area */
@@ -115,6 +115,24 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
   const { isMobile } = useResponsive();
   const { announce } = useLiveAnnouncer();
+  const bypassAuth = (import.meta as any).env?.VITE_BYPASS_AUTH === '1' 
+    || (typeof window !== 'undefined' && window?.localStorage?.getItem('bypassAuth') === '1');
+
+  const stubUser = {
+    id: 'bypass-user',
+    name: 'Dev Tester',
+    email: 'dev@example.com',
+    avatar: '',
+    role: 'creator' as const,
+    plan: 'free' as const,
+    preferences: {
+      theme: 'light' as const,
+      language: 'en',
+      notifications: { email: true, push: false, inApp: true, frequency: 'immediate' as const },
+      accessibility: { reducedMotion: false, highContrast: false, fontSize: 'medium' as const, screenReaderOptimized: false }
+    }
+  };
+  const navUser = currentUser ?? (bypassAuth ? stubUser : currentUser);
 
   const handleToggleNavigation = () => {
     const newCollapsed = !isNavigationCollapsed;
@@ -139,7 +157,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <Navigation
         isCollapsed={isMobile ? false : isNavigationCollapsed}
         onToggleCollapse={handleToggleNavigation}
-        user={currentUser!}
+        user={navUser!}
       />
       
       {/* Main Content Area */}

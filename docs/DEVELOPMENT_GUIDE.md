@@ -865,3 +865,15 @@ const onRenderCallback = (id, phase, actualDuration) => {
 ---
 
 *This guide provides practical patterns for extending and modifying Gen.C Alpha. Reference the main documentation for architectural details and current feature status.*
+
+---
+
+## Roadmap & Contribution
+
+- In-app roadmap: navigate to `/roadmap`
+- Document: `docs/ROADMAP.md`
+
+### Proposing additions
+1. Add an item under the appropriate timeframe in `docs/ROADMAP.md`
+2. If significant, create a ticket/issue with scope and acceptance criteria
+3. Keep changes focused; update related docs after merging

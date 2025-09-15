@@ -13,10 +13,12 @@ import { Videos } from './pages/Videos';
 import { ChannelsPage } from './pages/ChannelsPage';
 import { TranscriptionServicePage } from './pages/TranscriptionService';
 import { InstagramApiTest } from './pages/InstagramApiTest';
+import { TikTokAnalysisTest } from './pages/TikTokAnalysisTest';
 import SettingsPage from './pages/SettingsPage';
 import HemingwayEditorPage from './pages/HemingwayEditorPage';
 import LoginPage from './pages/Login';
 import RegisterPage from './pages/Register';
+import { Roadmap } from './pages/Roadmap';
 import './styles/globals.css';
 
 // Placeholder components for missing routes
@@ -99,10 +101,26 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/tiktok-test" element={
+              <ProtectedRoute>
+                <Layout>
+                  <TikTokAnalysisTest />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/brand-hub" element={
               <ProtectedRoute>
                 <Layout>
                   <BrandHub />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/roadmap" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Roadmap />
                 </Layout>
               </ProtectedRoute>
             } />

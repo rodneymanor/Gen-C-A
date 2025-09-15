@@ -88,6 +88,10 @@
   --color-text-brand: var(--color-primary-500);        /* Brand colored text */
   --color-text-on-primary: white;                      /* Text on primary bg */
   --color-text-on-dark: var(--color-neutral-0);        /* Text on dark bg */
+
+  /* Perplexity-specific Surface Colors */
+  --color-super: #000000;    /* High contrast black */
+  --color-inverse: #ffffff;  /* Inverse (white) */
   
   /* Border System */
   --color-border: var(--color-neutral-200);            /* Default border */
@@ -137,11 +141,15 @@
   --line-height-tight: 1.2;
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.6;
+  /* Perplexity: looser line-height for compact buttons */
+  --line-height-loose: 1.75;
 
   /* Font Weights */
   --font-weight-light: 300;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
+  /* Perplexity: semimedium weight */
+  --font-weight-semimedium: 550;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
@@ -165,6 +173,24 @@
   --space-24: 6rem;     /* 96px - NEW */
   --space-28: 7rem;     /* 112px - NEW */
   --space-32: 8rem;     /* 128px - NEW */
+  
+  /* Perplexity compact spacing aliases */
+  --spacing-px: 1px;
+  --spacing-0: 0;
+  --spacing-0-5: 2px;   /* 0.125rem */
+  --spacing-1: 4px;     /* 0.25rem */
+  --spacing-1-5: 6px;   /* 0.375rem */
+  --spacing-2: 8px;     /* 0.5rem */
+  --spacing-2-5: 10px;  /* 0.625rem */
+  --spacing-3: 12px;    /* 0.75rem */
+  --spacing-4: 16px;    /* 1rem */
+  --spacing-5: 20px;    /* 1.25rem */
+  --spacing-6: 24px;    /* 1.5rem */
+  --spacing-7: 28px;    /* 1.75rem */
+  --spacing-8: 32px;    /* 2rem */
+  --spacing-10: 40px;   /* 2.5rem */
+  --spacing-12: 48px;   /* 3rem */
+  --spacing-two: 8px;   /* gap-two */
   
   /* Responsive Spacing - Fluid Scaling */
   --space-responsive-xs: clamp(0.25rem, 1vw, 0.5rem);   /* 4-8px fluid */
@@ -232,6 +258,9 @@
   --button-secondary-bg-hover: var(--color-neutral-200);
   --button-secondary-text: var(--color-neutral-700);
   --button-secondary-border: var(--color-neutral-300);
+  
+  /* Clearance for fixed editor toolbar */
+  --editor-toolbar-clearance: 56px;
 
   --card-bg: var(--color-neutral-0);
   --card-border: var(--color-neutral-200);

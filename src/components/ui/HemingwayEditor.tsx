@@ -14,6 +14,8 @@ import { EditorSidebar } from './EditorSidebar';
 import { FloatingToolbar } from './FloatingToolbar';
 import { ScriptComponentEditor } from './ScriptComponentEditor';
 import { InteractiveScript } from '../writing-analysis/interactive-script';
+import { useScriptGeneration } from '@/hooks/use-script-generation';
+import type { BrandPersona } from '@/types';
 
 // Re-export interfaces from child components for convenience
 export type { ReadabilityMetrics, WritingStats } from './EditorSidebar';
@@ -55,21 +57,21 @@ interface ScriptElements {
 const EditorContainer = styled.div<{ focusMode: boolean }>`
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
+  min-height: 100%;
   background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
   font-family: var(--font-family-primary, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif);
   position: relative;
 
   ${(props: any) => props.focusMode && css`
-    .editor-sidebar,
-    .editor-toolbar {
+    /* In focus mode, hide the sidebar; keep toolbar available for quick actions */
+    .editor-sidebar {
       opacity: 0;
       pointer-events: none;
       transition: opacity 250ms ease;
     }
 
-    &:hover .editor-sidebar,
-    &:hover .editor-toolbar {
+    &:hover .editor-sidebar {
       opacity: 1;
       pointer-events: auto;
     }
@@ -81,10 +83,16 @@ const EditorHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: ${token('space.200', '0.5rem')} ${token('space.300', '0.75rem')};
-  border-bottom: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
+  border-bottom: 1px solid var(--color-border-subtle, ${token('color.border', '#e4e6ea')});
   background: var(--card-bg, var(--color-surface, ${token('color.background.neutral', '#ffffff')}));
   z-index: 10;
   box-shadow: var(--shadow-subtle, none);
+  min-height: 56px; /* Uniform header height */
+  
+  /* Hide internal header on small screens to avoid stacking with Layout header */
+  @media (max-width: 768px) {
+    display: none;
+  }
 `;
 
 const HeaderActions = styled.div`
@@ -118,6 +126,8 @@ const EditorContent = styled.div<{ sidebarCollapsed: boolean }>`
   overflow: hidden;
   background: var(--color-surface-elevated, ${token('color.background.neutral', '#fafbfc')});
   min-width: 0; /* Prevents grid item from overflowing */
+  /* Ensure content never sits under the fixed toolbar */
+  padding-bottom: var(--editor-toolbar-clearance, 56px);
 
   /* Grid takes care of sizing, no need for margins */
 `;
@@ -187,6 +197,9 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarCollapsed);
   const [focusMode, setFocusMode] = useState(initialFocusMode);
   const [activeTab, setActiveTab] = useState<'readability' | 'writing'>('readability');
+  const [personas, setPersonas] = useState<BrandPersona[]>([]);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
+  const [isRegenerating, setIsRegenerating] = useState(false);
   
   // Log script mode status
   useEffect(() => {
@@ -250,6 +263,23 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
     readingTime,
     lastSaved: new Date(Date.now() - 300000), // 5 minutes ago
   };
+
+  // Format "Saved ... ago" for header placement
+  const formatLastSaved = (date: Date) => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins === 1) return '1 minute ago';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return '1 hour ago';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    return date.toLocaleDateString();
+  };
+
+  // AI generation hook
+  const { generateScript, isLoading: isGenLoading } = useScriptGeneration();
 
   // Handlers
   const handleContentChange = useCallback((newContent: string) => {
@@ -376,6 +406,77 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
     };
   }, []);
 
+  // Load brand voices for toolbar selector
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/brand-voices/list');
+        const data = await res.json().catch(() => null);
+        if (isMounted && res.ok && data?.success && Array.isArray(data.voices)) {
+          const mapped: BrandPersona[] = data.voices.map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            description: v.description || '',
+            tone: v.tone || 'Varied',
+            voice: v.voice || 'Derived from analysis',
+            targetAudience: v.targetAudience || 'General',
+            keywords: v.keywords || [],
+            platforms: v.platforms || ['tiktok'],
+            created: v.created ? new Date(v.created._seconds ? v.created._seconds * 1000 : v.created) : new Date(),
+          }));
+          setPersonas(mapped);
+        }
+      } catch (_) {
+        // silent fallback
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Decide script length for regeneration based on current word count
+  const decideLength = useCallback((): "15" | "20" | "30" | "45" | "60" | "90" => {
+    if (words < 80) return '15';
+    if (words < 160) return '30';
+    return '60';
+  }, [words]);
+
+  const deriveIdeaFromEditor = useCallback(() => {
+    const baseTitle = (title && title !== 'Untitled Document') ? title : '';
+    const sourceText = isScriptMode && scriptElements
+      ? [scriptElements.hook, scriptElements.goldenNugget].filter(Boolean).join(' ')
+      : content;
+    const fallback = sourceText.trim().slice(0, 140);
+    return baseTitle || fallback || 'Regenerate this short video script with the same intent';
+  }, [title, isScriptMode, scriptElements, content]);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!isScriptMode || !onScriptElementsChange) {
+      console.log('Regenerate requested but not in script mode or no handler provided.');
+      return;
+    }
+    try {
+      setIsRegenerating(true);
+      const idea = deriveIdeaFromEditor();
+      const length = decideLength();
+      const persona = selectedPersonaId || undefined;
+
+      const result = await generateScript(idea, length, persona);
+      if (result.success && result.script) {
+        onScriptElementsChange({
+          hook: result.script.hook,
+          bridge: result.script.bridge,
+          goldenNugget: result.script.goldenNugget,
+          wta: result.script.wta,
+        });
+      } else {
+        console.error('[HemingwayEditor] Regenerate failed:', result.error);
+      }
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [isScriptMode, onScriptElementsChange, deriveIdeaFromEditor, decideLength, selectedPersonaId, generateScript]);
+
   return (
     <EditorContainer focusMode={focusMode} className={className}>
       {/* Header */}
@@ -392,6 +493,15 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
         </div>
         
         <HeaderActions>
+          {toolbarStats.lastSaved && (
+            <span style={{
+              fontSize: token('font.size.075', '12px'),
+              color: token('color.text.subtlest', '#6b778c'),
+              marginRight: token('space.100', '0.25rem')
+            }}>
+              Saved {formatLastSaved(toolbarStats.lastSaved)}
+            </span>
+          )}
           <Button
             variant="subtle"
             size="small"
@@ -468,6 +578,11 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
         onUndo={() => console.log('Undo')}
         onRedo={() => console.log('Redo')}
         onAIAction={(action) => console.log('AI Action:', action)}
+        onRegenerate={handleRegenerate}
+        isGenerating={isRegenerating || isGenLoading}
+        brandVoices={personas}
+        selectedBrandVoiceId={selectedPersonaId}
+        onBrandVoiceChange={setSelectedPersonaId}
         onSave={() => console.log('Save')}
         onExport={() => console.log('Export')}
         onShare={() => console.log('Share')}

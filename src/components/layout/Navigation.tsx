@@ -15,13 +15,10 @@ import FolderIcon from '@atlaskit/icon/glyph/folder';
 import BookIcon from '@atlaskit/icon/glyph/book';
 import EditIcon from '@atlaskit/icon/glyph/edit';
 import PeopleIcon from '@atlaskit/icon/glyph/people';
-import AddonIcon from '@atlaskit/icon/glyph/addon';
-import MobileIcon from '@atlaskit/icon/glyph/mobile';
 import SettingsIcon from '@atlaskit/icon/glyph/settings';
 import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left';
 import LayoutTwoColumnsSidebarLeftIcon from '@atlaskit/icon/core/migration/layout-two-columns-sidebar-left--editor-layout-two-left-sidebar';
 import VideoIcon from '@atlaskit/icon/glyph/video-filled';
-import ChannelIcon from '@atlaskit/icon/glyph/people-group';
 import MoreIcon from '@atlaskit/icon/glyph/more';
 
 export interface NavigationProps {
@@ -39,7 +36,6 @@ const navigationData: NavigationSection[] = [
       { path: '/collections', label: 'Collections', icon: <FolderIcon label="Collections" /> },
       { path: '/library', label: 'Library', icon: <BookIcon label="Library" /> },
       { path: '/videos', label: 'Videos', icon: <VideoIcon label="Videos" /> },
-      { path: '/channels', label: 'Channels', icon: <ChannelIcon label="Channels" /> },
     ]
   },
   {
@@ -49,12 +45,11 @@ const navigationData: NavigationSection[] = [
     ]
   },
   {
-    section: 'Tools',
+    section: 'Docs',
     items: [
-      { path: '/extensions', label: 'Extensions', icon: <AddonIcon label="Extensions" /> },
-      { path: '/mobile', label: 'Mobile Shortcuts', icon: <MobileIcon label="Mobile Shortcuts" /> }
+      { path: '/roadmap', label: 'Roadmap', icon: <BookIcon label="Roadmap" /> },
     ]
-  }
+  },
 ];
 
 const expandedLogoStyles = css`

@@ -23,6 +23,7 @@ import MoreIcon from '@atlaskit/icon/glyph/more';
 const libraryStyles = css`
   max-width: 1200px;
   margin: 0 auto;
+  padding: var(--space-6) var(--layout-gutter);
 `;
 
 const headerStyles = css`

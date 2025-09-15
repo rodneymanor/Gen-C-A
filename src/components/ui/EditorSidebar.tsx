@@ -57,15 +57,17 @@ const SidebarContainer = styled.div<{ collapsed: boolean }>`
   display: ${props => props.collapsed ? 'none' : 'flex'};
   flex-direction: column;
   background: var(--card-bg, var(--color-surface, ${token('color.background.neutral', '#ffffff')}));
-  border-left: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
+  border-left: 1px solid var(--color-border-subtle, ${token('color.border', '#e4e6ea')});
   overflow: hidden;
   min-width: 0; /* Prevents grid overflow */
   height: 100%;
+  /* Ensure content isn't covered by the floating toolbar */
+  padding-bottom: var(--editor-toolbar-clearance, 56px);
 
   /* Mobile responsiveness - for grid row layout */
   @media (max-width: 768px) {
     border-left: none;
-    border-top: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
+    border-top: 1px solid var(--color-border-subtle, ${token('color.border', '#e4e6ea')});
     order: -1; /* Show above editor content on mobile */
     max-height: ${props => props.collapsed ? '0' : '300px'};
     overflow-y: auto;
@@ -77,8 +79,9 @@ const SidebarHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: ${token('space.200')} ${token('space.300')};
-  border-bottom: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
+  border-bottom: 1px solid var(--color-border-subtle, ${token('color.border', '#e4e6ea')});
   background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
+  min-height: 56px; /* Uniform header height */
 
   h3 {
     margin: 0;
@@ -90,7 +93,7 @@ const SidebarHeader = styled.div`
 
 const SidebarTabs = styled.div`
   display: flex;
-  border-bottom: 1px solid var(--color-border, ${token('color.border', '#e4e6ea')});
+  border-bottom: 1px solid var(--color-border-subtle, ${token('color.border', '#e4e6ea')});
   background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
 `;
 

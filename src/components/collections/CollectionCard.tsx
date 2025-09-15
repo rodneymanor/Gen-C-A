@@ -163,7 +163,7 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({
   return (
     <Card
       appearance={isSelected ? 'selected' : 'subtle'}
-      spacing="compact" /* Changed from comfortable to compact for Perplexity flat design */
+      spacing="comfortable" /* Per perplexity guidelines: 24px card padding */
       isHoverable
       isClickable
       css={collectionCardStyles}

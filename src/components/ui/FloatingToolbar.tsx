@@ -17,11 +17,9 @@ import ShuffleIcon from '@atlaskit/icon/glyph/app-switcher';
 import FileTextIcon from '@atlaskit/icon/glyph/document';
 import HashIcon from '@atlaskit/icon/glyph/emoji/symbols';
 import TimerIcon from '@atlaskit/icon/glyph/stopwatch';
-import SaveIcon from '@atlaskit/icon/glyph/check';
-import DownloadIcon from '@atlaskit/icon/glyph/download';
-import ShareIcon from '@atlaskit/icon/glyph/share';
 import SettingsIcon from '@atlaskit/icon/glyph/settings';
 import { Button } from './Button';
+import type { BrandPersona } from '@/types';
 
 export interface WritingStats {
   words: number;
@@ -43,12 +41,22 @@ export interface FloatingToolbarProps {
   onRedo?: () => void;
   /** Callback for AI actions */
   onAIAction?: (action: string) => void;
-  /** Callback for save action */
+  /** Trigger full script regenerate (for script mode) */
+  onRegenerate?: () => void;
+  /** Callback for save action (removed from toolbar) */
   onSave?: () => void;
-  /** Callback for export action */
+  /** Callback for export action (removed from toolbar) */
   onExport?: () => void;
-  /** Callback for share action */
+  /** Callback for share action (removed from toolbar) */
   onShare?: () => void;
+  /** Available brand voices to choose from */
+  brandVoices?: BrandPersona[];
+  /** Currently selected brand voice id */
+  selectedBrandVoiceId?: string;
+  /** Change handler for brand voice selection */
+  onBrandVoiceChange?: (id: string) => void;
+  /** Whether a generation/regeneration is in progress */
+  isGenerating?: boolean;
   /** Whether the toolbar should be hidden */
   hidden?: boolean;
   /** Custom class name */
@@ -60,10 +68,10 @@ const ToolbarContainer = styled.div<{ hidden: boolean }>`
   bottom: ${props => props.hidden ? '-100px' : token('space.300')};
   left: 50%;
   transform: translateX(-50%);
-  background: ${token('color.background.neutral')};
-  border: 1px solid ${token('color.border')};
+  background: var(--color-surface);
+  border: none;
   border-radius: ${token('border.radius.300')};
-  box-shadow: ${token('elevation.shadow.raised')};
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   display: flex;
   align-items: center;
   gap: ${token('space.100')};
@@ -261,14 +269,7 @@ const DropdownButton = styled.button`
   }
 `;
 
-const LastSavedIndicator = styled.div`
-  font-size: ${token('font.size.050')};
-  color: ${token('color.text.subtlest')};
-  display: flex;
-  align-items: center;
-  gap: ${token('space.050')};
-  padding: 0 ${token('space.100')};
-`;
+/* Removed LastSavedIndicator from toolbar; saved status moved to header */
 
 export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   stats,
@@ -277,9 +278,14 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   onUndo,
   onRedo,
   onAIAction,
+  onRegenerate,
   onSave,
   onExport,
   onShare,
+  brandVoices = [],
+  selectedBrandVoiceId,
+  onBrandVoiceChange,
+  isGenerating = false,
   hidden = false,
   className,
 }) => {
@@ -332,21 +338,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     setIsAIDropdownOpen(false);
   };
 
-  const formatLastSaved = (date: Date) => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins === 1) return '1 minute ago';
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours === 1) return '1 hour ago';
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    
-    return date.toLocaleDateString();
-  };
+  // Formatting now handled in header; toolbar doesn’t render saved indicator
 
   return (
     <ToolbarContainer hidden={hidden} className={className}>
@@ -368,19 +360,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           <span>min read</span>
         </div>
       </StatsDisplay>
-      
+
       <ToolbarDivider />
-      
-      {/* Last Saved Indicator */}
-      {stats.lastSaved && (
-        <>
-          <LastSavedIndicator>
-            <SaveIcon label="" size="small" />
-            <span>Saved {formatLastSaved(stats.lastSaved)}</span>
-          </LastSavedIndicator>
-          <ToolbarDivider />
-        </>
-      )}
       
       {/* Undo/Redo Actions */}
       <Button
@@ -406,44 +387,14 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       
       <ToolbarDivider />
       
-      {/* Document Actions */}
-      <Button
-        variant="subtle"
-        size="small"
-        onClick={onSave}
-        aria-label="Save"
-        title="Save (Ctrl+S)"
-      >
-        <SaveIcon label="" size="small" />
-      </Button>
-      
-      <Button
-        variant="subtle"
-        size="small"
-        onClick={onExport}
-        aria-label="Export"
-        title="Export document"
-      >
-        <DownloadIcon label="" size="small" />
-      </Button>
-      
-      <Button
-        variant="subtle"
-        size="small"
-        onClick={onShare}
-        aria-label="Share"
-        title="Share document"
-      >
-        <ShareIcon label="" size="small" />
-      </Button>
-      
+      {/* Removed Save/Export/Share from toolbar per Perplexity polish */}
       <ToolbarDivider />
       
       {/* AI Actions Dropdown */}
       <AIActionsDropdown>
         <Button
           ref={buttonRef}
-          variant="primary"
+          variant="ppx-primary"
           size="small"
           onClick={handleAIButtonClick}
           aria-expanded={isAIDropdownOpen}
@@ -471,6 +422,27 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             <p>Enhance your writing with AI-powered tools</p>
           </DropdownHeader>
           
+          {/* Script Actions */}
+          <DropdownSection>
+            <div className="section-label">Script Actions</div>
+            <DropdownButton
+              onClick={() => {
+                if (onRegenerate) {
+                  onRegenerate();
+                } else {
+                  handleAIActionClick('regenerate');
+                }
+              }}
+              disabled={isGenerating}
+            >
+              <TimerIcon label="" size="small" />
+              <div className="button-content">
+                <div className="button-title">Regenerate Script</div>
+                <div className="button-description">Create a fresh version with current settings</div>
+              </div>
+            </DropdownButton>
+          </DropdownSection>
+
           <DropdownSection>
             <div className="section-label">Quick Actions</div>
             <DropdownButton onClick={() => handleAIActionClick('copy')}>
@@ -525,6 +497,45 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             </DropdownButton>
           </DropdownSection>
           
+          {/* Brand Voice Selection */}
+          <DropdownSection>
+            <div className="section-label">Brand Voice</div>
+            {brandVoices && brandVoices.length > 0 ? (
+              <div style={{ padding: `${token('space.050')} ${token('space.100')}` }}>
+                <label htmlFor="brand-voice-select" style={{
+                  display: 'block',
+                  fontSize: token('font.size.050'),
+                  color: token('color.text.subtle'),
+                  marginBottom: token('space.050')
+                }}>
+                  Select persona
+                </label>
+                <select
+                  id="brand-voice-select"
+                  value={selectedBrandVoiceId || ''}
+                  onChange={(e) => onBrandVoiceChange?.(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: `${token('space.100')} ${token('space.150')}`,
+                    border: `1px solid ${token('color.border')}`,
+                    borderRadius: token('border.radius'),
+                    background: token('color.background.input'),
+                    color: token('color.text')
+                  }}
+                >
+                  <option value="">No brand voice</option>
+                  {brandVoices.map(v => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div style={{ padding: `${token('space.100')}` }}>
+                <div className="button-description">No personas found. Create a brand voice to use here.</div>
+              </div>
+            )}
+          </DropdownSection>
+
           <DropdownSection>
             <div className="section-label">Creative</div>
             <DropdownButton onClick={() => handleAIActionClick('remix')}>

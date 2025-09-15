@@ -438,6 +438,35 @@ export const VideoModal: React.FC<VideoModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'video' | 'script' | 'hooks' | 'analytics' | 'more'>('video');
   
+  const computeEmbedSrc = (rawUrl?: string, platform?: string): string => {
+    if (!rawUrl) return '';
+    try {
+      const u = new URL(rawUrl);
+      const host = u.hostname.toLowerCase();
+      // Bunny CDN or any direct iframe URL
+      if (host.includes('iframe.mediadelivery.net')) return rawUrl;
+      // YouTube standard/watch URLs
+      if (host.includes('youtube.com')) {
+        const v = u.searchParams.get('v');
+        if (v) return `https://www.youtube.com/embed/${v}`;
+        const parts = u.pathname.split('/');
+        const embedIdx = parts.indexOf('embed');
+        if (embedIdx >= 0 && parts[embedIdx + 1]) return rawUrl; // already embed
+      }
+      // YouTube short URLs
+      if (host === 'youtu.be') {
+        const id = u.pathname.replace('/', '');
+        if (id) return `https://www.youtube.com/embed/${id}`;
+      }
+      // Block known non-embeddable platforms (TikTok/Instagram) to avoid X-Frame errors.
+      if (host.includes('tiktok.com') || host.includes('instagram.com')) return '';
+      // Otherwise attempt raw URL as a best effort (for test/demo or custom CDN)
+      return rawUrl;
+    } catch {
+      return '';
+    }
+  };
+  
   // Mock video insights data - in real app this would come from props or API
   const videoInsights: VideoInsights = {
     transcript: video ? `"Hey everyone! Today I'm going to show you the most incredible hack that will change your life forever. You won't believe how simple this is..."
@@ -652,25 +681,44 @@ This technique has helped thousands of people achieve amazing results, and now I
         {/* Video Player Section */}
         <div css={videoPlayerSectionStyles}>
           <div css={videoPlayerStyles}>
-            {video.url ? (
-              <iframe
-                className="video-embed"
-                src={video.url}
-                title={video.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
-              <div className="video-placeholder">
-                <div className="placeholder-icon">
-                  <VidPlayIcon label="" size="xlarge" primaryColor={token('color.icon.inverse')} />
+            {(() => {
+              const embedSrc = computeEmbedSrc(video.url, video.platform);
+              if (embedSrc) {
+                return (
+                  <iframe
+                    className="video-embed"
+                    src={embedSrc}
+                    title={video.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                );
+              }
+              // Fallback UI when embed is not available
+              return (
+                <div className="video-placeholder">
+                  <div className="placeholder-icon">
+                    <VidPlayIcon label="" size="xlarge" primaryColor={token('color.icon.inverse')} />
+                  </div>
+                  <div className="placeholder-text">Preview Unavailable</div>
+                  <div className="placeholder-subtitle">
+                    {video.platform && (video.platform === 'tiktok' || video.platform === 'instagram')
+                      ? 'This platform does not allow iframe embeds. Use the button below to open the original video.'
+                      : 'Embed URL not available for this video.'}
+                  </div>
+                  {video.url && (
+                    <div style={{ marginTop: 'var(--space-4)' }}>
+                      <Button
+                        variant="primary"
+                        onClick={() => window.open(video.url, '_blank', 'noopener,noreferrer')}
+                      >
+                        Open Original
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                <div className="placeholder-text">Video Preview</div>
-                <div className="placeholder-subtitle">
-                  Original video content would be embedded here
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
 

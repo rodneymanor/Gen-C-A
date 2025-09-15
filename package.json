@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "tsx server-vite.js",
+    "dev:old": "concurrently \"npm run api\" \"vite\"",
+    "dev:frontend": "vite",
+    "api": "node server.js",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
@@ -13,6 +16,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
+    "test:e2e:collections": "node test-collections-modal.js",
     "test:services": "ts-node __tests__/TestRunner.ts",
     "test:services:all": "ts-node __tests__/TestRunner.ts all",
     "test:services:unit": "ts-node __tests__/TestRunner.ts unit",
@@ -62,10 +66,15 @@
     "@atlaskit/tokens": "^6.3.1",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
+    "@google/generative-ai": "^0.24.1",
     "chokidar": "^4.0.3",
     "clsx": "^2.0.0",
     "commander": "^14.0.1",
+    "concurrently": "^8.2.2",
+    "cors": "^2.8.5",
     "date-fns": "^2.30.0",
+    "dotenv": "^17.2.2",
+    "express": "^4.21.2",
     "fast-glob": "^3.3.3",
     "firebase": "^12.2.1",
     "firebase-admin": "^13.5.0",
@@ -79,7 +88,8 @@
     "pdf-parse": "^1.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.15.0"
+    "react-router-dom": "^6.15.0",
+    "vite-express": "^0.21.1"
   },
   "devDependencies": {
     "@atlaskit/eslint-plugin-design-system": "^13.20.1",
@@ -99,6 +109,7 @@
     "jsdom": "^26.1.0",
     "puppeteer": "^24.20.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
     "typescript": "^5.0.2",
     "vite": "^4.4.5",
     "vitest": "^3.2.4"

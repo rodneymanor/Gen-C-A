@@ -5,7 +5,7 @@ import clsx from 'clsx';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children?: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'tertiary' | 'destructive' | 'ai-powered' | 'creative' | 'subtle' | 'warning' | 'danger';
+  variant?: 'primary' | 'secondary' | 'tertiary' | 'destructive' | 'ai-powered' | 'creative' | 'subtle' | 'warning' | 'danger' | 'ppx-primary' | 'soft';
   size?: 'small' | 'medium' | 'large';
   isLoading?: boolean;
   isDisabled?: boolean;
@@ -22,7 +22,7 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
   border: none;
   border-radius: var(--radius-medium);
   font-family: var(--font-family-primary);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semimedium, var(--font-weight-medium));
   cursor: pointer;
   transition: var(--transition-all);
   position: relative;
@@ -31,72 +31,86 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
   
   /* Size variants */
   ${size === 'small' && css`
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--font-size-body-small);
-    min-height: 32px;
-    gap: var(--space-2);
+    padding: 0 var(--spacing-2-5, 10px);
+    font-size: var(--font-size-sm, var(--font-size-body-small));
+    min-height: 40px; /* Unified 40px height */
+    gap: var(--spacing-two, var(--space-2));
+    line-height: var(--line-height-loose, 1.75);
   `}
   
   ${size === 'medium' && css`
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--font-size-body);
-    min-height: 40px;
-    gap: var(--space-2);
+    padding: 0 var(--spacing-2-5, 10px);
+    font-size: var(--font-size-sm, var(--font-size-body));
+    min-height: 40px; /* Unified 40px height */
+    gap: var(--spacing-two, var(--space-2));
+    line-height: var(--line-height-loose, 1.75);
   `}
   
   ${size === 'large' && css`
-    padding: var(--space-4) var(--space-6);
+    padding: 0 var(--space-4);
     font-size: var(--font-size-body-large);
-    min-height: 48px;
+    min-height: 40px; /* Unified 40px height */
     gap: var(--space-3);
   `}
   
   /* Perplexity Button Hierarchy - Bloom Blue Primary */
   ${variant === 'primary' && css`
-    background: #0B5CFF;  /* Perplexity Bloom Blue */
-    color: #ffffff;
+    background: var(--color-super);
+    color: var(--color-inverse);
     border: none;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    font-weight: var(--font-weight-semibold);
-    min-height: var(--touch-target-comfortable, 44px);
+    box-shadow: none;
+    border-radius: 8px; /* rounded-lg */
+    font-weight: var(--font-weight-semimedium, 550);
+    line-height: var(--line-height-loose, 1.75);
     
+    &:hover:not(:disabled) { opacity: 0.8; }
+    &:active { transform: scale(0.97); }
+    &:focus-visible { outline: none; box-shadow: none; }
+  `}
+  
+  /* Perplexity Primary (Black) - Editor scoped usage */
+  ${variant === 'ppx-primary' && css`
+    background: var(--color-super);
+    color: var(--color-inverse);
+    border: none;
+    border-radius: 8px; /* rounded-lg */
+    font-family: var(--font-family-sans, var(--font-family-primary));
+    font-weight: var(--font-weight-semimedium, 550);
+    font-size: var(--font-size-sm, 14px);
+    line-height: var(--line-height-loose, 1.75);
+    padding-left: var(--spacing-2-5, 10px);
+    padding-right: var(--spacing-2-5, 10px);
+
     &:hover:not(:disabled) {
-      background: #0A52E6;  /* Darker Bloom Blue */
-      box-shadow: 0 2px 8px rgba(11, 92, 255, 0.2);
-      transform: translateY(-1px);
+      opacity: 0.8;
+      transform: none; /* no lift */
+      box-shadow: none;
     }
-    
+
     &:active {
-      background: #0947CC;  /* Even darker */
-      transform: translateY(0);
+      transform: scale(0.97);
+      transition-duration: 150ms;
+      transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     }
-    
+
     &:focus-visible {
-      outline: 2px solid #0B5CFF;
-      outline-offset: 2px;
+      outline: none;
+      box-shadow: none;
     }
   `}
   
   ${variant === 'secondary' && css`
     background: transparent;
-    color: #0B5CFF;  /* Bloom Blue text */
-    border: 1px solid #0B5CFF;
-    font-weight: var(--font-weight-medium);
-    min-height: var(--touch-target-comfortable, 44px);
+    color: var(--color-text-primary, #172b4d);
+    border: 1px solid var(--color-border, #e4e6ea);
+    font-weight: var(--font-weight-semimedium, 550);
     
     &:hover:not(:disabled) {
-      background: rgba(11, 92, 255, 0.08);  /* Very light Bloom Blue */
-      border-color: #0A52E6;
+      background: var(--color-surface-hover, #f4f5f7);
+      border-color: var(--color-border-strong, #c1c7d0);
     }
-    
-    &:active {
-      background: rgba(11, 92, 255, 0.12);
-    }
-    
-    &:focus-visible {
-      outline: 2px solid #0B5CFF;
-      outline-offset: 2px;
-    }
+    &:active { transform: scale(0.97); }
+    &:focus-visible { outline: none; box-shadow: none; }
   `}
   
   ${variant === 'tertiary' && css`
@@ -105,18 +119,14 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
     border: none;
     font-weight: var(--font-weight-medium);
     text-decoration: none;
-    padding: var(--space-2) var(--space-4);
+    padding: 0 var(--space-2);
     
     &:hover:not(:disabled) {
       color: var(--color-text-primary, #1F2937);
-      text-decoration: underline;
+      background: var(--color-surface-hover);
     }
     
-    &:focus-visible {
-      outline: 2px solid #0B5CFF;
-      outline-offset: 2px;
-      border-radius: var(--radius-small);
-    }
+    &:focus-visible { outline: none; box-shadow: none; }
   `}
   
   ${variant === 'destructive' && css`
@@ -124,7 +134,7 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
     color: #ffffff;
     border: none;
     font-weight: var(--font-weight-medium);
-    min-height: var(--touch-target-comfortable, 44px);
+    min-height: 40px; /* Unified 40px height */
     margin-left: var(--space-8);  /* Separate from primary actions */
     
     &:hover:not(:disabled) {
@@ -180,6 +190,23 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
       color: var(--color-neutral-800);
     }
   `}
+
+  /* Soft button - gentle gray fill with darker gray text */
+  ${variant === 'soft' && css`
+    background: var(--color-neutral-100);
+    color: var(--color-neutral-800);
+    border: 1px solid var(--color-neutral-200);
+    
+    &:hover:not(:disabled) {
+      background: var(--color-neutral-200);
+      border-color: var(--color-neutral-300);
+      color: var(--color-neutral-900);
+    }
+    
+    &:active {
+      background: var(--color-neutral-300);
+    }
+  `}
   
   ${variant === 'warning' && css`
     background: var(--color-warning-400);
@@ -202,7 +229,7 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
   /* Focus styles */
   &:focus-visible {
     outline: none;
-    box-shadow: var(--focus-ring);
+    box-shadow: none;
   }
   
   /* Disabled state - Perplexity Flat Design */

@@ -96,50 +96,31 @@ export class AIAnalysisService {
   async analyzeScriptComponents(transcript: string): Promise<ScriptComponents | null> {
     console.log('📝 [AI_ANALYSIS] Starting script component analysis...');
     console.log('📊 [AI_ANALYSIS] Transcript length:', transcript.length, 'characters');
-    console.log('📋 [AI_ANALYSIS] Full transcript content:', transcript);
 
     for (const provider of this.providers) {
-      console.log(`🔍 [AI_ANALYSIS] Checking provider: ${provider.getName()}`);
-      console.log(`🔑 [AI_ANALYSIS] Provider available: ${provider.isAvailable()}`);
-      
       if (!provider.isAvailable()) {
         console.log(`⚠️ [AI_ANALYSIS] Provider ${provider.getName()} not available, skipping`);
-        console.log(`🔍 [AI_ANALYSIS] Availability check details for ${provider.getName()}:`);
         continue;
       }
 
       try {
         console.log(`🤖 [AI_ANALYSIS] Attempting analysis with ${provider.getName()} (${provider.getModel()})`);
-        console.log(`📤 [AI_ANALYSIS] Sending transcript to ${provider.getName()}...`);
-        
         const components = await provider.analyzeScript(transcript);
-        
-        console.log(`📥 [AI_ANALYSIS] Received response from ${provider.getName()}:`, components);
         
         if (components && this.validateComponents(components)) {
           console.log(`✅ [AI_ANALYSIS] Script analysis successful with ${provider.getName()}`);
-          console.log(`🧩 [AI_ANALYSIS] Final validated components:`, components);
           return components;
         } else {
           console.log(`⚠️ [AI_ANALYSIS] ${provider.getName()} returned invalid components`);
-          console.log(`🔍 [AI_ANALYSIS] Validation details:`, {
-            hasHook: !!(components?.hook && components.hook.length > 5),
-            hasBridge: !!(components?.bridge && components.bridge.length > 5),
-            hasNugget: !!(components?.nugget && components.nugget.length > 5),
-            hasWta: !!(components?.wta && components.wta.length > 5)
-          });
         }
       } catch (error) {
         console.error(`❌ [AI_ANALYSIS] ${provider.getName()} script analysis failed:`, error);
-        console.error(`🔍 [AI_ANALYSIS] Error details:`, error.message);
       }
     }
 
     // All providers failed, return fallback
     console.log('🔄 [AI_ANALYSIS] All providers failed, using fallback components');
-    const fallback = this.createFallbackComponents();
-    console.log('📋 [AI_ANALYSIS] Fallback components:', fallback);
-    return fallback;
+    return this.createFallbackComponents();
   }
 
   /**
@@ -294,18 +275,13 @@ export class AIAnalysisService {
   }
 
   private isProviderConfigured(providerName: string): boolean {
-    const getEnvVar = (key: string) => {
-      return import.meta.env?.[`VITE_${key}`] || 
-             (typeof process !== 'undefined' && process.env?.[key]);
-    };
-
     switch (providerName.toLowerCase()) {
       case 'gemini':
-        return !!getEnvVar('GEMINI_API_KEY');
+        return !!process.env.GEMINI_API_KEY;
       case 'openai':
-        return !!getEnvVar('OPENAI_API_KEY');
+        return !!process.env.OPENAI_API_KEY;
       case 'claude':
-        return !!getEnvVar('ANTHROPIC_API_KEY');
+        return !!process.env.ANTHROPIC_API_KEY;
       default:
         return false;
     }
@@ -319,20 +295,13 @@ class GeminiAIProvider implements AIProvider {
   async analyzeScript(transcript: string): Promise<ScriptComponents | null> {
     try {
       console.log('🤖 [GEMINI] Analyzing script with Gemini...');
-      console.log('📋 [GEMINI] Input transcript:', transcript.substring(0, 200) + '...');
 
       // Mock implementation - actual would use GoogleGenerativeAI
       const result = await this.callGeminiAPI('script_analysis', { transcript });
       
-      console.log('📥 [GEMINI] Raw API response:', result);
-      
-      const parsedComponents = this.parseScriptResponse(result);
-      console.log('🧩 [GEMINI] Parsed components:', parsedComponents);
-      
-      return parsedComponents;
+      return this.parseScriptResponse(result);
     } catch (error) {
       console.error('❌ [GEMINI] Script analysis failed:', error);
-      console.error('🔍 [GEMINI] Error details:', error.message);
       return null;
     }
   }
@@ -377,8 +346,7 @@ class GeminiAIProvider implements AIProvider {
   }
 
   isAvailable(): boolean {
-    return !!(import.meta.env?.VITE_GEMINI_API_KEY || 
-             (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY));
+    return !!process.env.GEMINI_API_KEY;
   }
 
   getName(): string {
@@ -391,54 +359,37 @@ class GeminiAIProvider implements AIProvider {
 
   private async callGeminiAPI(endpoint: string, data: any): Promise<any> {
     // Mock implementation
-    console.log(`🤖 [GEMINI] Calling ${endpoint} with data keys:`, Object.keys(data));
-    console.log(`📋 [GEMINI] Data content:`, data);
+    console.log(`🤖 [GEMINI] Calling ${endpoint} with data:`, Object.keys(data));
     
     // Simulate API delay
-    const delay = 1000 + Math.random() * 2000;
-    console.log(`⏳ [GEMINI] Simulating API delay: ${Math.round(delay)}ms`);
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
     
     // Mock responses based on endpoint
-    let response;
     switch (endpoint) {
       case 'script_analysis':
-        console.log(`🧠 [GEMINI] Generating script analysis for input...`);
-        
-        // Extract idea from the transcript for more dynamic responses
-        const transcript = data.transcript || '';
-        const ideaMatch = transcript.match(/idea: "([^"]+)"/i);
-        const idea = ideaMatch ? ideaMatch[1] : 'general topic';
-        
-        response = {
+        return {
           components: {
-            hook: `🔥 Want to know the secret about ${idea.toLowerCase()}? This will change everything!`,
-            bridge: `Here's what most people don't understand about ${idea.toLowerCase()}...`,
-            nugget: `The key to success with ${idea.toLowerCase()} is this simple 3-step process: 1) Start with the basics, 2) Apply consistently, 3) Scale strategically`,
-            wta: `Try this approach and let me know your results! Follow for more tips about ${idea.toLowerCase()}! 🚀`
+            hook: 'Attention-grabbing opening from Gemini analysis',
+            bridge: 'Connecting transition identified by Gemini',
+            nugget: 'Core value proposition extracted by Gemini AI',
+            wta: 'Call to action determined by Gemini analysis'
           }
         };
-        break;
       case 'visual_analysis':
-        response = {
+        return {
           visualContext: 'Comprehensive visual analysis from Gemini: The video features dynamic scene transitions with vibrant colors and engaging visual elements that support the narrative structure.'
         };
-        break;
       case 'content_analysis':
-        response = {
+        return {
           sentiment: 'positive',
           topics: ['social media', 'content creation', 'engagement'],
           keywords: ['viral', 'trending', 'creative'],
           contentType: 'educational',
           engagement: 'high'
         };
-        break;
       default:
-        response = {};
+        return {};
     }
-    
-    console.log(`✅ [GEMINI] Mock API response for ${endpoint}:`, response);
-    return response;
   }
 
   private parseScriptResponse(result: any): ScriptComponents | null {
@@ -524,8 +475,7 @@ class OpenAIProvider implements AIProvider {
   }
 
   isAvailable(): boolean {
-    return !!(import.meta.env?.VITE_OPENAI_API_KEY || 
-             (typeof process !== 'undefined' && process.env?.OPENAI_API_KEY));
+    return !!process.env.OPENAI_API_KEY;
   }
 
   getName(): string {
@@ -609,8 +559,7 @@ class ClaudeProvider implements AIProvider {
   }
 
   isAvailable(): boolean {
-    return !!(import.meta.env?.VITE_ANTHROPIC_API_KEY || 
-             (typeof process !== 'undefined' && process.env?.ANTHROPIC_API_KEY));
+    return !!process.env.ANTHROPIC_API_KEY;
   }
 
   getName(): string {

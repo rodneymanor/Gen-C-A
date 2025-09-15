@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { css } from '@emotion/react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { CollectionCard } from '../components/collections/CollectionCard';
 import { VideoGrid } from '../components/collections/VideoGrid';
+import { VideoModal } from '../components/collections/VideoModal';
 import type { Collection, ContentItem } from '../types';
+import RbacClient from '../core/auth/rbac-client';
+import { auth } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import BasicModal from '../components/ui/BasicModal';
 
 // Atlassian Design System Icons
 import SearchIcon from '@atlaskit/icon/glyph/search';
@@ -21,10 +26,44 @@ import CalendarIcon from '@atlaskit/icon/glyph/calendar';
 import StarIcon from '@atlaskit/icon/glyph/star';
 import StarFilledIcon from '@atlaskit/icon/glyph/star-filled';
 import NatureIcon from '@atlaskit/icon/glyph/emoji/nature';
+import { useDebugger, DEBUG_LEVELS } from '../utils/debugger';
 
 const collectionsStyles = css`
   max-width: 1200px;
   margin: 0 auto;
+  padding: var(--space-6) var(--layout-gutter);
+`;
+
+// Modal content styles (Perplexity spacing + labels)
+const modalBodyStyles = css`
+  display: grid;
+  gap: var(--space-4); /* 16px between rows */
+  padding-top: var(--space-2);
+
+  .form-row {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-label {
+    display: block;
+    font-size: var(--font-size-body-small);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-neutral-700);
+    margin-bottom: var(--space-2);
+  }
+
+  .helper {
+    font-size: var(--font-size-caption);
+    color: var(--color-neutral-600);
+    margin-top: var(--space-1);
+  }
+
+  .error {
+    color: var(--color-error-500);
+    margin-top: var(--space-1);
+    font-size: var(--font-size-caption);
+  }
 `;
 
 const headerStyles = css`
@@ -373,22 +412,195 @@ const mockVideos: ContentItem[] = [
   }
 ];
 
+const DEFAULT_COLLECTION_DESCRIPTION =
+  'Curated short‑form video set for planning and performance review. Add clips from TikTok or Instagram, compare hooks and visuals, track results, and repurpose the best ideas into new posts.';
+
+const mapServerCollectionToUi = (c: any): Collection => {
+  const hasDesc = typeof c.description === 'string' && c.description.trim().length > 0;
+  return {
+    id: String(c.id),
+    name: c.title || 'Untitled',
+    description: hasDesc ? c.description : DEFAULT_COLLECTION_DESCRIPTION,
+    thumbnail: '',
+    tags: [],
+    platforms: [],
+    videoCount: typeof c.videoCount === 'number' ? c.videoCount : 0,
+    created: c.createdAt ? new Date(c.createdAt) : new Date(),
+    updated: c.updatedAt ? new Date(c.updatedAt) : new Date(),
+    isPrivate: false,
+    previewVideos: [],
+  };
+};
+
+const mapServerVideoToContentItem = (v: any): ContentItem => ({
+  id: String(v.id),
+  title: v.title || 'Video',
+  description: v.caption || v.description || '',
+  type: 'video',
+  platform: (v.platform || 'other') as any,
+  thumbnail: v.thumbnailUrl || v.previewUrl || '',
+  // Prefer an embeddable iframe URL if provided by backend/CDN; else fall back to original
+  url: v.iframeUrl || v.embedUrl || v.originalUrl || v.url || '',
+  duration: v.duration || 0,
+  tags: v.hashtags || [],
+  creator: v.author || undefined,
+  created: v.addedAt ? new Date(v.addedAt) : new Date(),
+  updated: v.updatedAt ? new Date(v.updatedAt) : new Date(),
+  status: 'published',
+  metadata: { views: v.metrics?.views, likes: v.metrics?.likes, comments: v.metrics?.comments },
+});
+
 export const Collections: React.FC = () => {
+  const debug = useDebugger('Collections', { level: DEBUG_LEVELS.DEBUG });
   const [view, setView] = useState<'grid' | 'detail'>('grid');
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'size'>('recent');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
   const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [videos, setVideos] = useState<ContentItem[]>([]);
+  const [selectedVideo, setSelectedVideo] = useState<ContentItem | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [userId, setUserId] = useState<string>(() => {
+    return (import.meta as any).env?.VITE_DEBUG_USER_ID || localStorage.getItem('userId') || '';
+  });
+
+  // Unified modal state to prevent overlap
+  const [activeModal, setActiveModal] = useState<null | 'add' | 'create'>(null);
+  // Add Video Modal state
+  const [addCollectionId, setAddCollectionId] = useState<string>('');
+  const [addVideoUrl, setAddVideoUrl] = useState<string>('');
+  const [addBusy, setAddBusy] = useState(false);
+  const [addError, setAddError] = useState('');
+
+  // Create Collection Modal state
+  const [createTitle, setCreateTitle] = useState('');
+  const [createDescription, setCreateDescription] = useState('');
+  const [createBusy, setCreateBusy] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const createTitleRef = useRef<HTMLInputElement | null>(null);
+  const addUrlRef = useRef<HTMLInputElement | null>(null);
+
+  const safeCloseModal = (busy: boolean) => {
+    if (busy) return;
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      try { document.activeElement.blur(); } catch {}
+    }
+    debug.info('Closing modal', { activeModalBefore: activeModal });
+    setActiveModal(null);
+  };
+
+  // Move initial focus into the appropriate input when a modal opens
+  useEffect(() => {
+    debug.debug('activeModal changed', { activeModal });
+    if (activeModal === 'create') {
+      const id = window.setTimeout(() => {
+        try { createTitleRef.current?.focus(); } catch {}
+      }, 0);
+      return () => window.clearTimeout(id);
+    }
+    if (activeModal === 'add') {
+      const id = window.setTimeout(() => {
+        try { addUrlRef.current?.focus(); } catch {}
+      }, 0);
+      return () => window.clearTimeout(id);
+    }
+  }, [activeModal]);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (u?.uid) {
+        setUserId(u.uid);
+        localStorage.setItem('userId', u.uid);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const favorites = ['Summer Content', 'Brand Guidelines', 'Viral Hooks'];
 
   const handleCreateCollection = () => {
-    console.log('Create new collection');
+    if (!userId) {
+      alert('Please sign in to create a collection.');
+      return;
+    }
+    if (activeModal === 'create') return;
+    debug.logFunctionCall('handleCreateCollection');
+    // Reset any focused element to avoid aria-hidden warnings during transition
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      try { document.activeElement.blur(); } catch {}
+    }
+    setCreateTitle('');
+    setCreateDescription('');
+    setCreateError('');
+    setActiveModal('create');
   };
 
   const handleImportVideos = () => {
-    console.log('Import videos');
+    if (!userId) {
+      alert('Please sign in to import videos.');
+      return;
+    }
+    if (activeModal === 'add') return;
+    debug.logFunctionCall('handleImportVideos', [], { view, selectedCollectionId: selectedCollection?.id });
+    // Reset any focused element to avoid aria-hidden warnings during transition
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      try { document.activeElement.blur(); } catch {}
+    }
+    // Preselect current collection if in detail view
+    const preselect = selectedCollection?.id || collections[0]?.id || '';
+    setAddCollectionId(preselect);
+    setAddVideoUrl('');
+    setAddError('');
+    setActiveModal('add');
+  };
+
+  const handleConfirmAddVideo = async () => {
+    try {
+      setAddError('');
+      if (!userId) {
+        setAddError('You must be signed in.');
+        return;
+      }
+      if (!addCollectionId) {
+        setAddError('Please select a collection.');
+        return;
+      }
+      if (!addVideoUrl || !/^https?:\/\//i.test(addVideoUrl)) {
+        setAddError('Please provide a valid video URL.');
+        return;
+      }
+      setAddBusy(true);
+      const platform = addVideoUrl.includes('tiktok') ? 'tiktok' : addVideoUrl.includes('instagram') ? 'instagram' : 'unknown';
+      const addedAt = new Date().toISOString();
+      const resp = await RbacClient.addVideoToCollection(String(userId), addCollectionId, { originalUrl: addVideoUrl, platform, addedAt });
+      if (!resp?.success) {
+        setAddError(resp?.error || 'Failed to import video');
+        setAddBusy(false);
+        return;
+      }
+
+      // Refresh state
+      if (view === 'detail' && selectedCollection && selectedCollection.id === addCollectionId) {
+        try {
+          const v = await RbacClient.getCollectionVideos(String(userId), addCollectionId, 50);
+          if (v?.success) setVideos((v.videos || []).map(mapServerVideoToContentItem));
+        } catch {}
+      }
+      try {
+        const c = await RbacClient.getCollections(String(userId));
+        if (c?.success) setCollections((c.collections || []).map(mapServerCollectionToUi));
+      } catch {}
+
+      setActiveModal(null);
+      debug.info('Video added to collection', { addCollectionId, addVideoUrl, platform });
+      setAddBusy(false);
+    } catch (e: any) {
+      console.error('Add video error', e);
+      setAddError(e?.message || 'Import failed');
+      setAddBusy(false);
+    }
   };
 
   const handleViewCollection = (collection: Collection) => {
@@ -403,6 +615,8 @@ export const Collections: React.FC = () => {
   const handleBackToGrid = () => {
     setView('grid');
     setSelectedCollection(null);
+    setIsVideoModalOpen(false);
+    setSelectedVideo(null);
   };
 
   const handleVideoSelect = (video: ContentItem) => {
@@ -411,20 +625,192 @@ export const Collections: React.FC = () => {
         ? prev.filter(id => id !== video.id)
         : [...prev, video.id]
     );
+    setSelectedVideo(video);
+    setIsVideoModalOpen(true);
   };
 
   const handleVideoPlay = (video: ContentItem) => {
-    console.log('Play video:', video.id);
+    setSelectedVideo(video);
+    setIsVideoModalOpen(true);
   };
 
-  const filteredCollections = mockCollections.filter(collection => 
+  const handleNavigateVideo = (direction: 'prev' | 'next') => {
+    if (!selectedVideo) return;
+    const currentIndex = videos.findIndex(v => v.id === selectedVideo.id);
+    if (currentIndex === -1 || videos.length === 0) return;
+    let newIndex = currentIndex;
+    if (direction === 'prev') {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : videos.length - 1;
+    } else {
+      newIndex = currentIndex < videos.length - 1 ? currentIndex + 1 : 0;
+    }
+    setSelectedVideo(videos[newIndex]);
+  };
+
+  // Load collections on mount if userId available
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCollections() {
+      if (!userId) return;
+      try {
+        const resp = await RbacClient.getCollections(String(userId));
+        if (!cancelled && resp?.success) {
+          setCollections((resp.collections || []).map(mapServerCollectionToUi));
+        }
+      } catch (e) {
+        console.warn('Failed to fetch collections', e);
+      }
+    }
+    loadCollections();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  // Load videos when entering detail view
+  useEffect(() => {
+    let cancelled = false;
+    async function loadVideos() {
+      if (!userId || !selectedCollection) return;
+      try {
+        const resp = await RbacClient.getCollectionVideos(String(userId), selectedCollection.id, 50);
+        if (!cancelled && resp?.success) {
+          setVideos((resp.videos || []).map(mapServerVideoToContentItem));
+        }
+      } catch (e) {
+        console.warn('Failed to fetch videos', e);
+      }
+    }
+    if (view === 'detail' && selectedCollection) {
+      loadVideos();
+    }
+    return () => { cancelled = true; };
+  }, [view, selectedCollection, userId]);
+
+  const filteredCollections = collections.filter(collection =>
     collection.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     collection.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Render modals once and reuse in both views to avoid unmount flicker
+  const modals = (
+    <>
+      <BasicModal
+        open={activeModal === 'create'}
+        title="Create Collection"
+        onClose={() => safeCloseModal(createBusy)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => safeCloseModal(createBusy)} isDisabled={createBusy}>Cancel</Button>
+            <Button
+              variant="primary"
+              onClick={async () => {
+                try {
+                  setCreateError('');
+                  if (!createTitle.trim()) { setCreateError('Title is required'); return; }
+                  if (createTitle.trim().length > 80) { setCreateError('Title must be 80 characters or less'); return; }
+                  if (createDescription.trim().length > 500) { setCreateError('Description must be 500 characters or less'); return; }
+                  setCreateBusy(true);
+                  const resp = await RbacClient.createCollection(String(userId), createTitle.trim(), createDescription.trim());
+                  if (!resp?.success) {
+                    setCreateError(resp?.error || 'Failed to create collection');
+                    setCreateBusy(false);
+                    return;
+                  }
+                  try {
+                    const c = await RbacClient.getCollections(String(userId));
+                    if (c?.success) setCollections((c.collections || []).map(mapServerCollectionToUi));
+                  } catch {}
+                  safeCloseModal(false);
+                  setCreateBusy(false);
+                } catch (e: any) {
+                  console.error('Create collection error', e);
+                  setCreateError(e?.message || 'Failed to create collection');
+                  setCreateBusy(false);
+                }
+              }}
+              isDisabled={createBusy}
+            >{createBusy ? 'Creating…' : 'Create'}</Button>
+          </>
+        }
+      >
+        <div css={modalBodyStyles}>
+          <div className="form-row">
+            <label className="form-label">Title</label>
+            <Input
+              placeholder="Collection title"
+              value={createTitle}
+              onChange={(e) => setCreateTitle(e.target.value)}
+              disabled={createBusy}
+              maxLength={80}
+              ref={createTitleRef as any}
+            />
+          </div>
+          <div className="form-row">
+            <label className="form-label">Description</label>
+            <Input
+              placeholder="Optional description"
+              value={createDescription}
+              onChange={(e) => setCreateDescription(e.target.value)}
+              disabled={createBusy}
+              maxLength={500}
+            />
+            {createError && <div className="error">{createError}</div>}
+          </div>
+        </div>
+      </BasicModal>
+
+      <BasicModal
+        open={activeModal === 'add'}
+        title="Add Video to Collection"
+        onClose={() => safeCloseModal(addBusy)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => safeCloseModal(addBusy)} isDisabled={addBusy}>Cancel</Button>
+            <Button variant="primary" onClick={handleConfirmAddVideo} isDisabled={addBusy}>{addBusy ? 'Adding…' : 'Add'}</Button>
+          </>
+        }
+      >
+        <div css={modalBodyStyles}>
+          <div className="form-row">
+            <label className="form-label" htmlFor="add-collection-select">Collection</label>
+            <select
+              id="add-collection-select"
+              value={addCollectionId}
+              onChange={(e) => setAddCollectionId(e.target.value)}
+              disabled={addBusy}
+              style={{
+                width: '100%',
+                padding: 'var(--space-3) var(--space-4)',
+                border: '1px solid var(--color-neutral-300)',
+                borderRadius: 'var(--radius-medium)'
+              }}
+            >
+              <option value="">Select a collection</option>
+              {collections.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-row">
+            <label className="form-label">Video URL</label>
+            <Input
+              placeholder="https://..."
+              value={addVideoUrl}
+              onChange={(e) => setAddVideoUrl(e.target.value)}
+              disabled={addBusy}
+              ref={addUrlRef as any}
+            />
+            {addError && <div className="error">{addError}</div>}
+            <div className="helper">Paste a TikTok or Instagram link.</div>
+          </div>
+        </div>
+      </BasicModal>
+    </>
   );
 
   if (view === 'detail' && selectedCollection) {
     return (
       <div css={collectionsStyles}>
+        {modals}
         <div css={detailViewStyles}>
           <div className="detail-header">
             <Button
@@ -459,34 +845,24 @@ export const Collections: React.FC = () => {
               </div>
             </Card>
 
-            <Card appearance="raised" spacing="comfortable">
-              <h3 style={{ margin: '0 0 var(--space-4) 0', fontSize: 'var(--font-size-h5)' }}>Actions</h3>
+            <Card appearance="subtle" spacing="comfortable">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 var(--space-4) 0' }}>
+                <h3 style={{ margin: 0, fontSize: 'var(--font-size-h5)' }}>Actions</h3>
+                <Button
+                  variant="subtle"
+                  size="small"
+                  aria-label="Actions settings"
+                  iconBefore={<SettingsIcon label="" />}
+                />
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                 <Button 
-                  variant="primary" 
+                  variant="soft" 
                   fullWidth
-                  css={css`
-                    background: #0B5CFF;
-                    color: #ffffff;
-                    border: none;
-                    border-radius: var(--radius-medium);
-                    padding: var(--space-3) var(--space-6);
-                    font-weight: var(--font-weight-semibold);
-                    min-height: var(--touch-target-comfortable);
-                    transition: var(--transition-button);
-                    box-shadow: var(--shadow-subtle);
-                    
-                    &:hover {
-                      background: #0A52E6;
-                      box-shadow: var(--shadow-card);
-                      transform: translateY(-1px);
-                    }
-                    
-                    &:active {
-                      background: #0947CC;
-                      transform: translateY(0);
-                    }
-                  `}
+                  onClick={handleImportVideos}
+                  aria-haspopup="dialog"
+                  aria-expanded={activeModal === 'add'}
+                  data-testid="btn-detail-add-videos"
                 >
                   + Add Videos
                 </Button>
@@ -494,58 +870,8 @@ export const Collections: React.FC = () => {
                   variant="secondary" 
                   fullWidth
                   iconBefore={<RefreshIcon label="" />}
-                  css={css`
-                    background: transparent;
-                    color: #0B5CFF;
-                    border: var(--border-width-thin) solid #0B5CFF;
-                    border-radius: var(--radius-medium);
-                    font-weight: var(--font-weight-medium);
-                    
-                    &:hover {
-                      background: rgba(11, 92, 255, 0.08);
-                      border-color: #0A52E6;
-                    }
-                  `}
                 >
                   Bulk Actions
-                </Button>
-                <Button 
-                  variant="subtle" 
-                  fullWidth
-                  iconBefore={<SettingsIcon label="" />}
-                  css={css`
-                    background: transparent;
-                    color: var(--color-text-secondary);
-                    border: none;
-                    font-weight: var(--font-weight-medium);
-                    text-decoration: none;
-                    
-                    &:hover {
-                      color: var(--color-text-primary);
-                      text-decoration: underline;
-                    }
-                  `}
-                >
-                  Collection Settings
-                </Button>
-                <Button 
-                  variant="subtle" 
-                  fullWidth
-                  iconBefore={<ChartIcon label="" />}
-                  css={css`
-                    background: transparent;
-                    color: var(--color-text-secondary);
-                    border: none;
-                    font-weight: var(--font-weight-medium);
-                    text-decoration: none;
-                    
-                    &:hover {
-                      color: var(--color-text-primary);
-                      text-decoration: underline;
-                    }
-                  `}
-                >
-                  Analytics
                 </Button>
               </div>
             </Card>
@@ -564,54 +890,18 @@ export const Collections: React.FC = () => {
               <Button 
                 variant={platformFilter === 'tiktok' ? 'secondary' : 'subtle'} 
                 size="small"
-                css={platformFilter === 'tiktok' ? css`
-                  background: transparent;
-                  color: #0B5CFF;
-                  border: var(--border-width-thin) solid #0B5CFF;
-                  border-radius: var(--radius-medium);
-                  font-weight: var(--font-weight-medium);
-                  
-                  &:hover {
-                    background: rgba(11, 92, 255, 0.08);
-                    border-color: #0A52E6;
-                  }
-                ` : undefined}
               >
                 TikTok
               </Button>
               <Button 
                 variant={platformFilter === 'instagram' ? 'secondary' : 'subtle'} 
                 size="small"
-                css={platformFilter === 'instagram' ? css`
-                  background: transparent;
-                  color: #0B5CFF;
-                  border: var(--border-width-thin) solid #0B5CFF;
-                  border-radius: var(--radius-medium);
-                  font-weight: var(--font-weight-medium);
-                  
-                  &:hover {
-                    background: rgba(11, 92, 255, 0.08);
-                    border-color: #0A52E6;
-                  }
-                ` : undefined}
               >
                 Instagram
               </Button>
               <Button 
                 variant="subtle" 
                 size="small"
-                css={css`
-                  background: transparent;
-                  color: var(--color-text-secondary);
-                  border: none;
-                  font-weight: var(--font-weight-medium);
-                  text-decoration: none;
-                  
-                  &:hover {
-                    color: var(--color-text-primary);
-                    text-decoration: underline;
-                  }
-                `}
               >
                 Newest
               </Button>
@@ -619,11 +909,20 @@ export const Collections: React.FC = () => {
           </div>
 
           <VideoGrid
-            videos={mockVideos}
+            videos={videos}
             onVideoSelect={handleVideoSelect}
             onVideoPlay={handleVideoPlay}
             selectedVideos={selectedVideos}
             showBulkActions={true}
+          />
+
+          {/* Video Insights Modal */}
+          <VideoModal
+            isOpen={isVideoModalOpen}
+            video={selectedVideo}
+            videos={videos}
+            onClose={() => setIsVideoModalOpen(false)}
+            onNavigateVideo={handleNavigateVideo}
           />
         </div>
       </div>
@@ -632,6 +931,7 @@ export const Collections: React.FC = () => {
 
   return (
     <div css={collectionsStyles}>
+      {modals}
       <div css={headerStyles}>
         <div className="header-content">
           <h1>Collections</h1>
@@ -640,39 +940,23 @@ export const Collections: React.FC = () => {
         <div className="header-actions">
           <Button 
             variant="subtle" 
-            onClick={handleImportVideos}
-            iconBefore={<DownloadIcon label="" />}
-          >
-            Import Videos
-          </Button>
-          <Button 
-            variant="primary" 
             onClick={handleCreateCollection}
-            iconBefore={<AddIcon label="" />}
-            css={css`
-              background: #0B5CFF;
-              color: #ffffff;
-              border: none;
-              border-radius: var(--radius-medium);
-              padding: var(--space-3) var(--space-6);
-              font-weight: var(--font-weight-semibold);
-              min-height: var(--touch-target-comfortable);
-              transition: var(--transition-button);
-              box-shadow: var(--shadow-subtle);
-              
-              &:hover {
-                background: #0A52E6;
-                box-shadow: var(--shadow-card);
-                transform: translateY(-1px);
-              }
-              
-              &:active {
-                background: #0947CC;
-                transform: translateY(0);
-              }
-            `}
+            aria-haspopup="dialog"
+            aria-expanded={activeModal === 'create'}
+            data-testid="btn-create-collection"
+            iconBefore={<SettingsIcon label="" />}
           >
             Create Collection
+          </Button>
+          <Button 
+            variant="soft" 
+            onClick={handleImportVideos}
+            aria-haspopup="dialog"
+            aria-expanded={activeModal === 'add'}
+            data-testid="btn-add-to-collections"
+            iconBefore={<AddIcon label="" />}
+          >
+            Add to Collections
           </Button>
         </div>
       </div>
@@ -741,25 +1025,9 @@ export const Collections: React.FC = () => {
           >
             Instagram
           </Button>
-          <Button 
-            variant={platformFilter === 'youtube' ? 'secondary' : 'subtle'} 
-            size="small"
-            css={platformFilter === 'youtube' ? css`
-              background: transparent;
-              color: #0B5CFF;
-              border: var(--border-width-thin) solid #0B5CFF;
-              border-radius: var(--radius-medium);
-              font-weight: var(--font-weight-medium);
-              
-              &:hover {
-                background: rgba(11, 92, 255, 0.08);
-                border-color: #0A52E6;
-              }
-            ` : undefined}
-          >
-            YouTube
-          </Button>
+          {/* Removed YouTube filter per design update */}
         </div>
+        {/* Removed collections slider per feedback */}
         <div className="sort-container">
           <label htmlFor="sort-select">Sort:</label>
           <select
@@ -811,7 +1079,20 @@ export const Collections: React.FC = () => {
               onEdit={handleEditCollection}
             />
           ))}
-          <Card css={newCollectionCardStyles} onClick={handleCreateCollection}>
+          <Card
+            css={newCollectionCardStyles}
+            onClick={handleCreateCollection}
+            role="button"
+            tabIndex={0}
+            aria-label="Create new collection"
+            aria-haspopup="dialog"
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleCreateCollection();
+              }
+            }}
+          >
             <div className="new-icon"><AddIcon label="Create new collection" size="xlarge" /></div>
             <h3 className="new-title">Create New Collection</h3>
             <p className="new-description">

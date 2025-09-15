@@ -615,3 +615,11 @@ The application is well-positioned for continued development, with clear archite
 
 *Last Updated: September 2024*
 *Documentation Version: 1.0*
+## Roadmap
+
+See the in-app page at `/roadmap` or the standalone document at `docs/ROADMAP.md` for current milestones and upcoming work. Highlights:
+
+- Collections migration to Vite + Express with Firebase Admin
+- RBAC-aware collections/videos fetching
+- Add-to-Collections and Create Collection modals in UI
+- Near-term: pagination, RBAC hardening, and batch actions

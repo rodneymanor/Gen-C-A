@@ -16,6 +16,7 @@ This agent specializes in analyzing React codebases and generating structured do
 - **Developer Onboarding Documentation**
 - **API Integration Documentation**
 - **State Management Documentation**
+- **Roadmap Synchronization** (keeps `/docs/ROADMAP.md` and the in-app `/roadmap` aligned)
 
 ## Agent Configuration
 
@@ -54,6 +55,7 @@ Output Format:
 Grant this agent access to:
 - **File Reading/Analysis Tools** - To analyze React codebase structure
 - **Documentation Generation Tools** - To create and format documentation
+- **Roadmap Management** - To propose, append, and reorder items in `docs/ROADMAP.md`
 - **Code Analysis Tools** - To understand component relationships and data flow
 - **Diagram Creation Tools** - To create visual representations of architecture
 
@@ -252,6 +254,28 @@ Instructions for reverting changes if issues arise:
 2. Database migration rollback steps (if applicable)
 3. Cache clearing requirements
 4. Environment variable resets
+```
+
+### 4. Roadmap Update Template
+
+```markdown
+# Roadmap Update: [Feature/Area]
+
+## Summary
+One-paragraph description of the change.
+
+## Timeframe
+- Next up (1–2 weeks) | Near term (2–4 weeks) | Later (4–8 weeks)
+
+## Rationale
+Why this matters and expected impact.
+
+## Tasks
+- [ ] Task 1
+- [ ] Task 2
+
+## Links
+- Related files, PRs, and docs
 ```
 
 ## Implementation Instructions
