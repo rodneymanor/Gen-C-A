@@ -2,12 +2,10 @@ import type { ContentItem } from "@/types";
 import { ReactDebugger, DEBUG_LEVELS } from "@/utils/debugger";
 import { auth } from "@/lib/firebase";
 
-// Static JSON imports for transcripts and creator data
-// Note: resolveJsonModule is enabled, so JSON can be imported.
-// If you add more creators, import them here and extend the mapping.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore - JSON types are dynamic
-import aronsogi from "../../data/creators/aronsogi.json";
+// Local JSON for transcripts is optional and only used in dev.
+// Avoid static imports so production builds (e.g., Vercel) do not require
+// files from gitignored `data/`.
+const USE_LOCAL_LIBRARY = import.meta.env.DEV && (import.meta.env.VITE_INCLUDE_LOCAL_LIBRARY === "1");
 
 type CreatorTranscriptJson = {
   creatorId: string;
@@ -103,8 +101,16 @@ function mapNoteToItem(n: any): ContentItem {
 
 export async function getLibraryContent(): Promise<ContentItem[]> {
   const debug = new ReactDebugger("LibraryData", { level: DEBUG_LEVELS.DEBUG });
-  const transcriptSources: CreatorTranscriptJson[] = [aronsogi];
-  const transcriptItems = transcriptSources.flatMap(mapTranscriptsToItems);
+  let transcriptItems: ContentItem[] = [];
+  if (USE_LOCAL_LIBRARY) {
+    try {
+      const mod = await import("../../data/creators/aronsogi.json");
+      const aronsogi = (mod?.default || mod) as CreatorTranscriptJson;
+      transcriptItems = mapTranscriptsToItems(aronsogi);
+    } catch (e: any) {
+      debug.warn("Local library data not loaded", { message: e?.message });
+    }
+  }
 
   let scriptItems: ContentItem[] = [];
   let noteItems: ContentItem[] = [];
