@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent, CardFooter } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { TextArea } from '../ui/TextArea';
-import type { AIGenerationRequest, BrandPersona, Platform } from '../../types';
+import type { AIGenerationRequest, BrandPersona } from '../../types';
 
 export interface ScriptGeneratorProps {
   onGenerate?: (request: AIGenerationRequest) => void;
@@ -189,19 +189,7 @@ const lengthOptions = [
   { value: 'long', label: 'Long (60s+)' },
 ];
 
-const styleOptions = [
-  { value: 'engaging', label: 'Engaging' },
-  { value: 'educational', label: 'Educational' },
-  { value: 'promotional', label: 'Promotional' },
-  { value: 'storytelling', label: 'Storytelling' },
-];
-
-const platformOptions = [
-  { value: 'tiktok', label: 'TikTok' },
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'youtube', label: 'YouTube' },
-  { value: 'twitter', label: 'Twitter' },
-];
+// Removed style and platform options as dropdowns are no longer displayed
 
 const promptSuggestions = [
   'A fun TikTok about summer skincare routine for teens',
@@ -221,8 +209,9 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
     prompt: '',
     aiModel: 'creative',
     length: 'short',
+    // Keep defaults for request payload, but no UI controls
     style: 'engaging',
-    platform: 'tiktok' as Platform,
+    platform: 'tiktok' as const,
     persona: ''
   });
 
@@ -396,67 +385,7 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
                 </select>
               </div>
 
-              <div>
-                <label htmlFor="style" style={{ 
-                  display: 'block', 
-                  marginBottom: 'var(--space-2)', 
-                  fontSize: 'var(--font-size-body-small)', 
-                  fontWeight: 'var(--font-weight-medium)',
-                  color: 'var(--color-neutral-700)'
-                }}>
-                  Style
-                </label>
-                <select
-                  id="style"
-                  value={formData.style}
-                  onChange={(e) => handleInputChange('style', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: 'var(--space-3) var(--space-4)',
-                    border: '1px solid var(--color-neutral-300)',
-                    borderRadius: 'var(--radius-medium)',
-                    fontSize: 'var(--font-size-body)',
-                    background: 'var(--color-neutral-0)'
-                  }}
-                >
-                  {styleOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="platform" style={{ 
-                  display: 'block', 
-                  marginBottom: 'var(--space-2)', 
-                  fontSize: 'var(--font-size-body-small)', 
-                  fontWeight: 'var(--font-weight-medium)',
-                  color: 'var(--color-neutral-700)'
-                }}>
-                  Platform
-                </label>
-                <select
-                  id="platform"
-                  value={formData.platform}
-                  onChange={(e) => handleInputChange('platform', e.target.value as Platform)}
-                  style={{
-                    width: '100%',
-                    padding: 'var(--space-3) var(--space-4)',
-                    border: '1px solid var(--color-neutral-300)',
-                    borderRadius: 'var(--radius-medium)',
-                    fontSize: 'var(--font-size-body)',
-                    background: 'var(--color-neutral-0)'
-                  }}
-                >
-                  {platformOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Style and Platform dropdowns removed */}
             </div>
           </Card>
 

@@ -53,17 +53,20 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
     gap: var(--space-3);
   `}
   
-  /* Perplexity Button Hierarchy - Bloom Blue Primary */
+  /* Primary — soft gray over white background */
   ${variant === 'primary' && css`
-    background: var(--color-super);
-    color: var(--color-inverse);
-    border: none;
+    background: var(--button-primary-bg, var(--color-neutral-100));
+    color: var(--button-primary-text, var(--color-neutral-800));
+    border: 1px solid var(--color-neutral-200);
     box-shadow: none;
     border-radius: 8px; /* rounded-lg */
     font-weight: var(--font-weight-semimedium, 550);
     line-height: var(--line-height-loose, 1.75);
-    
-    &:hover:not(:disabled) { opacity: 0.8; }
+
+    &:hover:not(:disabled) {
+      background: var(--button-primary-bg-hover, var(--color-neutral-200));
+      border-color: var(--color-neutral-300);
+    }
     &:active { transform: scale(0.97); }
     &:focus-visible { outline: none; box-shadow: none; }
   `}

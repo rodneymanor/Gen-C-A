@@ -17,6 +17,7 @@ This document tracks milestones, priorities, and implementation details. The in-
 - Backend pagination for videos + UI cursor handling
 - Harden RBAC on write actions (move/copy/delete)
 - Consistent error toasts and retry UX
+- Unify Hemingway editor header and sidebar header heights to 68px
 
 ## Near Term (2–4 weeks)
 
@@ -46,4 +47,3 @@ This document tracks milestones, priorities, and implementation details. The in-
 2. If non-trivial, open a corresponding issue/ticket
 3. Submit PRs scoped to roadmap tasks
 4. Update `/docs/GEN_C_ALPHA_DOCUMENTATION.md` if new architecture/components are added
-

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { token } from '@atlaskit/tokens';
@@ -59,8 +60,8 @@ const PopupOverlay = styled.div<{ isOpen: boolean }>`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.1);
-  z-index: 1000;
+  background: rgba(0, 0, 0, 0.12);
+  z-index: 2147483000; /* Extremely high to escape any stacking */
   opacity: ${props => props.isOpen ? 1 : 0};
   pointer-events: ${props => props.isOpen ? 'auto' : 'none'};
   transition: opacity 200ms ease;
@@ -72,15 +73,20 @@ const PopupContainer = styled.div<{ position: { x: number; y: number }; isOpen: 
   top: ${props => props.position.y}px;
   width: 320px;
   max-height: 400px;
-  background: ${token('color.background.neutral')};
+  /* Solid white popup surface */
+  background: #ffffff;
   border: 1px solid ${token('color.border')};
-  border-radius: ${token('border.radius.200')};
-  box-shadow: ${token('elevation.shadow.raised')};
-  z-index: 1001;
+  /* Use app card radius (12px) */
+  border-radius: var(--radius-large);
+  /* Softer shadow to reduce visual weight */
+  box-shadow: 0 8px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+  z-index: 2147483001; /* Above overlay and other UI elements */
   transform: ${props => props.isOpen ? 'scale(1) translate(0, 0)' : 'scale(0.9) translate(-10px, -10px)'};
-  opacity: ${props => props.isOpen ? 1 : 0};
+  /* Ensure full opacity when visible */
+  opacity: 1;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
+  overflow: visible; /* Prevent inner elements from being clipped */
+  pointer-events: auto;
 
   @media (max-width: 768px) {
     position: fixed;
@@ -97,7 +103,11 @@ const PopupHeader = styled.div`
   justify-content: space-between;
   padding: ${token('space.200')} ${token('space.300')};
   border-bottom: 1px solid ${token('color.border')};
-  background: ${token('color.background.neutral.subtle')};
+  /* Solid white header */
+  background: #ffffff;
+  /* Match app card radius (12px) on header top corners */
+  border-top-left-radius: var(--radius-large);
+  border-top-right-radius: var(--radius-large);
 
   h3 {
     margin: 0;
@@ -116,7 +126,7 @@ const CloseButton = styled.button`
   color: ${token('color.text.subtle')};
   cursor: pointer;
   padding: ${token('space.050')};
-  border-radius: ${token('border.radius')};
+  border-radius: var(--radius-large);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -150,7 +160,7 @@ const ActionButton = styled.button<{ isSelected?: boolean }>`
   padding: ${token('space.200')};
   background: ${props => props.isSelected ? token('color.background.selected') : 'none'};
   border: 1px solid ${props => props.isSelected ? token('color.border.selected') : 'transparent'};
-  border-radius: ${token('border.radius')};
+  border-radius: var(--radius-large);
   cursor: pointer;
   text-align: left;
   width: 100%;
@@ -206,7 +216,7 @@ const OptionButton = styled.button<{ isSelected?: boolean }>`
   padding: ${token('space.150')};
   background: ${props => props.isSelected ? token('color.background.selected') : 'none'};
   border: 1px solid ${props => props.isSelected ? token('color.border.selected') : token('color.border')};
-  border-radius: ${token('border.radius')};
+  border-radius: var(--radius-large);
   cursor: pointer;
   text-align: left;
   width: 100%;
@@ -244,9 +254,11 @@ const SuggestionsContainer = styled.div`
 
 const SuggestionCard = styled.div`
   border: 1px solid ${token('color.border')};
-  border-radius: ${token('border.radius')};
+  /* Ensure suggestion cards match app card radius */
+  border-radius: var(--radius-large);
   padding: ${token('space.200')};
-  background: ${token('color.background.neutral')};
+  /* Solid white card */
+  background: #ffffff;
 `;
 
 const SuggestionText = styled.div`
@@ -269,7 +281,7 @@ const Button = styled.button<{ variant?: 'primary' | 'subtle' }>`
   gap: ${token('space.100')};
   padding: ${token('space.100')} ${token('space.200')};
   font-size: 0.75rem;
-  border-radius: ${token('border.radius')};
+  border-radius: var(--radius-large);
   cursor: pointer;
   transition: all 150ms ease;
   border: 1px solid;
@@ -330,7 +342,7 @@ const Navigation = styled.div`
   align-items: center;
   padding: ${token('space.200')} ${token('space.300')};
   border-top: 1px solid ${token('color.border')};
-  background: ${token('color.background.neutral.subtle')};
+  background: #ffffff;
 `;
 
 // Configuration for different section types
@@ -595,7 +607,7 @@ export const AISuggestionPopup: React.FC<AISuggestionPopupProps> = ({
     }
   };
 
-  return (
+  const portalContent = (
     <PopupOverlay isOpen={isOpen} onClick={onClose}>
       <PopupContainer
         position={position}
@@ -702,4 +714,7 @@ export const AISuggestionPopup: React.FC<AISuggestionPopupProps> = ({
       </PopupContainer>
     </PopupOverlay>
   );
+
+  // Render into portal to escape any stacking contexts/overflow
+  return typeof document !== 'undefined' ? createPortal(portalContent, document.body) : portalContent;
 };

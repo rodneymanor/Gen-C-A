@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { css } from '@emotion/react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Navigation } from './Navigation';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useLiveAnnouncer } from '../../hooks/useFocusManagement';
 import { useAuth } from '../../contexts/AuthContext';
 import { token } from '@atlaskit/tokens';
+import { PageLoader } from '../ui/PageLoader';
+import { PageLoadProvider, usePageLoad } from '../../contexts/PageLoadContext';
 
 // Atlassian Design System Icons
 import MenuIcon from '@atlaskit/icon/glyph/menu';
@@ -53,7 +55,7 @@ const contentStyles = css`
   flex: 1;
   overflow-y: auto;
   padding: 0;
-  background: var(--color-neutral-50);
+  background: var(--color-surface);
 
   @media (max-width: 768px) {
     padding: 0;
@@ -111,10 +113,15 @@ const skipLinkStyles = css`
 `;
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
   const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
   const { isMobile } = useResponsive();
   const { announce } = useLiveAnnouncer();
+  const location = useLocation();
+  const lastPathRef = useRef<string>(location.pathname + location.search);
+  const [pageLoading, setPageLoading] = useState<boolean>(false);
+  const MIN_OVERLAY_MS = 1200; // longer mask to avoid flicker while data loads
+  const overlayTimer = useRef<number | null>(null);
   const bypassAuth = (import.meta as any).env?.VITE_BYPASS_AUTH === '1' 
     || (typeof window !== 'undefined' && window?.localStorage?.getItem('bypassAuth') === '1');
 
@@ -146,6 +153,26 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     );
   };
 
+  // Show a subtle loader on route changes to avoid flashing incomplete states
+  useEffect(() => {
+    const nowPath = location.pathname + location.search;
+    if (nowPath !== lastPathRef.current) {
+      lastPathRef.current = nowPath;
+      // Start overlay
+      setPageLoading(true);
+      // Clear any previous timer
+      if (overlayTimer.current) window.clearTimeout(overlayTimer.current);
+      // End overlay after a minimal delay; UI will be ready by then
+      overlayTimer.current = window.setTimeout(() => setPageLoading(false), MIN_OVERLAY_MS);
+    }
+    return () => {
+      if (overlayTimer.current) {
+        window.clearTimeout(overlayTimer.current);
+        overlayTimer.current = null;
+      }
+    };
+  }, [location.pathname, location.search]);
+
   return (
     <div css={layoutStyles} className="app-layout">
       {/* Skip link for keyboard navigation */}
@@ -159,43 +186,47 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         onToggleCollapse={handleToggleNavigation}
         user={navUser!}
       />
-      
-      {/* Main Content Area */}
-      <main
-        css={mainStyles(isNavigationCollapsed, isMobile)}
-        className="main-content"
-        id="main-content"
-        role="main"
-      >
-        {/* Mobile Header */}
-        {isMobile && (
-          <header css={headerStyles}>
-            <div css={mobileHeaderStyles}>
-              <button
-                onClick={handleToggleNavigation}
-                className="mobile-menu-toggle"
-                aria-label="Open navigation menu"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '20px',
-                  cursor: 'pointer',
-                  padding: 'var(--space-2)',
-                  borderRadius: 'var(--radius-small)',
-                }}
-              >
-                <MenuIcon label="" size="medium" primaryColor={token('color.icon')} />
-              </button>
-              <h1 className="page-title">Dashboard</h1>
-            </div>
-          </header>
-        )}
-        
-        {/* Page Content */}
-        <div css={contentStyles} className="page-content">
-          {children || <Outlet />}
-        </div>
-      </main>
+
+      <PageLoadProvider>
+        {/* Main Content Area */}
+        <main
+          css={mainStyles(isNavigationCollapsed, isMobile)}
+          className="main-content"
+          id="main-content"
+          role="main"
+        >
+          {/* Mobile Header */}
+          {isMobile && (
+            <header css={headerStyles}>
+              <div css={mobileHeaderStyles}>
+                <button
+                  onClick={handleToggleNavigation}
+                  className="mobile-menu-toggle"
+                  aria-label="Open navigation menu"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    padding: 'var(--space-2)',
+                    borderRadius: 'var(--radius-small)',
+                  }}
+                >
+                  <MenuIcon label="" size="medium" primaryColor={token('color.icon')} />
+                </button>
+                <h1 className="page-title">Dashboard</h1>
+              </div>
+            </header>
+          )}
+          
+          {/* Page Content */}
+          <div css={contentStyles} className="page-content">
+            {children || <Outlet />}
+          </div>
+        </main>
+        {/* Global page loader: shows during auth init, route transitions, or while pages mark busy */}
+        <PageLoadOverlay authLoading={authLoading} routeLoading={pageLoading} />
+      </PageLoadProvider>
       
       {/* Live announcer for screen readers */}
       <div
@@ -213,4 +244,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       />
     </div>
   );
+};
+
+// Separate component to consume context and decide loader visibility
+const PageLoadOverlay: React.FC<{ authLoading: boolean; routeLoading: boolean }> = ({ authLoading, routeLoading }) => {
+  let busyCount = 0;
+  try {
+    // This will throw if provider not yet mounted; handle gracefully
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    busyCount = usePageLoad().busyCount;
+  } catch {
+    busyCount = 0;
+  }
+  const show = authLoading || routeLoading || busyCount > 0;
+  return <PageLoader show={show} ariaLabel={authLoading ? 'Authenticating' : 'Loading page'} />;
 };

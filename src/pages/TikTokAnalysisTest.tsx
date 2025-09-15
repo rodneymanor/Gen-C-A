@@ -248,6 +248,9 @@ const TemplateTester: React.FC<{ templates: any }> = ({ templates }) => {
 };
 
 export const TikTokAnalysisTest: React.FC = () => {
+  // Controls
+  const VIDEO_LIMIT = 20; // Number of videos to fetch/transcribe/analyze
+  const TRANSCRIBE_CONCURRENCY = 3; // Parallel transcriptions
   const [username, setUsername] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [customPrompt, setCustomPrompt] = useState<string>(
@@ -290,7 +293,7 @@ export const TikTokAnalysisTest: React.FC = () => {
       const response = await fetch('/api/tiktok/user-feed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), count: 10 })
+        body: JSON.stringify({ username: username.trim(), count: VIDEO_LIMIT })
       });
 
       const result = await response.json();
@@ -303,7 +306,22 @@ export const TikTokAnalysisTest: React.FC = () => {
         throw new Error(result.error || 'Failed to fetch videos');
       }
 
-      setStep1({ status: 'success', data: result });
+      // Optionally filter out videos already analyzed for this creator
+      let filtered = result?.videos || [];
+      try {
+        const lookup = await fetch(`/api/creator/analyzed-video-ids?handle=${encodeURIComponent(username.trim().replace(/^@/, ''))}`);
+        const idsRes = await lookup.json();
+        if (lookup.ok && idsRes?.success && Array.isArray(idsRes.videoIds) && idsRes.videoIds.length) {
+          const existing = new Set(idsRes.videoIds.map(String));
+          const before = filtered.length;
+          filtered = filtered.filter((v: any) => !existing.has(String(v?.id)));
+          console.log(`ℹ️ Filtered already-analyzed videos: ${before - filtered.length} removed, ${filtered.length} remaining`);
+        }
+      } catch (e) {
+        console.warn('Skipping analyzed-video-ids check:', (e as any)?.message || e);
+      }
+
+      setStep1({ status: 'success', data: { ...result, videos: filtered } });
       console.log('✅ Step 1 completed:', result.videos?.length, 'videos found');
 
     } catch (error: any) {
@@ -321,31 +339,57 @@ export const TikTokAnalysisTest: React.FC = () => {
     setStep2({ status: 'running' });
 
     try {
-      console.log('🚀 Step 2: Transcribing videos...');
-      const videos = step1.data.videos.slice(0, 5); // Limit to 5 videos for testing
+      console.log(`🚀 Step 2: Transcribing videos (parallel x${TRANSCRIBE_CONCURRENCY})...`);
+      const videos = step1.data.videos.slice(0, VIDEO_LIMIT);
+
+      // Concurrency-limited worker pool (size 3)
+      const CONCURRENCY = TRANSCRIBE_CONCURRENCY;
+      const results: Array<{ transcript?: string; meta?: { id: string; url?: string; title?: string } } | null> = new Array(videos.length).fill(null);
+      let nextIndex = 0;
+
+      const worker = async (workerId: number) => {
+        while (true) {
+          const i = nextIndex;
+          if (i >= videos.length) return;
+          nextIndex++;
+
+          const video = videos[i];
+          console.log(`🎬 [W${workerId}] Transcribing video ${i + 1}/${videos.length}: ${video.id}`);
+          try {
+            const response = await fetch('/api/video/transcribe-from-url', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ videoUrl: video.downloadUrl })
+            });
+
+            const result = await response.json();
+            if (response.ok && result.success && result.transcript) {
+              results[i] = {
+                transcript: result.transcript,
+                meta: { id: String(video.id), url: video.downloadUrl, title: video.description }
+              };
+              console.log(`✅ [W${workerId}] Video ${i + 1} transcribed`);
+            } else {
+              console.warn(`⚠️ [W${workerId}] Video ${i + 1} transcription failed:`, result.error);
+            }
+          } catch (err) {
+            console.warn(`⚠️ [W${workerId}] Error transcribing video ${i + 1}:`, err);
+          }
+        }
+      };
+
+      const workerCount = Math.min(CONCURRENCY, videos.length);
+      await Promise.all(Array.from({ length: workerCount }, (_, w) => worker(w + 1)));
+
+      // Collect successful results in original order
       const transcripts: string[] = [];
       const videoMeta: Array<{ id: string; url?: string; title?: string }> = [];
-
-      for (let i = 0; i < videos.length; i++) {
-        const video = videos[i];
-        console.log(`🎬 Transcribing video ${i + 1}/${videos.length}: ${video.id}`);
-
-        const response = await fetch('/api/video/transcribe-from-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ videoUrl: video.downloadUrl })
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.success && result.transcript) {
-          transcripts.push(result.transcript);
-          videoMeta.push({ id: String(video.id), url: video.downloadUrl, title: video.title });
-          console.log(`✅ Video ${i + 1} transcribed successfully`);
-        } else {
-          console.warn(`⚠️ Video ${i + 1} transcription failed:`, result.error);
+      results.forEach((r) => {
+        if (r?.transcript) {
+          transcripts.push(r.transcript);
+          if (r.meta) videoMeta.push(r.meta);
         }
-      }
+      });
 
       if (transcripts.length === 0) {
         throw new Error('No videos could be transcribed successfully');
@@ -369,10 +413,22 @@ export const TikTokAnalysisTest: React.FC = () => {
     setStep3({ status: 'running' });
 
     try {
-      console.log('🚀 Step 3: Analyzing voice patterns...');
-      // Build the specific analysis prompt with transcripts in-place
-      const t: string[] = step2.data.transcripts.slice(0, 5);
-      const analysisInstruction = `Analyze these 5 video transcripts and create reusable templates. For each transcript:
+      console.log('🚀 Step 3: Analyzing voice patterns (batched merge)...');
+      const allTranscripts: string[] = step2.data.transcripts.slice(0, VIDEO_LIMIT);
+      const BATCH_SIZE = 10; // keep within model token limits
+
+      const chunk = (arr: any[], size: number) => {
+        const out: any[][] = [];
+        for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+        return out;
+      };
+
+      const batches = chunk(allTranscripts, BATCH_SIZE);
+
+      const buildPrompt = (batchTranscripts: string[]) => {
+        const t = batchTranscripts;
+        const tCount = t.length;
+        const analysisInstruction = `Analyze these ${tCount} video transcripts and create reusable templates. For each transcript:
 
 1. EXTRACT THE SECTIONS:
 - Hook (first 3-5 seconds that grabs attention)
@@ -389,11 +445,7 @@ Example: "I made $5000 in 2 days" → "I [achievement] in [timeframe]"
 - Transition words between sections
 - Speaking pace indicators (pauses, emphasis)
 
-[INSERT TRANSCRIPT 1]
-[INSERT TRANSCRIPT 2]
-[INSERT TRANSCRIPT 3]
-[INSERT TRANSCRIPT 4]
-[INSERT TRANSCRIPT 5]
+${Array.from({ length: tCount }, (_, i) => `[INSERT TRANSCRIPT ${i + 1}]`).join('\n')}
 
 OUTPUT FORMAT:
 
@@ -419,27 +471,18 @@ OUTPUT FORMAT:
 - Filler phrases: [list]
 - Transition phrases: [list]
 - Average words per sentence: [number]
-- Tone: [description]
-Simple Storage Structure
-Create a spreadsheet or JSON file with these columns:
-Templates Sheet
-Template TypePatternVariablesExampleSuccess ScoreHook"Did you know that [fact] can [benefit]?"fact, benefit"Did you know that waking up at 5am can double your productivity?"8/10Bridge"Let me show you [method]"method"Let me show you the exact steps"7/10Golden Nugget"First, [step1]. Then, [step2]. Finally, [step3]"step1, step2, step3"First, identify the problem. Then, research solutions. Finally, test the best option"9/10CTA"Comment [action] if you [condition]"action, condition"Comment YES if you want more tips"6/10`;
+- Tone: [description]`;
 
-      const transcriptsBlock = [
-        `\n[INSERT TRANSCRIPT 1]\n${t[0] ?? ''}`,
-        `\n[INSERT TRANSCRIPT 2]\n${t[1] ?? ''}`,
-        `\n[INSERT TRANSCRIPT 3]\n${t[2] ?? ''}`,
-        `\n[INSERT TRANSCRIPT 4]\n${t[3] ?? ''}`,
-        `\n[INSERT TRANSCRIPT 5]\n${t[4] ?? ''}`,
-      ].join('\n');
+        const transcriptsBlock = t
+          .map((content, i) => `\n[INSERT TRANSCRIPT ${i + 1}]\n${content ?? ''}`)
+          .join('\n');
 
-      // Enforce JSON output with an explicit schema and no extra text
-      const jsonHeader = `Return ONLY valid JSON with this schema and no markdown/code fences.\n\n{
+        const jsonHeader = `Return ONLY valid JSON with this schema and no markdown/code fences.\n\n{
   "templates": {
-    "hooks": [{ "pattern": "string", "variables": ["string"] }],
-    "bridges": [{ "pattern": "string", "variables": ["string"] }],
-    "ctas": [{ "pattern": "string", "variables": ["string"] }],
-    "nuggets": [{ "pattern": "string", "structure": "string", "variables": ["string"] }]
+    "hooks": [{ "pattern": "string", "variables": ["string"], "sourceIndex": 1 }],
+    "bridges": [{ "pattern": "string", "variables": ["string"], "sourceIndex": 1 }],
+    "ctas": [{ "pattern": "string", "variables": ["string"], "sourceIndex": 1 }],
+    "nuggets": [{ "pattern": "string", "structure": "string", "variables": ["string"], "sourceIndex": 1 }]
   },
   "styleSignature": {
     "powerWords": ["string"],
@@ -458,37 +501,121 @@ Template TypePatternVariablesExampleSuccess ScoreHook"Did you know that [fact] c
   }]
 }`;
 
-      const composedPrompt = `${jsonHeader}\n\n${analysisInstruction}\n${transcriptsBlock}`;
+        const densityRequirement = `\n\nTEMPLATE DENSITY REQUIREMENTS:\n- Produce exactly ${tCount} items in each of templates.hooks, templates.bridges, templates.nuggets, templates.ctas.\n- Map one item per transcript and set sourceIndex to that transcript's index (1-based).\n- Do NOT deduplicate or merge similar templates across transcripts — include them separately even if identical.\n- Keep patterns generalized with [VARIABLES], but preserve distinct phrasing per transcript.`;
 
-      const response = await fetch('/api/voice/analyze-patterns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // We embed transcripts in the composed prompt to match the requested format
-          prompt: composedPrompt,
-          responseType: 'json',
-          temperature: analysisTemperature,
-          maxTokens: analysisMaxTokens,
-          model: analysisModel,
-        })
-      });
+        const composedPrompt = `${jsonHeader}\n\n${analysisInstruction}${densityRequirement}\n${transcriptsBlock}`;
+        return composedPrompt;
+      };
 
-      const result = await response.json();
+      const analyzeBatch = async (batchTranscripts: string[]) => {
+        // Helper: robust JSON parse with fallback extraction
+        const tryParseJson = (text: string): any | null => {
+          if (!text) return null;
+          try {
+            return JSON.parse(text);
+          } catch {}
+          // Strip markdown code fences if present
+          const cleaned = text.replace(/```[\s\S]*?```/g, '').trim();
+          try {
+            return JSON.parse(cleaned);
+          } catch {}
+          // Extract first to last brace block as a last resort
+          const first = cleaned.indexOf('{');
+          const last = cleaned.lastIndexOf('}');
+          if (first !== -1 && last !== -1 && last > first) {
+            const slice = cleaned.substring(first, last + 1);
+            try {
+              return JSON.parse(slice);
+            } catch {}
+          }
+          return null;
+        };
+        const composedPrompt = buildPrompt(batchTranscripts);
+        const response = await fetch('/api/voice/analyze-patterns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: composedPrompt,
+            responseType: 'json',
+            temperature: analysisTemperature,
+            maxTokens: analysisMaxTokens,
+            model: analysisModel,
+            systemPrompt: 'You are a strict JSON generator. Return ONLY valid JSON matching the schema. No markdown, no commentary, no code fences.'
+          })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `API returned ${response.status}`);
+        const parsed = tryParseJson(result?.content || '');
+        if (!parsed) {
+          console.warn('Failed to parse JSON content for batch');
+        }
+        return parsed;
+      };
 
-      if (!response.ok) {
-        throw new Error(result.error || `API returned ${response.status}`);
+      const batchResults: any[] = [];
+      for (let b = 0; b < batches.length; b++) {
+        console.log(`🧩 Analyzing batch ${b + 1}/${batches.length} (${batches[b].length} transcripts)`);
+        const r = await analyzeBatch(batches[b]);
+        if (!r) throw new Error('Empty analysis result for a batch');
+        batchResults.push(r);
       }
 
-      // Parse JSON content
-      let parsed: any = null;
-      try {
-        parsed = result?.content ? JSON.parse(result.content) : null;
-      } catch (e) {
-        console.warn('Failed to parse JSON content; returning raw text');
+      const combined: any = {
+        templates: { hooks: [], bridges: [], ctas: [], nuggets: [] },
+        styleSignature: { powerWords: [], fillerPhrases: [], transitionPhrases: [], avgWordsPerSentence: undefined, tone: 'Varied' },
+        transcripts: [],
+      };
+
+      const uniqPush = (arr: any[], items: any[]) => {
+        const set = new Set(arr.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))));
+        for (const it of items) {
+          const key = typeof it === 'string' ? it : JSON.stringify(it);
+          if (!set.has(key)) {
+            set.add(key);
+            arr.push(it);
+          }
+        }
+      };
+
+      let globalOffset = 0;
+      for (let b = 0; b < batchResults.length; b++) {
+        const r = batchResults[b];
+        const bt = batches[b];
+        const localCount = bt.length;
+
+        const adjustTemplates = (list: any[] = []) =>
+          list.map((t: any, idx: number) => ({
+            ...t,
+            sourceIndex: globalOffset + (t?.sourceIndex ?? idx + 1),
+          }));
+        combined.templates.hooks.push(...adjustTemplates(r?.templates?.hooks));
+        combined.templates.bridges.push(...adjustTemplates(r?.templates?.bridges));
+        combined.templates.ctas.push(...adjustTemplates(r?.templates?.ctas));
+        combined.templates.nuggets.push(...adjustTemplates(r?.templates?.nuggets));
+
+        if (Array.isArray(r?.transcripts)) {
+          combined.transcripts.push(
+            ...r.transcripts.map((t: any, i: number) => ({ ...t, index: globalOffset + (t?.index ?? i + 1) }))
+          );
+        }
+
+        uniqPush(combined.styleSignature.powerWords, r?.styleSignature?.powerWords || []);
+        uniqPush(combined.styleSignature.fillerPhrases, r?.styleSignature?.fillerPhrases || []);
+        uniqPush(combined.styleSignature.transitionPhrases, r?.styleSignature?.transitionPhrases || []);
+        const avg = r?.styleSignature?.avgWordsPerSentence;
+        if (typeof avg === 'number') {
+          const current = combined.styleSignature.avgWordsPerSentence;
+          combined.styleSignature.avgWordsPerSentence = typeof current === 'number' ? (current + avg) / 2 : avg;
+        }
+        if (r?.styleSignature?.tone && combined.styleSignature.tone === 'Varied') {
+          combined.styleSignature.tone = r.styleSignature.tone;
+        }
+
+        globalOffset += localCount;
       }
 
-      setStep3({ status: 'success', data: { raw: result?.content, json: parsed } });
-      console.log('✅ Step 3 completed: Voice patterns analyzed');
+      setStep3({ status: 'success', data: { raw: null, json: combined } });
+      console.log('✅ Step 3 completed: Voice patterns analyzed (batched)');
 
     } catch (error: any) {
       console.error('❌ Step 3 failed:', error);
@@ -757,6 +884,81 @@ Template TypePatternVariablesExampleSuccess ScoreHook"Did you know that [fact] c
                   <div>
                     User: {step1.data.userInfo.nickname} ({step1.data.userInfo.username})
                     Followers: {step1.data.userInfo.stats?.followerCount || 0}
+                  </div>
+                )}
+                {/* Video list with thumbnail, title, and caption */}
+                {Array.isArray(step1.data.videos) && step1.data.videos.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{
+                      fontWeight: 600,
+                      marginBottom: 8,
+                      color: 'var(--color-text-secondary)'
+                    }}>Latest videos</div>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(120px, 160px) 1fr',
+                      rowGap: 10,
+                      columnGap: 12,
+                    }}>
+                      {step1.data.videos.map((vid: any, idx: number) => {
+                        const title = vid?.music?.title || `Video ${idx + 1}`;
+                        const caption = vid?.description || '';
+                        const cover = vid?.cover || '';
+                        return (
+                          <React.Fragment key={vid?.id || idx}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                              {cover ? (
+                                <img
+                                  src={cover}
+                                  alt={caption ? caption.slice(0, 80) : title}
+                                  style={{
+                                    width: 120,
+                                    height: 160,
+                                    objectFit: 'cover',
+                                    borderRadius: 8,
+                                    border: '1px solid var(--color-border-subtle)'
+                                  }}
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div style={{
+                                  width: 120,
+                                  height: 160,
+                                  borderRadius: 8,
+                                  background: 'var(--color-surface-muted)',
+                                  border: '1px solid var(--color-border-subtle)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'var(--color-text-secondary)'
+                                }}>No thumbnail</div>
+                              )}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{
+                                fontWeight: 600,
+                                color: 'var(--color-text-primary)'
+                              }}>{title}</div>
+                              {caption && (
+                                <div style={{
+                                  marginTop: 4,
+                                  color: 'var(--color-text-secondary)',
+                                  whiteSpace: 'pre-wrap'
+                                }}>{caption}</div>
+                              )}
+                              <div style={{
+                                marginTop: 6,
+                                fontSize: '12px',
+                                color: 'var(--color-text-subtle)'
+                              }}>
+                                ID: {vid?.id}
+                                {vid?.stats?.playCount ? ` • Plays: ${vid.stats.playCount}` : ''}
+                              </div>
+                            </div>
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

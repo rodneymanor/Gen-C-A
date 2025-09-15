@@ -30,29 +30,32 @@ const ComponentGrid = styled.div`
   overflow-y: auto;
 `;
 
-const ComponentCard = styled.div<{ componentType: 'hook' | 'bridge' | 'nugget' | 'wta' }>`
-  border: 2px solid ${(props: any) => {
-    switch (props.componentType) {
-      case 'hook': return token('color.border.accent.yellow');
-      case 'bridge': return token('color.border.accent.blue');
-      case 'nugget': return token('color.border.accent.green');
-      case 'wta': return token('color.border.accent.red');
-      default: return token('color.border');
-    }
-  }};
-  border-radius: ${token('border.radius.200')};
+type ComponentComplexity = 'ok' | 'warning' | 'high' | 'critical';
+
+const ComponentCard = styled.div<{ componentType: 'hook' | 'bridge' | 'nugget' | 'wta'; complexity: ComponentComplexity }>`
+  border: 2px solid ${token('color.border')};
+  border-radius: 12px;
   background: ${token('color.background.neutral')};
   padding: ${token('space.300')};
   transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
     border-color: ${(props: any) => {
-      switch (props.componentType) {
-        case 'hook': return token('color.background.accent.yellow.subtler');
-        case 'bridge': return token('color.background.accent.blue.subtler');
-        case 'nugget': return token('color.background.accent.green.subtler');
-        case 'wta': return token('color.background.accent.red.subtler');
-        default: return token('color.border.focused');
+      switch (props.complexity) {
+        case 'ok': return token('color.border.accent.blue');
+        case 'warning': return token('color.border.accent.yellow');
+        case 'high': return token('color.border.accent.orange');
+        case 'critical': return token('color.border.accent.red');
+        default: return token('color.border.accent.blue');
+      }
+    }};
+    background: ${(props: any) => {
+      switch (props.complexity) {
+        case 'ok': return token('color.background.accent.blue.subtler');
+        case 'warning': return token('color.background.accent.yellow.subtler');
+        case 'high': return token('color.background.accent.orange.subtler');
+        case 'critical': return token('color.background.accent.red.subtler');
+        default: return token('color.background.accent.blue.subtler');
       }
     }};
     box-shadow: ${token('elevation.shadow.raised')};
@@ -219,9 +222,20 @@ export const ScriptComponentEditor: React.FC<ScriptComponentEditorProps> = ({
         const currentValue = scriptElements[config.key];
         const editValue = editValues[config.key];
         const componentType = getComponentTypeForStyling(config.key);
+        // Heuristic complexity per component content
+        const words = (currentValue || '').trim().split(/\s+/).filter(Boolean);
+        const sentences = (currentValue || '').split(/[.!?]+/).filter(s => s.trim().length > 0);
+        const avgWps = sentences.length ? words.length / sentences.length : words.length;
+        const complexity: ComponentComplexity = avgWps >= 28 || words.length >= 180
+          ? 'critical'
+          : avgWps >= 22 || words.length >= 120
+          ? 'high'
+          : avgWps >= 16 || words.length >= 80
+          ? 'warning'
+          : 'ok';
 
         return (
-          <ComponentCard key={config.key} componentType={componentType}>
+          <ComponentCard key={config.key} componentType={componentType} complexity={complexity}>
             <ComponentHeader>
               <ComponentLabel componentType={componentType}>
                 <ComponentIcon type={componentType} />

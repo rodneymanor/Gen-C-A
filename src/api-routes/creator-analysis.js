@@ -144,12 +144,18 @@ export async function handleSaveCreatorAnalysis(req, res) {
       let count = 0;
       for (const pattern of patterns) {
         const variables = findPlaceholders(pattern);
-        await db.collection(col).add({
-          pattern,
-          variables,
-          creatorIds: [creatorId],
-          createdAt: new Date(),
-        });
+        // Upsert by (creatorId, pattern) to avoid duplicates
+        const existing = await db
+          .collection(col)
+          .where('pattern', '==', pattern)
+          .where('creatorIds', 'array-contains', creatorId)
+          .limit(1)
+          .get();
+        if (!existing.empty) {
+          await existing.docs[0].ref.set({ pattern, variables, creatorIds: [creatorId], updatedAt: new Date() }, { merge: true });
+        } else {
+          await db.collection(col).add({ pattern, variables, creatorIds: [creatorId], createdAt: new Date() });
+        }
         count++;
       }
       return count;
@@ -190,13 +196,20 @@ export async function handleSaveCreatorAnalysis(req, res) {
 
         if (nuggetTemplates.length) {
           for (const n of nuggetTemplates) {
-            await db.collection('goldenNuggetTemplates').add({
-              pattern: n.pattern,
-              structure: n.structure || 'unspecified',
-              variables: n.variables || findPlaceholders(n.pattern),
-              creatorIds: [creatorId],
-              createdAt: new Date(),
-            });
+            const pattern = n.pattern;
+            const variables = n.variables || findPlaceholders(pattern);
+            const structure = n.structure || 'unspecified';
+            const existing = await db
+              .collection('goldenNuggetTemplates')
+              .where('pattern', '==', pattern)
+              .where('creatorIds', 'array-contains', creatorId)
+              .limit(1)
+              .get();
+            if (!existing.empty) {
+              await existing.docs[0].ref.set({ pattern, structure, variables, creatorIds: [creatorId], updatedAt: new Date() }, { merge: true });
+            } else {
+              await db.collection('goldenNuggetTemplates').add({ pattern, structure, variables, creatorIds: [creatorId], createdAt: new Date() });
+            }
             saved.nuggets++;
           }
         }
@@ -205,16 +218,48 @@ export async function handleSaveCreatorAnalysis(req, res) {
           for (const item of perTranscript) {
             const i = (item.index ?? 1) - 1;
             const vm = Array.isArray(videoMeta) ? videoMeta[i] : undefined;
-            await db.collection('scriptStructures').add({
-              videoId: vm?.id || '',
+            const videoId = vm?.id || '';
+
+            if (!videoId) {
+              // No videoId to key on; add as new record to avoid data loss
+              await db.collection('scriptStructures').add({
+                videoId: '',
+                creatorId,
+                hook: item.hook || null,
+                bridge: item.bridge || null,
+                goldenNugget: item.goldenNugget || null,
+                cta: item.cta || null,
+                microHooks: item.microHooks || [],
+                createdAt: new Date(),
+              });
+              saved.scriptStructures++;
+              continue;
+            }
+
+            // Upsert by (creatorId, videoId) to avoid duplicates when adding more content later
+            const existing = await db
+              .collection('scriptStructures')
+              .where('creatorId', '==', creatorId)
+              .where('videoId', '==', videoId)
+              .limit(1)
+              .get();
+
+            const payload = {
+              videoId,
               creatorId,
               hook: item.hook || null,
               bridge: item.bridge || null,
               goldenNugget: item.goldenNugget || null,
               cta: item.cta || null,
               microHooks: item.microHooks || [],
-              createdAt: new Date(),
-            });
+              updatedAt: new Date(),
+            };
+
+            if (!existing.empty) {
+              await existing.docs[0].ref.set(payload, { merge: true });
+            } else {
+              await db.collection('scriptStructures').add({ ...payload, createdAt: new Date() });
+            }
             saved.scriptStructures++;
           }
         }

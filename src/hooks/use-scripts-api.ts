@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/contexts/AuthContext";
 import { Script, CreateScriptRequest, UpdateScriptRequest } from "@/types/script";
 
 interface UseScriptsApiReturn {

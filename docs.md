@@ -18,6 +18,11 @@ This agent specializes in analyzing React codebases and generating structured do
 - **State Management Documentation**
 - **Roadmap Synchronization** (keeps `/docs/ROADMAP.md` and the in-app `/roadmap` aligned)
 
+## Quick Links
+
+- Dev Guide: docs/DEVELOPMENT_GUIDE.md (includes admin brand voice meta controls and TikTok batching)
+- Alpha Docs: docs/GEN_C_ALPHA_DOCUMENTATION.md (high-level features, brand voice admin summary)
+
 ## Agent Configuration
 
 ### System Prompt

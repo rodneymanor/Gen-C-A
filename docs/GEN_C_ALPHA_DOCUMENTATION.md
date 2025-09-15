@@ -12,6 +12,22 @@
 
 ---
 
+## Admin: Brand Voice Controls
+
+- API: POST /api/brand-voices/update-meta (x-internal-secret required)
+  - Body: { creatorId, displayName?: string, isShared?: boolean, isDefault?: boolean }
+  - Firestore: overrides in brandVoiceMeta/{creatorId}; only one default at a time
+  - Offline: data/brand-voice-meta.json
+- Listing: GET /api/brand-voices/list returns voices with overrides applied; default voice sorted first
+- UI: Admin action in src/components/layout/Navigation.tsx -> "Admin: Make Default & Share…"
+
+## TikTok Analysis Enhancements
+
+- Step 1: fetch up to 20 videos; filter out already analyzed via GET /api/creator/analyzed-video-ids
+- Step 2: transcribe with concurrency 3
+- Step 3: batched analysis (size 10), strict JSON prompting, robust parsing, merged results with sourceIndex
+- Server de-dup: upsert scriptStructures by (creatorId, videoId), templates by (pattern, creatorId)
+
 ## Application Architecture Overview
 
 Gen.C Alpha is a React-based content creation platform that helps creators generate, edit, and manage video scripts using AI-powered tools. The application follows modern React patterns with TypeScript for type safety and uses Atlaskit Design System components for consistent UI/UX.

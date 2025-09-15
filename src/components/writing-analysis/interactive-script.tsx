@@ -34,15 +34,18 @@ interface InteractiveScriptProps {
 // Styled Components
 const ScriptContainer = styled.div`
   padding: ${token('space.400')};
-  background: ${token('color.background.neutral')};
+  /* Use white content background */
+  background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
   border-radius: ${token('border.radius.200')};
   position: relative;
 `;
 
-const SectionContainer = styled.div<{ sectionType: ScriptSection['type']; isHovered: boolean }>`
+type ComplexityLevel = 'ok' | 'warning' | 'high' | 'critical';
+
+const SectionContainer = styled.div<{ sectionType: ScriptSection['type']; isHovered: boolean; complexity: ComplexityLevel }>`
   position: relative;
   cursor: pointer;
-  border-radius: ${token('border.radius')};
+  border-radius: 12px;
   padding: ${token('space.300')};
   margin-bottom: ${token('space.200')};
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -51,8 +54,8 @@ const SectionContainer = styled.div<{ sectionType: ScriptSection['type']; isHove
   ${(props) => {
     const baseStyles = css`
       &:hover {
-        background: ${token('color.background.neutral.hovered')};
-        border-color: ${getSectionBorderColor(props.sectionType)};
+        background: ${getHoverBackgroundByComplexity(props.complexity)};
+        border-color: ${getHoverBorderByComplexity(props.complexity)};
         box-shadow: ${token('elevation.shadow.raised')};
       }
     `;
@@ -60,8 +63,8 @@ const SectionContainer = styled.div<{ sectionType: ScriptSection['type']; isHove
     if (props.isHovered) {
       return css`
         ${baseStyles}
-        background: ${getSectionBackgroundColor(props.sectionType)};
-        border-color: ${getSectionBorderColor(props.sectionType)};
+        background: ${getHoverBackgroundByComplexity(props.complexity)};
+        border-color: ${getHoverBorderByComplexity(props.complexity)};
         box-shadow: ${token('elevation.shadow.raised')};
       `;
     }
@@ -143,35 +146,33 @@ function getSectionIcon(type: ScriptSection['type']): string {
   }
 }
 
-function getSectionBorderColor(type: ScriptSection['type']): string {
-  switch (type) {
-    case 'hook':
-    case 'micro-hook':
-      return token('color.border.accent.yellow');
-    case 'bridge':
+function getHoverBorderByComplexity(level: ComplexityLevel): string {
+  switch (level) {
+    case 'ok':
       return token('color.border.accent.blue');
-    case 'nugget':
-      return token('color.border.accent.green');
-    case 'cta':
+    case 'warning':
+      return token('color.border.accent.yellow');
+    case 'high':
+      return token('color.border.accent.orange');
+    case 'critical':
       return token('color.border.accent.red');
     default:
-      return token('color.border');
+      return token('color.border.accent.blue');
   }
 }
 
-function getSectionBackgroundColor(type: ScriptSection['type']): string {
-  switch (type) {
-    case 'hook':
-    case 'micro-hook':
-      return token('color.background.accent.yellow.subtler');
-    case 'bridge':
+function getHoverBackgroundByComplexity(level: ComplexityLevel): string {
+  switch (level) {
+    case 'ok':
       return token('color.background.accent.blue.subtler');
-    case 'nugget':
-      return token('color.background.accent.green.subtler');
-    case 'cta':
+    case 'warning':
+      return token('color.background.accent.yellow.subtler');
+    case 'high':
+      return token('color.background.accent.orange.subtler');
+    case 'critical':
       return token('color.background.accent.red.subtler');
     default:
-      return token('color.background.neutral.subtle');
+      return token('color.background.accent.blue.subtler');
   }
 }
 
@@ -293,11 +294,23 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
   // Memoized sections to avoid re-parsing on every render
   const sections = useMemo(() => parseScriptSections(script), [script, parseScriptSections]);
 
+  // Basic complexity assessment: defaults to blue; escalates to yellow/orange/red
+  const assessComplexity = useCallback((text: string): ComplexityLevel => {
+    const words = text.trim().split(/\s+/).filter(Boolean);
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const avgWordsPerSentence = sentences.length ? words.length / sentences.length : words.length;
+    // Heuristic thresholds; tweak as needed
+    if (avgWordsPerSentence >= 28 || words.length >= 180) return 'critical'; // red
+    if (avgWordsPerSentence >= 22 || words.length >= 120) return 'high';     // orange
+    if (avgWordsPerSentence >= 16 || words.length >= 80) return 'warning';   // yellow
+    return 'ok';                                                             // blue
+  }, []);
+
   // Handle section clicks to open popup
   const handleSectionClick = useCallback((section: ScriptSection, index: number, event: React.MouseEvent) => {
     event.preventDefault();
 
-    // Calculate popup position relative to clicked section
+    // Calculate popup position in viewport coordinates
     const rect = sectionRefs.current[index]?.getBoundingClientRect();
     if (rect) {
       const isMobile = window.innerWidth < 768;
@@ -305,12 +318,16 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
       let y = rect.top;
 
       // Adjust for mobile or when popup would go off-screen
-      if (isMobile || x + 320 > window.innerWidth) {
-        x = Math.max(10, window.innerWidth - 330);
+      const popupWidth = 320;
+      const popupHeight = 400;
+      const margin = 10;
+      if (isMobile || x + popupWidth > window.innerWidth - margin) {
+        // Prefer left side if right side doesn't fit
+        const leftCandidate = rect.left - popupWidth - margin;
+        x = leftCandidate > margin ? leftCandidate : Math.max(margin, window.innerWidth - popupWidth - margin);
       }
-
-      if (y + 400 > window.innerHeight) {
-        y = Math.max(10, window.innerHeight - 410);
+      if (y + popupHeight > window.innerHeight - margin) {
+        y = Math.max(margin, window.innerHeight - popupHeight - margin);
       }
 
       setPopupPosition({ x, y });
@@ -366,6 +383,7 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
             ref={el => sectionRefs.current[index] = el}
             sectionType={section.type}
             isHovered={isHovered}
+            complexity={assessComplexity(section.content)}
             onClick={(e) => handleSectionClick(section, index, e)}
             onMouseEnter={() => setHoveredSection(index)}
             onMouseLeave={() => setHoveredSection(null)}

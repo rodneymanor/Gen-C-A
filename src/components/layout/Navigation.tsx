@@ -15,10 +15,7 @@ import FolderIcon from '@atlaskit/icon/glyph/folder';
 import BookIcon from '@atlaskit/icon/glyph/book';
 import EditIcon from '@atlaskit/icon/glyph/edit';
 import PeopleIcon from '@atlaskit/icon/glyph/people';
-import SettingsIcon from '@atlaskit/icon/glyph/settings';
 import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left';
-import LayoutTwoColumnsSidebarLeftIcon from '@atlaskit/icon/core/migration/layout-two-columns-sidebar-left--editor-layout-two-left-sidebar';
-import VideoIcon from '@atlaskit/icon/glyph/video-filled';
 import MoreIcon from '@atlaskit/icon/glyph/more';
 
 export interface NavigationProps {
@@ -35,7 +32,6 @@ const navigationData: NavigationSection[] = [
       { path: '/write', label: 'Write', icon: <EditIcon label="Write" /> },
       { path: '/collections', label: 'Collections', icon: <FolderIcon label="Collections" /> },
       { path: '/library', label: 'Library', icon: <BookIcon label="Library" /> },
-      { path: '/videos', label: 'Videos', icon: <VideoIcon label="Videos" /> },
     ]
   },
   {
@@ -58,6 +54,7 @@ const expandedLogoStyles = css`
   gap: var(--space-1);
 
   span {
+    font-family: 'Poppins', 'Space Grotesk', 'Geist', 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', system-ui, sans-serif;
     color: var(--color-neutral-800);
     font-size: var(--font-size-h5);
     font-weight: var(--font-weight-bold);
@@ -67,16 +64,23 @@ const expandedLogoStyles = css`
     background: var(--color-primary-500);
     height: 8px;
     width: 8px;
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-full);
   }
+`;
+
+const collapsedLogoDotStyles = css`
+  width: 12px;
+  height: 12px;
+  background: var(--color-primary-500);
+  border-radius: var(--radius-full);
 `;
 
 const sidebarStyles = (isCollapsed: boolean, isMobile: boolean) => css`
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--color-neutral-0);
-  border-right: 1px solid var(--color-neutral-200);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
   transition: var(--transition-all);
   position: ${isMobile ? 'fixed' : 'relative'};
   z-index: 100;
@@ -101,7 +105,7 @@ const headerStyles = css`
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4);
-  border-bottom: 1px solid var(--color-neutral-200);
+  border-bottom: 1px solid var(--sidebar-border);
   min-height: 64px;
 
   .brand {
@@ -133,10 +137,10 @@ const headerStyles = css`
   }
 `;
 
-const contentStyles = css`
+const contentStyles = (isCollapsed: boolean) => css`
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-4);
+  padding: ${isCollapsed ? 'var(--space-2)' : 'var(--space-4)'};
   
   .nav-section {
     margin-bottom: var(--space-6);
@@ -161,19 +165,20 @@ const navItemStyles = (isActive: boolean, isCollapsed: boolean) => css`
   display: flex;
   align-items: center;
   width: 100%;
-  padding: var(--space-3) var(--space-2);
+  height: 40px; /* Target ~40px row height */
+  padding: 0 var(--space-2);
   border-radius: var(--radius-medium);
   text-decoration: none;
-  color: ${isActive ? 'var(--color-primary-600)' : 'var(--color-neutral-700)'};
-  background: ${isActive ? 'var(--color-primary-50)' : 'transparent'};
-  border: ${isActive ? '1px solid var(--color-primary-200)' : '1px solid transparent'};
+  color: ${isActive ? 'var(--color-neutral-800)' : 'var(--color-neutral-700)'};
+  background: ${isActive ? 'var(--sidebar-selected-bg)' : 'transparent'};
+  border: ${isActive ? '1px solid var(--sidebar-selected-border)' : '1px solid transparent'};
   transition: var(--transition-all);
   margin-bottom: var(--space-1);
   position: relative;
   
   &:hover {
-    background: ${isActive ? 'var(--color-primary-100)' : 'var(--color-neutral-100)'};
-    color: ${isActive ? 'var(--color-primary-700)' : 'var(--color-neutral-800)'};
+    background: var(--sidebar-hover-bg);
+    color: var(--color-neutral-800);
   }
   
   &:focus-visible {
@@ -201,12 +206,25 @@ const navItemStyles = (isActive: boolean, isCollapsed: boolean) => css`
   
   ${isCollapsed && css`
     justify-content: center;
-    padding: var(--space-3);
+    width: 40px;   /* 40x40 square in collapsed mode */
+    height: 40px;
+    padding: 0;
+    margin-left: auto;
+    margin-right: auto; /* center within collapsed sidebar */
+
+    /* Ensure the text label does not affect centering */
+    .nav-label {
+      display: none;
+    }
+    /* Remove any residual spacing from the icon */
+    .nav-icon {
+      margin-right: 0;
+    }
   `}
 `;
 
-const footerStyles = css`
-  padding: var(--space-4);
+const footerStyles = (isCollapsed: boolean) => css`
+  padding: ${isCollapsed ? 'var(--space-2)' : 'var(--space-4)'};
   border-top: 1px solid var(--color-neutral-200);
   
   .user-menu {
@@ -219,12 +237,17 @@ const userMenuStyles = (isCollapsed: boolean) => css`
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3);
+  padding: ${isCollapsed ? '0' : 'var(--space-3)'};
   border-radius: var(--radius-medium);
   background: var(--color-neutral-50);
   border: 1px solid var(--color-neutral-200);
   cursor: pointer;
   transition: var(--transition-all);
+  ${isCollapsed && css`
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+  `}
   
   &:hover {
     background: var(--color-neutral-100);
@@ -370,6 +393,50 @@ const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isColl
     setShowMenu(false);
   };
 
+  const deleteBrandVoice = async () => {
+    try {
+      const creatorId = window.prompt('Enter brand voice (creator) ID to delete:');
+      if (!creatorId) return;
+      const secret = window.prompt('Enter INTERNAL_API_SECRET to authorize:');
+      if (!secret) return;
+      const res = await fetch('/api/brand-voices/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': secret },
+        body: JSON.stringify({ creatorId })
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        alert(`Failed to delete voice: ${data?.error || res.status}`);
+        return;
+      }
+      alert('Voice deleted successfully. You may need to refresh the list.');
+    } catch (e: any) {
+      alert(`Error: ${e?.message || 'Unknown error'}`);
+    }
+  };
+
+  const makeDefaultSharedBrandVoice = async () => {
+    try {
+      const creatorId = window.prompt('Enter brand voice (creator) ID to make default/shared:');
+      if (!creatorId) return;
+      const secret = window.prompt('Enter INTERNAL_API_SECRET to authorize:');
+      if (!secret) return;
+      const res = await fetch('/api/brand-voices/update-meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': secret },
+        body: JSON.stringify({ creatorId, displayName: 'Default', isShared: true, isDefault: true })
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        alert(`Failed to update voice: ${data?.error || res.status}`);
+        return;
+      }
+      alert('Brand voice set to Default, shared, and made default across accounts.');
+    } catch (e: any) {
+      alert(`Error: ${e?.message || 'Unknown error'}`);
+    }
+  };
+
   const toggleMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowMenu(!showMenu);
@@ -379,8 +446,28 @@ const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isColl
     e.stopPropagation();
   };
 
+  const openSettings = () => {
+    navigate('/settings');
+    setShowMenu(false);
+  };
+
   return (
-    <div ref={menuRef} css={userMenuStyles(isCollapsed)} className="user-menu-trigger">
+    <div
+      ref={menuRef}
+      css={userMenuStyles(isCollapsed)}
+      className="user-menu-trigger"
+      onClick={(e) => { if (isCollapsed) toggleMenu(e); }}
+      role="button"
+      aria-haspopup="menu"
+      aria-expanded={showMenu}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (isCollapsed && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          setShowMenu(!showMenu);
+        }
+      }}
+    >
       <Avatar
         src={user.avatar}
         name={user.name}
@@ -401,14 +488,27 @@ const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isColl
           >
             <MoreIcon label="More options" />
           </button>
-          {showMenu && (
-            <div className="dropdown-menu" onClick={handleMenuClick}>
-              <button className="dropdown-item" onClick={handleLogout}>
-                Sign Out
-              </button>
-            </div>
-          )}
         </>
+      )}
+      {showMenu && (
+        <div className="dropdown-menu" onClick={handleMenuClick} role="menu">
+          <button className="dropdown-item" onClick={openSettings} role="menuitem">
+            Settings
+          </button>
+          {(user?.role === 'admin' || (typeof window !== 'undefined' && window.localStorage?.getItem('bypassAuth') === '1')) && (
+            <>
+              <button className="dropdown-item" onClick={makeDefaultSharedBrandVoice} role="menuitem">
+                Admin: Make Default & Share…
+              </button>
+              <button className="dropdown-item" onClick={deleteBrandVoice} role="menuitem">
+                Admin: Delete Brand Voice…
+              </button>
+            </>
+          )}
+          <button className="dropdown-item" onClick={handleLogout} role="menuitem">
+            Sign Out
+          </button>
+        </div>
       )}
     </div>
   );
@@ -432,7 +532,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         css={sidebarStyles(isCollapsed, isMobile)}
         initial={false}
         animate={{
-          width: isMobile ? (isCollapsed ? 0 : 280) : (isCollapsed ? 64 : 280)
+          width: isMobile ? (isCollapsed ? 0 : 224) : (isCollapsed ? 64 : 224)
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="main-navigation"
@@ -466,7 +566,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   color: inherit;
                 `}
               >
-                <LayoutTwoColumnsSidebarLeftIcon label="Gen.C Logo" />
+                <div aria-hidden="true" css={collapsedLogoDotStyles} />
               </button>
             ) : (
               <div css={expandedLogoStyles}>
@@ -478,7 +578,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         </div>
         
-        <div css={contentStyles}>
+        <div css={contentStyles(isCollapsed)}>
           {navigationData.map(section => (
             <div key={section.section} className="nav-section">
               {!isCollapsed && (
@@ -499,13 +599,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           ))}
         </div>
         
-        <div css={footerStyles}>
-          <NavItem
-            item={{ path: '/settings', label: 'Settings', icon: <SettingsIcon label="Settings" /> }}
-            isActive={location.pathname === '/settings'}
-            isCollapsed={isCollapsed}
-          />
-          
+        <div css={footerStyles(isCollapsed)}>
           <div className="user-menu">
             <UserMenu user={user} isCollapsed={isCollapsed} />
           </div>

@@ -34,25 +34,15 @@ export interface WatchlistSidebarProps {
 const sidebarStyles = css`
   width: 300px;
   height: 100%;
-  background: var(--card-bg);
-  border-left: 1px solid var(--card-border);
+  background: var(--sidebar-bg);
+  border-left: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
-  
-  /* Dark theme styles */
-  .theme-dark & {
-    background: var(--color-neutral-800);
-    border-color: var(--color-neutral-700);
-  }
 `;
 
 const headerStyles = css`
   padding: var(--space-4);
-  border-bottom: 1px solid var(--card-border);
-  
-  .theme-dark & {
-    border-color: var(--color-neutral-700);
-  }
+  border-bottom: 1px solid var(--sidebar-border);
 `;
 
 const titleStyles = css`
@@ -138,21 +128,12 @@ const watchlistHeaderStyles = css`
   transition: var(--transition-all);
   
   &:hover {
-    background: var(--color-neutral-50);
-    
-    .theme-dark & {
-      background: var(--color-neutral-700);
-    }
+    background: var(--sidebar-hover-bg);
   }
   
   &[data-selected="true"] {
-    background: var(--color-primary-50);
-    border: 1px solid var(--color-primary-200);
-    
-    .theme-dark & {
-      background: var(--color-primary-900);
-      border-color: var(--color-primary-600);
-    }
+    background: var(--sidebar-selected-bg);
+    border: 1px solid var(--sidebar-selected-border);
   }
 `;
 

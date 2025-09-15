@@ -55,7 +55,7 @@ export const semantic = {
 export const layout = {
   gutter: 'var(--layout-gutter)',           // 24px
   containerMax: 'var(--layout-container-max)', // 1200px
-  sidebarWidth: 'var(--sidebar-width)',     // 280px
+  sidebarWidth: 'var(--sidebar-width)',     // 224px
   sidebarCollapsed: 'var(--sidebar-collapsed)', // 64px
 } as const;
 

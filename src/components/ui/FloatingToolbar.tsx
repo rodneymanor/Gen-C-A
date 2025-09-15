@@ -19,6 +19,7 @@ import HashIcon from '@atlaskit/icon/glyph/emoji/symbols';
 import TimerIcon from '@atlaskit/icon/glyph/stopwatch';
 import SettingsIcon from '@atlaskit/icon/glyph/settings';
 import { Button } from './Button';
+import { ShinyButton } from '@/components/ui/ShinyButton';
 import type { BrandPersona } from '@/types';
 
 export interface WritingStats {
@@ -79,22 +80,10 @@ const ToolbarContainer = styled.div<{ hidden: boolean }>`
   z-index: 30;
   transition: all ${token('motion.duration.medium')} ${token('motion.easing.standard')};
   max-width: 90vw;
-  overflow-x: auto;
+  /* Allow dropdowns to extend outside without clipping */
+  overflow: visible;
   
-  /* Custom scrollbar for overflow */
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: ${token('color.background.neutral.subtle')};
-    border-radius: ${token('border.radius')};
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${token('color.background.neutral.bold')};
-    border-radius: ${token('border.radius')};
-  }
+  /* No scrollbars here; avoid creating clipping contexts */
   
   @media (max-width: 768px) {
     bottom: ${props => props.hidden ? '-100px' : token('space.200')};
@@ -160,13 +149,15 @@ const DropdownContent = styled.div<{ isOpen: boolean }>`
   bottom: 100%;
   right: 0;
   margin-bottom: ${token('space.100')};
-  background: ${token('color.background.neutral')};
+  /* Solid white popup surface */
+  background: #ffffff;
   border: 1px solid ${token('color.border')};
   border-radius: ${token('border.radius.200')};
-  box-shadow: ${token('elevation.shadow.overlay')};
+  /* Subtle, reduced shadow */
+  box-shadow: 0 8px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
   padding: ${token('space.100')};
   min-width: 200px;
-  z-index: 40;
+  z-index: 2147483000; /* Ensure dropdown appears over app UI */
   opacity: ${props => props.isOpen ? 1 : 0};
   visibility: ${props => props.isOpen ? 'visible' : 'hidden'};
   transform: translateY(${props => props.isOpen ? '0' : '8px'});
@@ -392,14 +383,14 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       
       {/* AI Actions Dropdown */}
       <AIActionsDropdown>
-        <Button
-          ref={buttonRef}
-          variant="ppx-primary"
-          size="small"
+        <ShinyButton
+          ref={buttonRef as any}
+          variant="white"
           onClick={handleAIButtonClick}
           aria-expanded={isAIDropdownOpen}
           aria-haspopup="true"
           aria-label="AI actions menu"
+          style={{ height: 32, padding: '0 10px' }}
         >
           <SparklesIcon label="" size="small" />
           AI Actions
@@ -411,7 +402,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               transition: `transform ${token('motion.duration.fast')} ${token('motion.easing.standard')}`
             }} 
           />
-        </Button>
+        </ShinyButton>
         
         <DropdownContent ref={dropdownRef} isOpen={isAIDropdownOpen}>
           <DropdownHeader>

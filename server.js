@@ -99,7 +99,8 @@ async function setupRoutes() {
     const { handleVideoTranscribe } = await import('./src/api-routes/video.js');
     const { handleVoiceAnalyzePatterns } = await import('./src/api-routes/voice.js');
     const { handleSaveCreatorAnalysis } = await import('./src/api-routes/creator-analysis.js');
-    const { handleListBrandVoices, handleGetBrandVoiceTemplates } = await import('./src/api-routes/brand-voices.js');
+    const { handleListAnalyzedVideoIds } = await import('./src/api-routes/creator-lookup.js');
+    const { handleListBrandVoices, handleGetBrandVoiceTemplates, handleUpdateBrandVoiceMeta } = await import('./src/api-routes/brand-voices.js');
 
     // Main transcription endpoint (replaces the complex follow workflow)
     app.post('/api/creators/follow', handleCreatorTranscription);
@@ -115,8 +116,10 @@ async function setupRoutes() {
 
     app.post('/api/voice/analyze-patterns', handleVoiceAnalyzePatterns);
     app.post('/api/creator/save-analysis', handleSaveCreatorAnalysis);
+    app.get('/api/creator/analyzed-video-ids', handleListAnalyzedVideoIds);
     app.get('/api/brand-voices/list', handleListBrandVoices);
     app.get('/api/brand-voices/templates', handleGetBrandVoiceTemplates);
+    app.post('/api/brand-voices/update-meta', handleUpdateBrandVoiceMeta);
 
     // Persona routes - TODO: Convert from Next.js format if needed
     // app.post('/api/personas/generate-metadata', handlePersonaMetadata);

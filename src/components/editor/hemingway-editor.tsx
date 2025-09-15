@@ -615,11 +615,17 @@ export function HemingwayEditor({
       <div className="main-content flex h-full flex-col">
         {/* Title Editor */}
         {showTitleEditor && (
-          <div className="border-b p-4" style={{
-            background: 'var(--color-background-neutral, #f4f5f7)',
-            borderColor: 'var(--color-border, #e4e6ea)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
-          }}>
+          <div
+            className="border-b px-4"
+            style={{
+              background: 'var(--color-background-neutral, #f4f5f7)',
+              borderColor: 'var(--color-border, #e4e6ea)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              height: '64px',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
             {isEditingTitle ? (
               <div className="flex items-center gap-2">
                 <Input
@@ -710,15 +716,16 @@ export function HemingwayEditor({
 
       {/* Right Sidebar - Statistics & Analysis */}
       {!sidebarCollapsed && (
-        <div className="right-sidebar bg-background/50 border-border/50 overflow-y-auto border-l backdrop-blur-sm" style={{
-          background: 'var(--color-background-neutral, #f4f5f7)',
-          borderColor: 'var(--color-border, #e4e6ea)',
-          boxShadow: '-1px 0 3px rgba(0,0,0,0.06)'
+        <div className="right-sidebar bg-background/50 border-border/50 overflow-y-auto border-l" style={{
+          // Force pure white sidebar background (avoid token fallbacks)
+          background: '#ffffff',
+          borderColor: 'var(--color-border, #e4e6ea)'
         }}>
           <div className="sidebar-content">
             {/* Sidebar Header */}
             <div className="hemingway-sidebar-header -m-4 mb-4 flex items-center justify-between p-3" style={{
-              background: 'var(--color-background-neutral, #f4f5f7)',
+              // Force pure white header background
+              background: '#ffffff',
               borderBottom: '1px solid var(--color-border, #e4e6ea)'
             }}>
               <h3 className="flex items-center gap-2 text-sm font-semibold">Analysis</h3>
@@ -739,6 +746,7 @@ export function HemingwayEditor({
                 <TabsTrigger
                   value="readability"
                   className="text-muted-foreground hover:text-foreground data-[state=active]:text-foreground flex items-center justify-center gap-1 rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 py-2 text-sm font-medium transition-all data-[state=active]:border-[#555864] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                  style={{ outline: 'none', boxShadow: 'none' }}
                 >
                   <Target className="h-3 w-3" />
                   Readability
@@ -746,6 +754,7 @@ export function HemingwayEditor({
                 <TabsTrigger
                   value="writing"
                   className="text-muted-foreground hover:text-foreground data-[state=active]:text-foreground flex items-center justify-center gap-1 rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 py-2 text-sm font-medium transition-all data-[state=active]:border-[#555864] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                  style={{ outline: 'none', boxShadow: 'none' }}
                 >
                   <BarChart3 className="h-3 w-3" />
                   Writing
@@ -791,7 +800,14 @@ export function HemingwayEditor({
                           </h4>
                           <div className="space-y-2">
                             {readabilityAnalysis.overall.suggestions.slice(0, 2).map((suggestion, index) => (
-                              <div key={index} className="readability-suggestion">
+                              <div
+                                key={index}
+                                className="readability-suggestion rounded p-2"
+                                style={{
+                                  background: 'rgba(11, 92, 255, 0.08)',
+                                  color: 'var(--color-primary-700)'
+                                }}
+                              >
                                 {suggestion}
                               </div>
                             ))}
@@ -804,7 +820,14 @@ export function HemingwayEditor({
                               </summary>
                               <div className="mt-2 space-y-2">
                                 {readabilityAnalysis.overall.suggestions.slice(2).map((suggestion, index) => (
-                                  <div key={index + 2} className="readability-suggestion">
+                                  <div
+                                    key={index + 2}
+                                    className="readability-suggestion rounded p-2"
+                                    style={{
+                                      background: 'rgba(11, 92, 255, 0.08)',
+                                      color: 'var(--color-primary-700)'
+                                    }}
+                                  >
                                     {suggestion}
                                   </div>
                                 ))}
@@ -837,27 +860,27 @@ export function HemingwayEditor({
                       </summary>
                       <div className="mt-3 space-y-3 border-t pt-3">
                         {/* Words in details */}
-                        <div className="bg-primary/10 rounded p-3 text-center">
-                          <div className="text-primary text-lg font-semibold">{stats.words}</div>
-                          <div className="text-muted-foreground text-xs font-medium">Words</div>
+                        <div className="rounded p-3 text-center" style={{ background: 'rgba(11, 92, 255, 0.08)', color: 'var(--color-primary-700)' }}>
+                          <div className="text-lg font-semibold">{stats.words}</div>
+                          <div className="text-xs font-medium" style={{ color: 'var(--color-primary-700)' }}>Words</div>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-muted/20 rounded p-2 text-center">
+                          <div className="rounded p-2 text-center" style={{ background: 'rgba(11, 92, 255, 0.08)', color: 'var(--color-primary-700)' }}>
                             <div className="font-medium">{stats.characters}</div>
-                            <div className="text-muted-foreground text-xs">Characters</div>
+                            <div className="text-xs" style={{ color: 'var(--color-primary-700)' }}>Characters</div>
                           </div>
-                          <div className="bg-muted/20 rounded p-2 text-center">
+                          <div className="rounded p-2 text-center" style={{ background: 'rgba(11, 92, 255, 0.08)', color: 'var(--color-primary-700)' }}>
                             <div className="font-medium">
                               {value.split(/[.!?]+/).filter((s) => s.trim().length > 0).length}
                             </div>
-                            <div className="text-muted-foreground text-xs">Sentences</div>
+                            <div className="text-xs" style={{ color: 'var(--color-primary-700)' }}>Sentences</div>
                           </div>
                         </div>
-                        <div className="bg-muted/20 rounded p-2 text-center">
+                        <div className="rounded p-2 text-center" style={{ background: 'rgba(11, 92, 255, 0.08)', color: 'var(--color-primary-700)' }}>
                           <div className="font-medium">
                             {value.split(/\n\s*\n/).filter((p) => p.trim().length > 0).length}
                           </div>
-                          <div className="text-muted-foreground text-xs">Paragraphs</div>
+                          <div className="text-xs" style={{ color: 'var(--color-primary-700)' }}>Paragraphs</div>
                         </div>
                       </div>
                     </details>

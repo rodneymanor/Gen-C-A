@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { css } from '@emotion/react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent } from '../components/ui/Card';
 import { formatRelativeTime, getContentTypeIcon, getPlatformIconComponent, truncate } from '../utils/format';
 import type { ContentItem } from '../types';
+import { getLibraryContent } from './library-data';
+import { useDebugger, DEBUG_LEVELS } from '../utils/debugger';
+import { usePageLoad } from '../contexts/PageLoadContext';
 
 // Atlassian Design System Icons
 import DownloadIcon from '@atlaskit/icon/glyph/download';
@@ -13,12 +16,19 @@ import SearchIcon from '@atlaskit/icon/glyph/search';
 import DocumentIcon from '@atlaskit/icon/glyph/document';
 import EditIcon from '@atlaskit/icon/glyph/edit';
 import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb';
+import VideoIcon from '@atlaskit/icon/glyph/vid-play';
 import CalendarIcon from '@atlaskit/icon/glyph/calendar';
 import ViewIcon from '@atlaskit/icon/glyph/watch';
 import UploadIcon from '@atlaskit/icon/glyph/upload';
 import FolderIcon from '@atlaskit/icon/glyph/folder';
 import CrossIcon from '@atlaskit/icon/glyph/cross';
 import MoreIcon from '@atlaskit/icon/glyph/more';
+
+// Brand color: Bloom Blue (tokens)
+const AGENT_PRIMARY = 'var(--color-primary-500)';
+const AGENT_PRIMARY_HOVER = 'var(--color-primary-600)';
+const AGENT_PRIMARY_ACTIVE = 'var(--color-primary-700)';
+const AGENT_TINT_20 = 'var(--color-primary-50)';
 
 const libraryStyles = css`
   max-width: 1200px;
@@ -83,6 +93,13 @@ const filtersStyles = css`
     max-width: 400px;
     display: flex;
     align-items: center;
+    /* Perplexity search: soft background, no hard border, 16px radius */
+    .gen-input {
+      background: var(--color-neutral-100);
+      border-color: transparent;
+      border-radius: 16px;
+      --input-border-focus: ${AGENT_PRIMARY};
+    }
     
     @media (max-width: 768px) {
       max-width: none;
@@ -150,12 +167,12 @@ const contentItemStyles = (isSelected: boolean) => css`
   transition: var(--transition-all);
   
   ${isSelected && css`
-    border-color: var(--color-primary-500);
+    border-color: ${AGENT_PRIMARY};
     background: transparent;
   `}
   
   &:hover {
-    border-color: var(--color-primary-500);
+    border-color: ${AGENT_PRIMARY};
     background: transparent;
   }
   
@@ -206,9 +223,9 @@ const contentItemStyles = (isSelected: boolean) => css`
       
       .content-type {
         background: transparent;
-        color: var(--color-primary-600);
+        color: ${AGENT_PRIMARY};
         padding: var(--space-1) var(--space-2);
-        border: 1px solid var(--color-primary-500);
+        border: 1px solid ${AGENT_PRIMARY};
         border-radius: var(--radius-small);
         font-size: var(--font-size-caption);
         font-weight: var(--font-weight-medium);
@@ -314,75 +331,7 @@ const emptyStateStyles = css`
   }
 `;
 
-// Mock content data - text-based content only
-const mockContent: ContentItem[] = [
-  {
-    id: '1',
-    title: 'Summer Skincare Script',
-    description: '"Wait, you\'re using WHAT on your face this summer? 😱" - A fun TikTok script about summer skincare routines for teens.',
-    type: 'script',
-    platform: 'tiktok',
-    wordCount: 87,
-    tags: ['skincare', 'summer', 'teens'],
-    creator: 'Sarah Chen',
-    created: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    updated: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    status: 'published',
-    metadata: { estimatedDuration: 15 }
-  },
-  {
-    id: '2',
-    title: 'Content Ideas - July Batch',
-    description: '10 summer content ideas for lifestyle creators including trending topics and seasonal themes',
-    type: 'idea',
-    tags: ['content-ideas', 'summer', 'lifestyle'],
-    creator: 'Sarah Chen',
-    created: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    updated: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    status: 'draft',
-    metadata: {}
-  },
-  {
-    id: '3',
-    title: 'Viral Hook Analysis',
-    description: 'Analysis of top 10 viral hooks in fitness content including engagement metrics and timing strategies',
-    type: 'note',
-    tags: ['analysis', 'hooks', 'fitness', 'viral'],
-    creator: 'Sarah Chen',
-    created: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    updated: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    status: 'published',
-    metadata: {}
-  },
-  {
-    id: '4',
-    title: 'Brand Voice Guidelines',
-    description: 'Comprehensive guide to maintaining consistent brand voice across all content platforms including tone, style, and messaging frameworks',
-    type: 'note',
-    tags: ['brand', 'voice', 'guidelines', 'consistency'],
-    creator: 'Sarah Chen',
-    created: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-    updated: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-    status: 'published',
-    metadata: {}
-  },
-  {
-    id: '5',
-    title: 'Holiday Campaign Script Collection',
-    description: 'A collection of 15 engaging scripts for holiday-themed content across multiple platforms',
-    type: 'script',
-    platform: 'instagram',
-    wordCount: 245,
-    tags: ['holiday', 'campaign', 'scripts', 'seasonal'],
-    creator: 'Sarah Chen',
-    created: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    updated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    status: 'draft',
-    metadata: { estimatedDuration: 30 }
-  }
-];
-
-type ContentType = 'all' | 'scripts' | 'notes' | 'ideas';
+type ContentType = 'all' | 'videos' | 'scripts' | 'notes' | 'ideas';
 
 const ContentItem: React.FC<{
   item: ContentItem;
@@ -442,6 +391,14 @@ const ContentItem: React.FC<{
           variant="subtle" 
           size="small"
           iconBefore={<MoreIcon label="More options" />}
+          css={css`
+            min-height: 32px;
+            height: 32px;
+            width: 32px;
+            border-radius: 8px;
+            background: var(--color-neutral-100);
+            &:hover { background: var(--color-neutral-200); }
+          `}
         />
       </div>
     </div>
@@ -449,23 +406,46 @@ const ContentItem: React.FC<{
 };
 
 export const Library: React.FC = () => {
+  const debug = useDebugger('LibraryPage', { level: DEBUG_LEVELS.DEBUG });
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<ContentType>('all');
-  const [selectedItem, setSelectedItem] = useState<ContentItem | null>(mockContent[0]);
+  const [content, setContent] = useState<ContentItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
+  const { beginPageLoad, endPageLoad } = usePageLoad();
+
+  useEffect(() => {
+    let isMounted = true;
+    debug.info('Fetching library content (mount)');
+    (async () => {
+      beginPageLoad();
+      const items = await getLibraryContent();
+      if (isMounted) {
+        setContent(items);
+        setSelectedItem(items[0] ?? null);
+        debug.info('Library content loaded', { count: items.length });
+      }
+      endPageLoad();
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filters: { key: ContentType; label: string; icon: React.ReactNode }[] = [
     { key: 'all', label: 'All', icon: <DocumentIcon label="" /> },
+    { key: 'videos', label: 'Videos', icon: <VideoIcon label="" /> },
     { key: 'scripts', label: 'Scripts', icon: <EditIcon label="" /> },
     { key: 'notes', label: 'Notes', icon: <DocumentIcon label="" /> },
     { key: 'ideas', label: 'Ideas', icon: <LightbulbIcon label="" /> }
   ];
 
-  const filteredContent = mockContent.filter(item => {
+  const filteredContent = content.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesFilter = activeFilter === 'all' || 
+      (activeFilter === 'videos' && item.type === 'video') ||
       (activeFilter === 'scripts' && item.type === 'script') ||
       (activeFilter === 'notes' && item.type === 'note') ||
       (activeFilter === 'ideas' && item.type === 'idea');
@@ -499,34 +479,12 @@ export const Library: React.FC = () => {
           >
             Import
           </Button>
-          <Button 
-            variant="primary"
-            iconBefore={<AddIcon label="" />}
-            css={css`
-              background: #0B5CFF;
-              color: #ffffff;
-              border: none;
-              border-radius: var(--radius-medium);
-              padding: var(--space-3) var(--space-6);
-              font-weight: var(--font-weight-semibold);
-              min-height: var(--touch-target-comfortable);
-              transition: var(--transition-button);
-              box-shadow: var(--shadow-subtle);
-              
-              &:hover {
-                background: #0A52E6;
-                box-shadow: var(--shadow-card);
-                transform: translateY(-1px);
-              }
-              
-              &:active {
-                background: #0947CC;
-                transform: translateY(0);
-              }
-            `}
-          >
-            Add Content
-          </Button>
+        <Button 
+          variant="primary"
+          iconBefore={<AddIcon label="" />}
+        >
+          Add Content
+        </Button>
         </div>
       </div>
 
@@ -549,14 +507,14 @@ export const Library: React.FC = () => {
               onClick={() => setActiveFilter(filter.key)}
               css={activeFilter === filter.key ? css`
                 background: transparent;
-                color: #0B5CFF;
-                border: var(--border-width-thin) solid #0B5CFF;
+                color: ${AGENT_PRIMARY};
+                border: var(--border-width-thin) solid ${AGENT_PRIMARY};
                 border-radius: var(--radius-medium);
                 font-weight: var(--font-weight-medium);
                 
                 &:hover {
-                  background: rgba(11, 92, 255, 0.08);
-                  border-color: #0A52E6;
+                  background: ${AGENT_TINT_20};
+                  border-color: ${AGENT_PRIMARY_HOVER};
                 }
               ` : undefined}
             >
@@ -610,7 +568,7 @@ export const Library: React.FC = () => {
           <Card appearance="elevated" spacing="comfortable" css={previewPanelStyles}>
             <div className="preview-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                <span style={{ color: 'var(--color-primary-500)', fontSize: '20px' }}>
+                <span style={{ color: AGENT_PRIMARY, fontSize: '20px' }}>
                   {getContentTypeIcon(selectedItem.type)}
                 </span>
                 <h3 className="preview-title">{selectedItem.title}</h3>
@@ -620,6 +578,15 @@ export const Library: React.FC = () => {
                 size="small"
                 onClick={() => setSelectedItem(null)}
                 iconBefore={<CrossIcon label="" />}
+                css={css`
+                  /* Icon button: 32px square per Perplexity */
+                  min-height: 32px;
+                  height: 32px;
+                  width: 32px;
+                  border-radius: 8px;
+                  background: var(--color-neutral-100);
+                  &:hover { background: var(--color-neutral-200); }
+                `}
               />
             </div>
             
@@ -654,30 +621,16 @@ export const Library: React.FC = () => {
             
             <div className="preview-actions">
               <Button 
-                variant="primary" 
+                variant="secondary" 
                 fullWidth
                 iconBefore={<ViewIcon label="" />}
                 css={css`
-                  background: #0B5CFF;
-                  color: #ffffff;
-                  border: none;
+                  background: transparent;
+                  color: ${AGENT_PRIMARY};
+                  border: var(--border-width-thin) solid ${AGENT_PRIMARY};
                   border-radius: var(--radius-medium);
-                  padding: var(--space-3) var(--space-6);
-                  font-weight: var(--font-weight-semibold);
-                  min-height: var(--touch-target-comfortable);
-                  transition: var(--transition-button);
-                  box-shadow: var(--shadow-subtle);
-                  
-                  &:hover {
-                    background: #0A52E6;
-                    box-shadow: var(--shadow-card);
-                    transform: translateY(-1px);
-                  }
-                  
-                  &:active {
-                    background: #0947CC;
-                    transform: translateY(0);
-                  }
+                  font-weight: var(--font-weight-medium);
+                  &:hover { background: ${AGENT_TINT_20}; border-color: ${AGENT_PRIMARY_HOVER}; }
                 `}
               >
                 View
@@ -688,15 +641,11 @@ export const Library: React.FC = () => {
                 iconBefore={<EditIcon label="" />}
                 css={css`
                   background: transparent;
-                  color: #0B5CFF;
-                  border: var(--border-width-thin) solid #0B5CFF;
+                  color: ${AGENT_PRIMARY};
+                  border: var(--border-width-thin) solid ${AGENT_PRIMARY};
                   border-radius: var(--radius-medium);
                   font-weight: var(--font-weight-medium);
-                  
-                  &:hover {
-                    background: rgba(11, 92, 255, 0.08);
-                    border-color: #0A52E6;
-                  }
+                  &:hover { background: ${AGENT_TINT_20}; border-color: ${AGENT_PRIMARY_HOVER}; }
                 `}
               >
                 Edit

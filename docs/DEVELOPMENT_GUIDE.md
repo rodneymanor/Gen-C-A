@@ -836,6 +836,42 @@ const onRenderCallback = (id, phase, actualDuration) => {
 
 ---
 
+## Admin: Brand Voice Defaults and Sharing
+
+This project supports marking a brand voice as globally shared and default across user accounts, without renaming the underlying creator document.
+
+- Admin UI control: src/components/layout/Navigation.tsx
+  - Menu item "Admin: Make Default & Share…" (visible for admin/bypass) prompts for creatorId and INTERNAL_API_SECRET.
+  - Calls the API to set displayName: "Default", isShared: true, and isDefault: true for the selected brand voice.
+
+- API endpoints and behavior
+  - POST /api/brand-voices/update-meta
+    - Secured via x-internal-secret header (INTERNAL_API_SECRET).
+    - Body: { creatorId, displayName?: string, isShared?: boolean, isDefault?: boolean }.
+    - Firestore: stores overrides in brandVoiceMeta/{creatorId}; if isDefault: true, unsets previous defaults.
+    - Offline: persists to data/brand-voice-meta.json and ensures only one default.
+  - GET /api/brand-voices/list
+    - Applies overrides, returns isShared and isDefault; sorts default first.
+
+Notes
+- Overrides only change the presented name and flags; the underlying creator doc (id/handle) stays intact.
+
+## TikTok Analysis: Batching, Concurrency, and De-duplication
+
+- Client (file: src/pages/TikTokAnalysisTest.tsx)
+  - Step 1: fetch up to 20 videos, then filter out previously analyzed ones via GET /api/creator/analyzed-video-ids?handle=...
+  - Step 2: transcribe with concurrency 3.
+  - Step 3: analyze in batches (size 10) with strict JSON prompting and resilient parsing; merges templates and per-transcript results; maintains sourceIndex mapping.
+
+- Server
+  - New endpoint: GET /api/creator/analyzed-video-ids (src/api-routes/creator-lookup.js) to return already analyzed videoIds for a creator.
+  - Upserts to avoid duplicates when saving analysis (src/api-routes/creator-analysis.js):
+    - scriptStructures upserted by (creatorId, videoId).
+    - Templates upserted by (pattern, creatorId).
+
+- UI extras
+  - Step 1 shows a "Latest videos" list with thumbnail (cover), title (music.title), caption, and meta.
+
 ## Development Best Practices
 
 ### 1. Code Organization
@@ -877,3 +913,26 @@ const onRenderCallback = (id, phase, actualDuration) => {
 1. Add an item under the appropriate timeframe in `docs/ROADMAP.md`
 2. If significant, create a ticket/issue with scope and acceptance criteria
 3. Keep changes focused; update related docs after merging
+### Hemingway Editor Sidebar Styling
+
+- Source of truth: Prefer styling the editor sidebar in `src/components/ui/EditorSidebar.tsx`.
+- Avoid adding inline styles in `src/components/editor/hemingway-editor.tsx` for sidebar visuals (backgrounds, borders, tabs). Some legacy inline styles exist and should be migrated into `EditorSidebar` over time.
+- Design rules to follow:
+  - Sidebar background: pure white `#ffffff` (no gray fallbacks).
+  - Card-like elements in the sidebar: 12px radius (`var(--radius-large)`), flat borders.
+  - Tabs: no focus ring; only the underline indicates the active tab.
+  - Issue items and writing stat items: use a light transparent blue background (`rgba(11, 92, 255, 0.08)`) with darker blue text (`var(--color-primary-700)`).
+  - Header heights: target 68px for both the Hemingway editor header and the sidebar header (tracked in the roadmap).
+
+### Hemingway Editor Hover States
+
+- Source of truth: Centralize hover visuals inside the editor components, not the page.
+- Update locations:
+  - `src/components/writing-analysis/interactive-script.tsx:SectionContainer`
+  - `src/components/ui/ScriptComponentEditor.tsx:ComponentCard`
+- Behavior:
+  - Default/OK: Hover container is blue (background + border) with 12px corner radius.
+  - Escalations: Use yellow (warning), orange (high), red (critical) only when text complexity is high. Do not use green for “good”.
+- Implementation notes:
+  - Complexity is a lightweight heuristic (avg words per sentence and total words); tune thresholds in the components if needed.
+  - Do not modify `src/pages/HemingwayEditorPage.tsx` for hover visuals to avoid duplication.

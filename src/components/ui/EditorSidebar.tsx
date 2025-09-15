@@ -14,6 +14,7 @@ import HashIcon from '@atlaskit/icon/glyph/emoji/symbols';
 import FileIcon from '@atlaskit/icon/glyph/document';
 import PeopleIcon from '@atlaskit/icon/glyph/people';
 import { Button } from './Button';
+import { AnimatedCircularProgress } from './AnimatedCircularProgress';
 
 export interface ReadabilityMetrics {
   score: number;
@@ -56,8 +57,9 @@ export interface EditorSidebarProps {
 const SidebarContainer = styled.div<{ collapsed: boolean }>`
   display: ${props => props.collapsed ? 'none' : 'flex'};
   flex-direction: column;
-  background: var(--card-bg, var(--color-surface, ${token('color.background.neutral', '#ffffff')}));
-  border-left: 1px solid var(--color-border-subtle, ${token('color.border', '#e4e6ea')});
+  /* Force pure white background to avoid gray fallbacks */
+  background: #ffffff;
+  border-left: 1px solid var(--sidebar-border, var(--color-border-subtle, ${token('color.border', '#e4e6ea')}));
   overflow: hidden;
   min-width: 0; /* Prevents grid overflow */
   height: 100%;
@@ -79,8 +81,9 @@ const SidebarHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: ${token('space.200')} ${token('space.300')};
-  border-bottom: 1px solid var(--color-border-subtle, ${token('color.border', '#e4e6ea')});
-  background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
+  border-bottom: 1px solid var(--sidebar-border, var(--color-border-subtle, ${token('color.border', '#e4e6ea')}));
+  /* Match container: pure white */
+  background: #ffffff;
   min-height: 56px; /* Uniform header height */
 
   h3 {
@@ -93,16 +96,16 @@ const SidebarHeader = styled.div`
 
 const SidebarTabs = styled.div`
   display: flex;
-  border-bottom: 1px solid var(--color-border-subtle, ${token('color.border', '#e4e6ea')});
-  background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
+  border-bottom: 1px solid var(--sidebar-border, var(--color-border-subtle, ${token('color.border', '#e4e6ea')}));
+  background: transparent; /* No background */
 `;
 
 const SidebarTab = styled.button<{ active: boolean }>`
   flex: 1;
   padding: ${token('space.200')} ${token('space.300')};
-  background: ${props => props.active ? 'var(--color-surface-hover, ' + token('color.background.neutral.subtle', '#f4f5f7') + ')' : 'transparent'};
+  background: transparent; /* No background in all states */
   border: none;
-  border-bottom: 2px solid ${props => props.active ? 'var(--color-primary-500, ' + token('color.border.brand', '#0B5CFF') + ')' : 'transparent'};
+  border-bottom: 2px solid ${props => props.active ? 'var(--color-primary-500, ' + token('color.background.brand.bold', '#0B5CFF') + ')' : 'transparent'}; /* Blue underline when active */
   color: ${props => props.active ? 'var(--color-text-primary, ' + token('color.text', '#172b4d') + ')' : 'var(--color-text-secondary, ' + token('color.text.subtle', '#6b778c') + ')'};
   font-weight: var(--font-weight-medium, ${token('font.weight.medium', '500')});
   cursor: pointer;
@@ -114,14 +117,13 @@ const SidebarTab = styled.button<{ active: boolean }>`
   font-size: var(--font-size-body-small, ${token('font.size.075', '12px')});
 
   &:hover:not(:disabled) {
-    background: var(--color-surface-active, ${token('color.background.neutral.subtle.hovered', '#e4e6ea')});
+    background: transparent; /* Keep background transparent on hover */
     color: var(--color-text-primary, ${token('color.text', '#172b4d')});
   }
 
-  &:focus {
-    outline: var(--focus-ring-primary, 2px solid var(--color-primary-500));
-    outline-offset: -2px;
-  }
+  /* Remove focus ring; rely on underline only */
+  &:focus { outline: none; box-shadow: none; }
+  &:focus-visible { outline: none; box-shadow: none; }
 `;
 
 const SidebarContent = styled.div`
@@ -152,42 +154,12 @@ const SidebarContent = styled.div`
 const ReadabilityScore = styled.div<{ score: number }>`
   text-align: center;
   margin-bottom: ${token('space.400')};
-  padding: ${token('space.300')};
-  background: ${token('color.background.neutral')};
+  padding: ${token('space.200')};
+  background: transparent; /* Remove card background */
   border-radius: ${token('border.radius.200')};
-  border: 1px solid ${token('color.border')};
+  border: none; /* No border */
   
-  .score-circle {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    margin: 0 auto ${token('space.200')};
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: ${props => {
-      if (props.score >= 80) return token('color.background.success.bold');
-      if (props.score >= 60) return token('color.background.warning.bold');
-      return token('color.background.danger.bold');
-    }};
-    color: white;
-    font-size: ${token('font.size.500')};
-    font-weight: ${token('font.weight.bold')};
-    position: relative;
-    
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 2px;
-      border-radius: 50%;
-      background: conic-gradient(
-        from 0deg,
-        currentColor ${props => props.score * 3.6}deg,
-        ${token('color.background.neutral.subtle')} ${props => props.score * 3.6}deg
-      );
-      mask: radial-gradient(circle at center, transparent 65%, currentColor 66%);
-    }
-  }
+  /* Score circle is now handled by AnimatedCircularProgress */
   
   .grade {
     font-size: ${token('font.size.100')};
@@ -220,8 +192,10 @@ const IssuesList = styled.div`
     justify-content: space-between;
     align-items: center;
     padding: ${token('space.150')} ${token('space.200')};
-    background: ${token('color.background.neutral')};
-    border-radius: ${token('border.radius')};
+    /* Light transparent blue background with darker blue text */
+    background: rgba(11, 92, 255, 0.08);
+    color: var(--color-primary-700);
+    border-radius: var(--radius-large);
     margin-bottom: ${token('space.100')};
     border-left: 3px solid transparent;
     
@@ -235,7 +209,7 @@ const IssuesList = styled.div`
     
     .issue-label {
       font-size: ${token('font.size.075')};
-      color: ${token('color.text')};
+      color: var(--color-primary-700);
       display: flex;
       align-items: center;
       gap: ${token('space.100')};
@@ -246,7 +220,7 @@ const IssuesList = styled.div`
       color: ${props => props.count > 0 ? token('color.text.warning') : token('color.text.success')};
       background: ${props => props.count > 0 ? token('color.background.warning.subtle') : token('color.background.success.subtle')};
       padding: ${token('space.050')} ${token('space.100')};
-      border-radius: ${token('border.radius')};
+      border-radius: var(--radius-large);
       font-size: ${token('font.size.050')};
       min-width: 24px;
       text-align: center;
@@ -264,26 +238,28 @@ const StatsGrid = styled.div`
 const StatCard = styled.div`
   text-align: center;
   padding: ${token('space.300')};
-  background: ${token('color.background.neutral')};
-  border-radius: ${token('border.radius.200')};
-  border: 1px solid ${token('color.border')};
+  /* Match issue items: transparent blue background + darker blue text */
+  background: rgba(11, 92, 255, 0.08);
+  color: var(--color-primary-700);
+  border-radius: var(--radius-large);
+  border: 1px solid ${token('color.border.brand')};
   
   .stat-icon {
-    color: ${token('color.icon.brand')};
+    color: var(--color-primary-700);
     margin-bottom: ${token('space.100')};
   }
   
   .stat-value {
     font-size: ${token('font.size.300')};
     font-weight: ${token('font.weight.bold')};
-    color: ${token('color.text')};
+    color: var(--color-primary-700);
     display: block;
     margin-bottom: ${token('space.050')};
   }
   
   .stat-label {
     font-size: ${token('font.size.075')};
-    color: ${token('color.text.subtle')};
+    color: var(--color-primary-700);
     font-weight: ${token('font.weight.medium')};
   }
 `;
@@ -292,21 +268,22 @@ const ReadingTimeCard = styled.div`
   grid-column: 1 / -1;
   text-align: center;
   padding: ${token('space.300')};
-  background: ${token('color.background.brand.subtlest')};
-  border-radius: ${token('border.radius.200')};
+  /* Use same style as other stat cards for consistency */
+  background: rgba(11, 92, 255, 0.08);
+  border-radius: var(--radius-large);
   border: 1px solid ${token('color.border.brand')};
   
   .reading-time-value {
     font-size: ${token('font.size.400')};
     font-weight: ${token('font.weight.bold')};
-    color: ${token('color.text.brand')};
+    color: var(--color-primary-700);
     display: block;
     margin-bottom: ${token('space.050')};
   }
   
   .reading-time-label {
     font-size: ${token('font.size.100')};
-    color: ${token('color.text.subtle')};
+    color: var(--color-primary-700);
     font-weight: ${token('font.weight.medium')};
     display: flex;
     align-items: center;
@@ -328,17 +305,6 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
 
   return (
     <SidebarContainer collapsed={collapsed} className={className}>
-      <SidebarHeader>
-        <h3>Analysis</h3>
-        <Button
-          variant="subtle"
-          size="small"
-          onClick={onToggleCollapse}
-          aria-label="Close sidebar"
-        >
-          <ChevronRightIcon label="" size="small" />
-        </Button>
-      </SidebarHeader>
       
       <SidebarTabs role="tablist">
         <SidebarTab
@@ -373,9 +339,14 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
             aria-labelledby="readability-tab"
           >
             <ReadabilityScore score={readabilityMetrics.score}>
-              <div className="score-circle">
-                {readabilityMetrics.score}
-              </div>
+              <AnimatedCircularProgress
+                value={readabilityMetrics.score}
+                size={96}
+                strokeWidth={8}
+                progressColor="var(--color-primary-500, #0B5CFF)"
+                trackColor="var(--color-border, #e4e6ea)"
+                label={<span style={{ fontSize: '1rem' }}>{Math.round(readabilityMetrics.score)}</span>}
+              />
               <div className="grade">{readabilityMetrics.grade}</div>
             </ReadabilityScore>
             

@@ -23,10 +23,10 @@ import MobileIcon from '@atlaskit/icon/glyph/mobile';
 import ImageIcon from '@atlaskit/icon/glyph/image';
 import VideoIcon from '@atlaskit/icon/glyph/vid-play';
 import CalendarIcon from '@atlaskit/icon/glyph/calendar';
-import StarIcon from '@atlaskit/icon/glyph/star';
 import StarFilledIcon from '@atlaskit/icon/glyph/star-filled';
 import NatureIcon from '@atlaskit/icon/glyph/emoji/nature';
 import { useDebugger, DEBUG_LEVELS } from '../utils/debugger';
+import { usePageLoad } from '../contexts/PageLoadContext';
 
 const collectionsStyles = css`
   max-width: 1200px;
@@ -187,20 +187,25 @@ const favoritesStyles = css`
       border-radius: var(--radius-medium);
       cursor: pointer;
       transition: var(--transition-colors);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start; /* Ensure title aligns to top-left */
       
       &:hover {
         border-color: var(--color-primary-500);  /* Bloom Blue accent on hover */
         /* REMOVED: Background and transform for flat design */
       }
       
-      .favorite-icon {
-        margin-right: var(--space-2);
-      }
-      
       .favorite-name {
-        font-size: var(--font-size-body-small);
+        font-size: var(--font-size-body);
         font-weight: var(--font-weight-medium);
         color: var(--color-text-primary);
+        margin: 0 0 var(--space-1) 0; /* Shift title up with tighter spacing */
+      }
+
+      .favorite-count {
+        font-size: var(--font-size-caption);
+        color: var(--color-text-secondary);
         margin: 0;
       }
     }
@@ -452,6 +457,7 @@ const mapServerVideoToContentItem = (v: any): ContentItem => ({
 
 export const Collections: React.FC = () => {
   const debug = useDebugger('Collections', { level: DEBUG_LEVELS.DEBUG });
+  const { beginPageLoad, endPageLoad } = usePageLoad();
   const [view, setView] = useState<'grid' | 'detail'>('grid');
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -518,7 +524,15 @@ export const Collections: React.FC = () => {
     return () => unsub();
   }, []);
 
-  const favorites = ['Summer Content', 'Brand Guidelines', 'Viral Hooks'];
+  const favoriteNames = ['Summer Content', 'Brand Guidelines', 'Viral Hooks'];
+  const favoriteCollections = useMemo(() => {
+    if (!collections || collections.length === 0) return [] as Collection[];
+    const byName = new Map(collections.map(c => [c.name, c] as const));
+    const list = favoriteNames
+      .map(name => byName.get(name))
+      .filter((c): c is Collection => Boolean(c));
+    return list.length > 0 ? list : collections.slice(0, Math.min(3, collections.length));
+  }, [collections]);
 
   const handleCreateCollection = () => {
     if (!userId) {
@@ -653,12 +667,15 @@ export const Collections: React.FC = () => {
     async function loadCollections() {
       if (!userId) return;
       try {
+        beginPageLoad();
         const resp = await RbacClient.getCollections(String(userId));
         if (!cancelled && resp?.success) {
           setCollections((resp.collections || []).map(mapServerCollectionToUi));
         }
       } catch (e) {
         console.warn('Failed to fetch collections', e);
+      } finally {
+        endPageLoad();
       }
     }
     loadCollections();
@@ -671,12 +688,15 @@ export const Collections: React.FC = () => {
     async function loadVideos() {
       if (!userId || !selectedCollection) return;
       try {
+        beginPageLoad();
         const resp = await RbacClient.getCollectionVideos(String(userId), selectedCollection.id, 50);
         if (!cancelled && resp?.success) {
           setVideos((resp.videos || []).map(mapServerVideoToContentItem));
         }
       } catch (e) {
         console.warn('Failed to fetch videos', e);
+      } finally {
+        endPageLoad();
       }
     }
     if (view === 'detail' && selectedCollection) {
@@ -1054,10 +1074,23 @@ export const Collections: React.FC = () => {
           <h2>Favorites</h2>
         </div>
         <div className="favorites-grid">
-          {favorites.map(favorite => (
-            <div key={favorite} className="favorite-item">
-              <StarIcon label="" />
-              <p className="favorite-name">{favorite}</p>
+          {favoriteCollections.map((fav) => (
+            <div
+              key={fav.id}
+              className="favorite-item"
+              role="button"
+              tabIndex={0}
+              onClick={() => handleViewCollection(fav)}
+              onKeyDown={(e: React.KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleViewCollection(fav);
+                }
+              }}
+              aria-label={`${fav.name} collection with ${fav.videoCount} videos`}
+            >
+              <p className="favorite-name">{fav.name}</p>
+              <p className="favorite-count">{fav.videoCount} video{fav.videoCount !== 1 ? 's' : ''}</p>
             </div>
           ))}
         </div>

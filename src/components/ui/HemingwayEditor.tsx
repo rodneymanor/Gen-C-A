@@ -3,7 +3,6 @@ import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { token } from '@atlaskit/tokens';
 // Atlassian Design System Icons
-import EditIcon from '@atlaskit/icon/glyph/edit';
 import EyeIcon from '@atlaskit/icon/glyph/watch';
 import EyeOffIcon from '@atlaskit/icon/glyph/cross-circle';
 import ChevronRightIcon from '@atlaskit/icon/glyph/chevron-right';
@@ -82,12 +81,12 @@ const EditorHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: ${token('space.200', '0.5rem')} ${token('space.300', '0.75rem')};
+  padding: 0 ${token('space.300', '0.75rem')};
   border-bottom: 1px solid var(--color-border-subtle, ${token('color.border', '#e4e6ea')});
   background: var(--card-bg, var(--color-surface, ${token('color.background.neutral', '#ffffff')}));
   z-index: 10;
   box-shadow: var(--shadow-subtle, none);
-  min-height: 56px; /* Uniform header height */
+  height: 64px; /* Match sidebar header */
   
   /* Hide internal header on small screens to avoid stacking with Layout header */
   @media (max-width: 768px) {
@@ -124,12 +123,16 @@ const EditorContent = styled.div<{ sidebarCollapsed: boolean }>`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--color-surface-elevated, ${token('color.background.neutral', '#fafbfc')});
+  background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
   min-width: 0; /* Prevents grid item from overflowing */
   /* Ensure content never sits under the fixed toolbar */
   padding-bottom: var(--editor-toolbar-clearance, 56px);
 
   /* Grid takes care of sizing, no need for margins */
+  .mobile-title { display: none; }
+  @media (max-width: 768px) {
+    .mobile-title { display: block; }
+  }
 `;
 
 
@@ -139,7 +142,7 @@ const TextEditor = styled.textarea`
   font-size: var(--font-size-body, 1rem);
   line-height: var(--line-height-relaxed, 1.6);
   color: var(--color-text-primary, ${token('color.text', '#172b4d')});
-  background: var(--color-surface-elevated, ${token('color.background.input', '#fafbfc')});
+  background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
   border: none;
   resize: none;
   outline: none;
@@ -151,7 +154,7 @@ const TextEditor = styled.textarea`
   }
 
   &:focus {
-    background: var(--color-surface-elevated, ${token('color.background.input', '#ffffff')});
+    background: var(--color-surface, ${token('color.background.neutral', '#ffffff')});
     box-shadow: var(--focus-ring-shadow, ${token('elevation.shadow.raised', '0 0 0 2px var(--color-primary-200)')});
     outline: var(--focus-ring-primary, 2px solid var(--color-primary-500));
     outline-offset: -2px;
@@ -481,15 +484,13 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
     <EditorContainer focusMode={focusMode} className={className}>
       {/* Header */}
       <EditorHeader>
-        <div style={{ display: 'flex', alignItems: 'center', gap: token('space.200', '0.5rem') }}>
-          <EditIcon label="" size="medium" primaryColor={token('color.background.brand.bold', '#0B5CFF')} />
-          <span style={{
-            fontWeight: token('font.weight.medium', '500'),
-            fontSize: '0.875rem',
-            color: token('color.text', '#172b4d')
-          }}>
-            Hemingway Editor
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+          <EditableTitle
+            value={title}
+            onChange={handleTitleChange}
+            placeholder="Untitled Document"
+            ariaLabel="Document title"
+          />
         </div>
         
         <HeaderActions>
@@ -525,13 +526,15 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
       {/* Main Editor Area */}
       <EditorMain sidebarCollapsed={sidebarCollapsed}>
         <EditorContent sidebarCollapsed={sidebarCollapsed}>
-          {/* Title */}
-          <EditableTitle
-            value={title}
-            onChange={handleTitleChange}
-            placeholder="Enter your title here..."
-            ariaLabel="Document title"
-          />
+          {/* Title (mobile only) */}
+          <div className="mobile-title">
+            <EditableTitle
+              value={title}
+              onChange={handleTitleChange}
+              placeholder="Enter your title here..."
+              ariaLabel="Document title"
+            />
+          </div>
           
           {/* Content Editor - Script Mode or Text Mode */}
           {isScriptMode && scriptElements ? (

@@ -116,8 +116,12 @@
   --color-action-destructive-hover: var(--color-error-400); /* Destructive hover */
 
   /* Typography */
-  --font-family-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  --font-family-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro', monospace;
+  /* Free equivalents for Perplexity-like typography */
+  --font-family-primary: 'Space Grotesk', 'Geist', 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', system-ui, sans-serif;
+  --font-family-mono: 'IBM Plex Mono', 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro', Consolas, monospace;
+  --font-family-editorial: 'Fraunces', 'Playfair Display', 'Cormorant Garamond', 'Source Serif 4', Georgia, serif;
+  /* Backcompat alias used in some components */
+  --font-family-monospace: var(--font-family-mono);
 
   /* Font Sizes - Responsive Typography */
   --font-size-h1: clamp(1.75rem, 4vw, 2.5rem);      /* 28-40px responsive */
@@ -211,7 +215,7 @@
   /* Layout */
   --layout-gutter: 1.5rem;
   --layout-container-max: 1200px;
-  --sidebar-width: 280px;
+  --sidebar-width: 224px;
   --sidebar-collapsed: 64px;
 
   /* Perplexity Flat Design - Minimal Shadows Only */
@@ -249,9 +253,10 @@
   --border-success: var(--border-width-thin) solid var(--color-border-success);
 
   /* Component Tokens */
-  --button-primary-bg: var(--color-primary-500);
-  --button-primary-bg-hover: var(--color-primary-600);
-  --button-primary-text: white;
+  /* Primary button (light) — soft gray per design */
+  --button-primary-bg: var(--color-neutral-100);
+  --button-primary-bg-hover: var(--color-neutral-200);
+  --button-primary-text: var(--color-neutral-800);
   --button-primary-shadow: none;  /* Perplexity flat buttons */
 
   --button-secondary-bg: var(--color-neutral-100);
@@ -265,8 +270,16 @@
   --card-bg: var(--color-neutral-0);
   --card-border: var(--color-neutral-200);
   --card-shadow: none;  /* Perplexity flat cards */
-  --card-radius: var(--radius-medium);
+  /* All application cards use 12px radius */
+  --card-radius: var(--radius-large);
   --card-padding: var(--space-6);
+
+  /* Sidebar tokens (light mode) */
+  --sidebar-bg: var(--color-neutral-50);
+  --sidebar-border: var(--color-neutral-200);
+  --sidebar-hover-bg: var(--color-neutral-100);
+  --sidebar-selected-bg: var(--color-neutral-200);
+  --sidebar-selected-border: var(--color-neutral-300);
 
   --input-bg: var(--color-neutral-0);
   --input-border: var(--color-neutral-300);
@@ -481,8 +494,8 @@
    DARK MODE IMPLEMENTATION (Complete)
    ======================================== */
 
-@media (prefers-color-scheme: dark) {
-  :root {
+  @media (prefers-color-scheme: dark) {
+    :root {
     /* Dark Mode Base Neutrals */
     --color-neutral-0: #0f1419;       /* Dark surface */
     --color-neutral-50: #1a1d23;      /* Elevated surface */
@@ -546,6 +559,16 @@
     
     /* Component Dark Mode Updates */
     --card-bg: var(--color-surface-elevated);
+    /* Sidebar tokens (dark mode) */
+    --sidebar-bg: var(--color-neutral-0);
+    --sidebar-border: var(--color-neutral-300);
+    --sidebar-hover-bg: var(--color-neutral-100);
+    --sidebar-selected-bg: var(--color-neutral-200);
+    --sidebar-selected-border: var(--color-neutral-400);
+    /* Primary button (dark) — soft gray */
+    --button-primary-bg: var(--color-neutral-200);
+    --button-primary-bg-hover: var(--color-neutral-300);
+    --button-primary-text: var(--color-neutral-900);
     --input-bg: var(--color-surface);
     --button-secondary-bg: var(--color-surface-elevated);
     --button-secondary-bg-hover: var(--color-surface-hover);

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ClarityLoader } from "@/components/ui/loading";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ShinyButton } from "@/components/ui/ShinyButton";
 import { cn } from "@/lib/utils";
 
 import { useVoice, type VoiceType } from "@/contexts/voice-context";
@@ -260,30 +261,11 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = memo(
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <button
-                      className="flex h-8 shrink-0 items-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors"
-                      disabled={disabled}
-                      style={{
-                        color: 'var(--color-text-inverse, #ffffff)',
-                        background: 'var(--color-background-brand-bold, #0B5CFF)',
-                        borderRadius: 'var(--border-radius-200, 0.5rem)',
-                        fontWeight: 'var(--font-weight-medium, 500)'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--color-background-brand-bold-hovered, #0052CC)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 6px 8px rgba(0, 0, 0, 0.08)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'var(--color-background-brand-bold, #0B5CFF)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    >
-                      <Sparkles className="h-4 w-4 shrink-0" style={{ color: 'var(--color-text-inverse, #ffffff)' }} />
-                      <span className="text-sm font-medium" style={{ color: 'var(--color-text-inverse, #ffffff)' }}>AI</span>
-                      <ChevronDown className="h-4 w-4 shrink-0" style={{ color: 'var(--color-text-inverse, #ffffff)' }} />
-                    </button>
+                    <ShinyButton disabled={disabled} variant="white" style={{ height: 32, padding: '0 10px' }}>
+                      <Sparkles className="h-4 w-4 shrink-0" />
+                      <span className="text-sm font-medium">AI</span>
+                      <ChevronDown className="h-4 w-4 shrink-0" />
+                    </ShinyButton>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <TooltipContent side="top">AI writing assistance</TooltipContent>

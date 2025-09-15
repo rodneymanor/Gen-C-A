@@ -32,7 +32,10 @@ import { handleTikTokUserFeed } from './src/api-routes/tiktok.js';
 import { handleVideoTranscribe } from './src/api-routes/video.js';
 import { handleVoiceAnalyzePatterns } from './src/api-routes/voice.js';
 import { handleSaveCreatorAnalysis } from './src/api-routes/creator-analysis.js';
-import { handleListBrandVoices, handleGetBrandVoiceTemplates } from './src/api-routes/brand-voices.js';
+import { handleListAnalyzedVideoIds } from './src/api-routes/creator-lookup.js';
+import { handleListBrandVoices, handleGetBrandVoiceTemplates, handleDeleteBrandVoice, handleUpdateBrandVoiceMeta } from './src/api-routes/brand-voices.js';
+import { handleGetScripts, handleCreateScript, handleGetScriptById, handleUpdateScript, handleDeleteScript } from './src/api-routes/scripts.js';
+import { handleGetNotes, handleCreateNote, handleGetNoteById, handleUpdateNote, handleDeleteNote } from './src/api-routes/notes.js';
 import {
   handleGetCollections,
   handleCreateCollection,
@@ -58,8 +61,25 @@ app.post('/api/video/transcribe-from-url', handleVideoTranscribe);
 // Voice analysis route
 app.post('/api/voice/analyze-patterns', handleVoiceAnalyzePatterns);
 app.post('/api/creator/save-analysis', handleSaveCreatorAnalysis);
+app.get('/api/creator/analyzed-video-ids', handleListAnalyzedVideoIds);
 app.get('/api/brand-voices/list', handleListBrandVoices);
 app.get('/api/brand-voices/templates', handleGetBrandVoiceTemplates);
+app.post('/api/brand-voices/delete', handleDeleteBrandVoice);
+app.post('/api/brand-voices/update-meta', handleUpdateBrandVoiceMeta);
+
+// Scripts API routes
+app.get('/api/scripts', handleGetScripts);
+app.post('/api/scripts', handleCreateScript);
+app.get('/api/scripts/:id', handleGetScriptById);
+app.put('/api/scripts/:id', handleUpdateScript);
+app.delete('/api/scripts/:id', handleDeleteScript);
+
+// Notes API routes
+app.get('/api/notes', handleGetNotes);
+app.post('/api/notes', handleCreateNote);
+app.get('/api/notes/:id', handleGetNoteById);
+app.put('/api/notes/:id', handleUpdateNote);
+app.delete('/api/notes/:id', handleDeleteNote);
 
 // Collections API routes (migrated)
 app.get('/api/collections', handleGetCollections);
