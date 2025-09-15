@@ -1,4 +1,13 @@
-import { getAdminDb } from '../lib/firebase-admin.ts';
+// Load Firebase Admin compatibly in dev (TS) and prod (bundled JS)
+async function loadFirebaseAdmin() {
+  try {
+    const mod = await import('../lib/firebase-admin.js');
+    return mod.getAdminDb;
+  } catch (e) {
+    const mod = await import('../lib/firebase-admin.ts');
+    return mod.getAdminDb;
+  }
+}
 
 /**
  * GET /api/creator/analyzed-video-ids?handle=foo
@@ -6,6 +15,7 @@ import { getAdminDb } from '../lib/firebase-admin.ts';
  */
 export async function handleListAnalyzedVideoIds(req, res) {
   try {
+    const getAdminDb = await loadFirebaseAdmin();
     const handle = String(req.query?.handle || req.query?.creator || '').replace(/^@/, '').trim();
     const creatorId = String(req.query?.creatorId || '').trim();
 
@@ -47,4 +57,3 @@ export async function handleListAnalyzedVideoIds(req, res) {
     return res.status(500).json({ success: false, error: 'Failed to list analyzed videos' });
   }
 }
-

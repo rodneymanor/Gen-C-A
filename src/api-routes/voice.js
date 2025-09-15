@@ -1,4 +1,15 @@
-import { GeminiService } from '../lib/gemini.ts';
+// Load Gemini service compatibly in dev (TS) and prod (bundled JS)
+async function loadGeminiService() {
+  try {
+    // In production on Vercel, the TS will be transpiled to JS
+    const mod = await import('../lib/gemini.js');
+    return mod.GeminiService;
+  } catch (e) {
+    // In local dev (tsx), import directly from TS
+    const mod = await import('../lib/gemini.ts');
+    return mod.GeminiService;
+  }
+}
 
 /**
  * Simplified voice analysis route.
@@ -19,6 +30,7 @@ import { GeminiService } from '../lib/gemini.ts';
  */
 export async function handleVoiceAnalyzePatterns(req, res) {
   try {
+    const GeminiService = await loadGeminiService();
     const {
       prompt,
       transcripts,

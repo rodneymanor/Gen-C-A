@@ -251,7 +251,7 @@ const DropdownButton = styled.button`
   
   .button-title {
     font-weight: ${token('font.weight.medium')};
-    margin-bottom: ${token('space.025')};
+    margin-bottom: 0;
   }
   
   .button-description {
@@ -283,6 +283,9 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   const [isAIDropdownOpen, setIsAIDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const [activeSection, setActiveSection] = useState<
+    null | 'script' | 'quick' | 'style' | 'brand' | 'creative'
+  >(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -294,6 +297,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         !buttonRef.current.contains(event.target as Node)
       ) {
         setIsAIDropdownOpen(false);
+        setActiveSection(null);
       }
     };
 
@@ -321,6 +325,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   }, [isAIDropdownOpen]);
 
   const handleAIButtonClick = () => {
+    if (!isAIDropdownOpen) setActiveSection(null);
     setIsAIDropdownOpen(!isAIDropdownOpen);
   };
 
@@ -405,138 +410,163 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         </ShinyButton>
         
         <DropdownContent ref={dropdownRef} isOpen={isAIDropdownOpen}>
-          <DropdownHeader>
-            <h4>
-              <SparklesIcon label="" size="small" />
-              AI Writing Assistant
-            </h4>
-            <p>Enhance your writing with AI-powered tools</p>
-          </DropdownHeader>
-          
-          {/* Script Actions */}
-          <DropdownSection>
-            <div className="section-label">Script Actions</div>
-            <DropdownButton
-              onClick={() => {
-                if (onRegenerate) {
-                  onRegenerate();
-                } else {
-                  handleAIActionClick('regenerate');
-                }
-              }}
-              disabled={isGenerating}
-            >
-              <TimerIcon label="" size="small" />
-              <div className="button-content">
-                <div className="button-title">Regenerate Script</div>
-                <div className="button-description">Create a fresh version with current settings</div>
-              </div>
-            </DropdownButton>
-          </DropdownSection>
+          {activeSection === null ? (
+            <>
+              <DropdownButton onClick={() => setActiveSection('script')}>
+                <TimerIcon label="" size="small" />
+                <div className="button-content">
+                  <div className="button-title">Script</div>
+                </div>
+              </DropdownButton>
+              <DropdownButton onClick={() => setActiveSection('quick')}>
+                <CopyIcon label="" size="small" />
+                <div className="button-content">
+                  <div className="button-title">Quick Actions</div>
+                </div>
+              </DropdownButton>
+              <DropdownButton onClick={() => setActiveSection('style')}>
+                <VolumeIcon label="" size="small" />
+                <div className="button-content">
+                  <div className="button-title">Style & Tone</div>
+                </div>
+              </DropdownButton>
+              {brandVoices && brandVoices.length > 0 && (
+                <DropdownButton onClick={() => setActiveSection('brand')}>
+                  <UserIcon label="" size="small" />
+                  <div className="button-content">
+                    <div className="button-title">Brand Voice</div>
+                  </div>
+                </DropdownButton>
+              )}
+              <DropdownButton onClick={() => setActiveSection('creative')}>
+                <ShuffleIcon label="" size="small" />
+                <div className="button-content">
+                  <div className="button-title">Creative</div>
+                </div>
+              </DropdownButton>
+            </>
+          ) : (
+            <>
+              <DropdownButton onClick={() => setActiveSection(null)}>
+                <UndoIcon label="" size="small" />
+                <div className="button-content">
+                  <div className="button-title">Back</div>
+                </div>
+              </DropdownButton>
 
-          <DropdownSection>
-            <div className="section-label">Quick Actions</div>
-            <DropdownButton onClick={() => handleAIActionClick('copy')}>
-              <CopyIcon label="" size="small" />
-              <div className="button-content">
-                <div className="button-title">Copy Text</div>
-                <div className="button-description">Copy selected text to clipboard</div>
-              </div>
-            </DropdownButton>
-            
-            <DropdownButton onClick={() => handleAIActionClick('improve')}>
-              <WandIcon label="" size="small" />
-              <div className="button-content">
-                <div className="button-title">Improve Writing</div>
-                <div className="button-description">Enhance clarity and flow</div>
-              </div>
-            </DropdownButton>
-          </DropdownSection>
-          
-          <DropdownSection>
-            <div className="section-label">Style & Tone</div>
-            <DropdownButton onClick={() => handleAIActionClick('humanize')}>
-              <UserIcon label="" size="small" />
-              <div className="button-content">
-                <div className="button-title">Humanize</div>
-                <div className="button-description">Make text more conversational</div>
-              </div>
-            </DropdownButton>
-            
-            <DropdownButton onClick={() => handleAIActionClick('shorten')}>
-              <ScissorsIcon label="" size="small" />
-              <div className="button-content">
-                <div className="button-title">Shorten</div>
-                <div className="button-description">Make text more concise</div>
-              </div>
-            </DropdownButton>
-            
-            <DropdownButton onClick={() => handleAIActionClick('tone-professional')}>
-              <VolumeIcon label="" size="small" />
-              <div className="button-content">
-                <div className="button-title">Professional Tone</div>
-                <div className="button-description">Adjust for business writing</div>
-              </div>
-            </DropdownButton>
-            
-            <DropdownButton onClick={() => handleAIActionClick('tone-casual')}>
-              <VolumeIcon label="" size="small" />
-              <div className="button-content">
-                <div className="button-title">Casual Tone</div>
-                <div className="button-description">Make it more relaxed</div>
-              </div>
-            </DropdownButton>
-          </DropdownSection>
-          
-          {/* Brand Voice Selection */}
-          <DropdownSection>
-            <div className="section-label">Brand Voice</div>
-            {brandVoices && brandVoices.length > 0 ? (
-              <div style={{ padding: `${token('space.050')} ${token('space.100')}` }}>
-                <label htmlFor="brand-voice-select" style={{
-                  display: 'block',
-                  fontSize: token('font.size.050'),
-                  color: token('color.text.subtle'),
-                  marginBottom: token('space.050')
-                }}>
-                  Select persona
-                </label>
-                <select
-                  id="brand-voice-select"
-                  value={selectedBrandVoiceId || ''}
-                  onChange={(e) => onBrandVoiceChange?.(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: `${token('space.100')} ${token('space.150')}`,
-                    border: `1px solid ${token('color.border')}`,
-                    borderRadius: token('border.radius'),
-                    background: token('color.background.input'),
-                    color: token('color.text')
+              {activeSection === 'script' && (
+                <DropdownButton
+                  onClick={() => {
+                    if (onRegenerate) {
+                      onRegenerate();
+                    } else {
+                      handleAIActionClick('regenerate');
+                    }
                   }}
+                  disabled={isGenerating}
                 >
-                  <option value="">No brand voice</option>
-                  {brandVoices.map(v => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div style={{ padding: `${token('space.100')}` }}>
-                <div className="button-description">No personas found. Create a brand voice to use here.</div>
-              </div>
-            )}
-          </DropdownSection>
+                  <TimerIcon label="" size="small" />
+                  <div className="button-content">
+                    <div className="button-title">Regenerate Script</div>
+                  </div>
+                </DropdownButton>
+              )}
 
-          <DropdownSection>
-            <div className="section-label">Creative</div>
-            <DropdownButton onClick={() => handleAIActionClick('remix')}>
-              <ShuffleIcon label="" size="small" />
-              <div className="button-content">
-                <div className="button-title">Remix</div>
-                <div className="button-description">Rewrite with fresh perspective</div>
-              </div>
-            </DropdownButton>
-          </DropdownSection>
+              {activeSection === 'quick' && (
+                <>
+                  <DropdownButton onClick={() => handleAIActionClick('copy')}>
+                    <CopyIcon label="" size="small" />
+                    <div className="button-content">
+                      <div className="button-title">Copy Text</div>
+                    </div>
+                  </DropdownButton>
+                  <DropdownButton onClick={() => handleAIActionClick('improve')}>
+                    <WandIcon label="" size="small" />
+                    <div className="button-content">
+                      <div className="button-title">Improve Writing</div>
+                    </div>
+                  </DropdownButton>
+                </>
+              )}
+
+              {activeSection === 'style' && (
+                <>
+                  <DropdownButton onClick={() => handleAIActionClick('humanize')}>
+                    <UserIcon label="" size="small" />
+                    <div className="button-content">
+                      <div className="button-title">Humanize</div>
+                    </div>
+                  </DropdownButton>
+                  <DropdownButton onClick={() => handleAIActionClick('shorten')}>
+                    <ScissorsIcon label="" size="small" />
+                    <div className="button-content">
+                      <div className="button-title">Shorten</div>
+                    </div>
+                  </DropdownButton>
+                  <DropdownButton onClick={() => handleAIActionClick('tone-professional')}>
+                    <VolumeIcon label="" size="small" />
+                    <div className="button-content">
+                      <div className="button-title">Professional Tone</div>
+                    </div>
+                  </DropdownButton>
+                  <DropdownButton onClick={() => handleAIActionClick('tone-casual')}>
+                    <VolumeIcon label="" size="small" />
+                    <div className="button-content">
+                      <div className="button-title">Casual Tone</div>
+                    </div>
+                  </DropdownButton>
+                </>
+              )}
+
+              {activeSection === 'brand' && (
+                <>
+                  {brandVoices && brandVoices.length > 0 ? (
+                    <div style={{ padding: `${token('space.050')} ${token('space.100')}` }}>
+                      <label htmlFor="brand-voice-select" style={{
+                        display: 'block',
+                        fontSize: token('font.size.050'),
+                        color: token('color.text.subtle'),
+                        marginBottom: token('space.050')
+                      }}>
+                        Select persona
+                      </label>
+                      <select
+                        id="brand-voice-select"
+                        value={selectedBrandVoiceId || ''}
+                        onChange={(e) => onBrandVoiceChange?.(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: `${token('space.100')} ${token('space.150')}`,
+                          border: `1px solid ${token('color.border')}`,
+                          borderRadius: token('border.radius'),
+                          background: token('color.background.input'),
+                          color: token('color.text')
+                        }}
+                      >
+                        <option value="">No brand voice</option>
+                        {brandVoices.map(v => (
+                          <option key={v.id} value={v.id}>{v.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div style={{ padding: `${token('space.100')}` }}>
+                      <div className="button-description">No personas found. Create a brand voice to use here.</div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {activeSection === 'creative' && (
+                <DropdownButton onClick={() => handleAIActionClick('remix')}>
+                  <ShuffleIcon label="" size="small" />
+                  <div className="button-content">
+                    <div className="button-title">Remix</div>
+                  </div>
+                </DropdownButton>
+              )}
+            </>
+          )}
         </DropdownContent>
       </AIActionsDropdown>
     </ToolbarContainer>

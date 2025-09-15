@@ -128,6 +128,23 @@ app.post('/api/chrome-extension/idea-inbox/video', handleIdeaInboxVideoPost);
 app.get('/api/chrome-extension/youtube-transcript', handleYouTubeTranscriptGet);
 app.post('/api/chrome-extension/youtube-transcript', handleYouTubeTranscriptPost);
 
+// Hemingway Editor AI Actions (adapter for api/ai-action.ts)
+app.post('/api/ai-action', async (req, res) => {
+  try {
+    const mod = await import('./api/ai-action.ts');
+    const handler = mod.default || mod.handler || mod;
+    if (typeof handler !== 'function') {
+      throw new Error('AI action handler not found');
+    }
+    await handler(req, res);
+    return; // response handled by handler
+  } catch (e) {
+    console.error('[AI Action] route error:', e);
+    const message = e && typeof e === 'object' && 'message' in e ? e.message : 'Failed to process AI action';
+    return res.status(500).json({ success: false, error: message });
+  }
+});
+
 // Compatibility routes (legacy)
 // POST /api/collections/user — legacy endpoint expecting { userId } in body
 app.post('/api/collections/user', async (req, res) => {

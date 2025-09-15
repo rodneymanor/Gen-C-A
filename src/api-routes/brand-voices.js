@@ -1,4 +1,5 @@
-import { getAdminDb } from '../lib/firebase-admin.ts';
+// Use JS Firebase Admin utils compatible with Vercel runtime
+import { getDb as getAdminDb } from './utils/firebase-admin.js';
 import fs from 'fs';
 import path from 'path';
 

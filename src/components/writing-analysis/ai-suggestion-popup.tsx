@@ -515,6 +515,11 @@ export const AISuggestionPopup: React.FC<AISuggestionPopupProps> = ({
         })
       });
 
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(`API ${response.status}: ${errText || 'Request failed'}`);
+      }
+
       const data = await response.json();
 
       if (data.success) {

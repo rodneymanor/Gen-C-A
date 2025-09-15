@@ -106,7 +106,7 @@ const headerStyles = css`
   gap: var(--space-3);
   padding: var(--space-4);
   border-bottom: 1px solid var(--sidebar-border);
-  min-height: 64px;
+  height: 64px;
 
   .brand {
     display: flex;

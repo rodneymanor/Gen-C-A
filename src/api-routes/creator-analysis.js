@@ -1,4 +1,13 @@
-import { getAdminDb } from '../lib/firebase-admin.ts';
+// Load Firebase Admin compatibly in dev (TS) and prod (bundled JS)
+async function loadFirebaseAdmin() {
+  try {
+    const mod = await import('../lib/firebase-admin.js');
+    return mod.getAdminDb;
+  } catch (e) {
+    const mod = await import('../lib/firebase-admin.ts');
+    return mod.getAdminDb;
+  }
+}
 import fs from 'fs';
 import path from 'path';
 
@@ -54,6 +63,7 @@ function findPlaceholders(pattern) {
 
 export async function handleSaveCreatorAnalysis(req, res) {
   try {
+    const getAdminDb = await loadFirebaseAdmin();
     const db = getAdminDb();
 
     const { creator, analysisText, analysisJson, transcriptsCount = 5, niche = 'general', videoMeta } = req.body || {};

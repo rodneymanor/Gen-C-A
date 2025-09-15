@@ -186,6 +186,24 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = memo(
       return actions;
     }, [context]);
 
+    // Organize actions into categories to reduce popup height
+    const quickActions = useMemo(
+      () => contextualActions.filter((a) => ["copy", "edit"].includes(a.key)),
+      [contextualActions],
+    );
+    const styleBase = useMemo(
+      () => contextualActions.filter((a) => ["humanize", "shorten"].includes(a.key)),
+      [contextualActions],
+    );
+    const toneOptions = useMemo(
+      () => contextualActions.find((a) => a.key === "change_tone")?.options ?? [],
+      [contextualActions],
+    );
+    const creativeActions = useMemo(
+      () => contextualActions.filter((a) => a.key === "remix"),
+      [contextualActions],
+    );
+
     return (
       <TooltipProvider>
         <div
@@ -271,49 +289,77 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = memo(
                 <TooltipContent side="top">AI writing assistance</TooltipContent>
               </Tooltip>
               <DropdownMenuContent align="center" className="w-64 p-2">
-                <DropdownMenuLabel className="text-muted-foreground px-2 text-xs tracking-wide uppercase">
-                  Quick Actions
-                </DropdownMenuLabel>
-                {contextualActions.map((action) => (
-                  <div key={action.key}>
-                    {action.hasSubmenu ? (
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="flex items-center gap-3 rounded-lg p-3">
-                          <span className="text-lg">{action.icon}</span>
-                          <div className="flex flex-col items-start">
-                            <span className="text-sm font-medium">{action.label}</span>
-                            <span className="text-muted-foreground text-xs">{action.description}</span>
-                          </div>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="p-1">
-                          {action.options?.map((option) => (
-                            <DropdownMenuItem
-                              key={option.key}
-                              onClick={() => handleAIActionSelect(action.key, option.key)}
-                              className="rounded-lg p-3"
-                            >
-                              <div className="flex flex-col items-start">
-                                <span className="text-sm font-medium">{option.label}</span>
-                                <span className="text-muted-foreground text-xs">{option.description}</span>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                    ) : (
+                {/* Category: Quick Actions */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="flex items-center gap-3 rounded-lg p-3">
+                    <span className="text-lg">⚡</span>
+                    <span className="text-sm font-medium">Quick Actions</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="p-1">
+                    {quickActions.map((a) => (
                       <DropdownMenuItem
-                        onClick={() => handleAIActionSelect(action.key)}
+                        key={a.key}
+                        onClick={() => handleAIActionSelect(a.key)}
                         className="flex items-center gap-3 rounded-lg p-3"
                       >
-                        <span className="text-lg">{action.icon}</span>
-                        <div className="flex flex-col items-start">
-                          <span className="text-sm font-medium">{action.label}</span>
-                          <span className="text-muted-foreground text-xs">{action.description}</span>
-                        </div>
+                        <span className="text-lg">{a.icon}</span>
+                        <span className="text-sm font-medium">{a.label}</span>
                       </DropdownMenuItem>
-                    )}
-                  </div>
-                ))}
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
+                {/* Category: Style & Tone */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="flex items-center gap-3 rounded-lg p-3">
+                    <span className="text-lg">🎨</span>
+                    <span className="text-sm font-medium">Style & Tone</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="p-1">
+                    {styleBase.map((a) => (
+                      <DropdownMenuItem
+                        key={a.key}
+                        onClick={() => handleAIActionSelect(a.key)}
+                        className="flex items-center gap-3 rounded-lg p-3"
+                      >
+                        <span className="text-lg">{a.icon}</span>
+                        <span className="text-sm font-medium">{a.label}</span>
+                      </DropdownMenuItem>
+                    ))}
+                    {toneOptions.map((opt) => (
+                      <DropdownMenuItem
+                        key={`tone-${opt.key}`}
+                        onClick={() => handleAIActionSelect('change_tone', opt.key)}
+                        className="flex items-center gap-3 rounded-lg p-3"
+                      >
+                        <span className="text-lg">🎭</span>
+                        <span className="text-sm font-medium">{opt.label}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
+                {/* Category: Creative (if available) */}
+                {creativeActions.length > 0 && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-3 rounded-lg p-3">
+                      <span className="text-lg">🔮</span>
+                      <span className="text-sm font-medium">Creative</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="p-1">
+                      {creativeActions.map((a) => (
+                        <DropdownMenuItem
+                          key={a.key}
+                          onClick={() => handleAIActionSelect(a.key)}
+                          className="flex items-center gap-3 rounded-lg p-3"
+                        >
+                          <span className="text-lg">{a.icon}</span>
+                          <span className="text-sm font-medium">{a.label}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
