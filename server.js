@@ -101,6 +101,21 @@ async function setupRoutes() {
     const { handleSaveCreatorAnalysis } = await import('./src/api-routes/creator-analysis.js');
     const { handleListAnalyzedVideoIds } = await import('./src/api-routes/creator-lookup.js');
     const { handleListBrandVoices, handleGetBrandVoiceTemplates, handleUpdateBrandVoiceMeta } = await import('./src/api-routes/brand-voices.js');
+    const { handleGetNotes, handleCreateNote, handleGetNoteById, handleUpdateNote, handleDeleteNote } = await import('./src/api-routes/notes.js');
+    const {
+      handleCENotesGet,
+      handleCENotesPost,
+      handleCENotesPut,
+      handleCENotesDelete,
+      handleCECollectionsGet,
+      handleCECollectionsPost,
+      handleCECollectionsAddVideo,
+      handleContentInboxPost,
+      handleIdeaInboxTextPost,
+      handleIdeaInboxVideoPost,
+      handleYouTubeTranscriptGet,
+      handleYouTubeTranscriptPost,
+    } = await import('./src/api-routes/chrome-extension.js');
 
     // Main transcription endpoint (replaces the complex follow workflow)
     app.post('/api/creators/follow', handleCreatorTranscription);
@@ -120,6 +135,32 @@ async function setupRoutes() {
     app.get('/api/brand-voices/list', handleListBrandVoices);
     app.get('/api/brand-voices/templates', handleGetBrandVoiceTemplates);
     app.post('/api/brand-voices/update-meta', handleUpdateBrandVoiceMeta);
+
+    // Notes API (used by iOS Shortcuts and app)
+    app.get('/api/notes', handleGetNotes);
+    app.post('/api/notes', handleCreateNote);
+    app.get('/api/notes/:id', handleGetNoteById);
+    app.put('/api/notes/:id', handleUpdateNote);
+    app.delete('/api/notes/:id', handleDeleteNote);
+
+    // Chrome Extension routes
+    app.get('/api/chrome-extension/notes', handleCENotesGet);
+    app.post('/api/chrome-extension/notes', handleCENotesPost);
+    app.put('/api/chrome-extension/notes', handleCENotesPut);
+    app.delete('/api/chrome-extension/notes', handleCENotesDelete);
+
+    app.get('/api/chrome-extension/collections', handleCECollectionsGet);
+    app.post('/api/chrome-extension/collections', handleCECollectionsPost);
+    app.post('/api/chrome-extension/collections/add-video', handleCECollectionsAddVideo);
+
+    app.post('/api/content-inbox/items', handleContentInboxPost);
+    app.post('/api/idea-inbox/items', handleContentInboxPost);
+
+    app.post('/api/chrome-extension/idea-inbox/text', handleIdeaInboxTextPost);
+    app.post('/api/chrome-extension/idea-inbox/video', handleIdeaInboxVideoPost);
+
+    app.get('/api/chrome-extension/youtube-transcript', handleYouTubeTranscriptGet);
+    app.post('/api/chrome-extension/youtube-transcript', handleYouTubeTranscriptPost);
 
     // Persona routes - TODO: Convert from Next.js format if needed
     // app.post('/api/personas/generate-metadata', handlePersonaMetadata);

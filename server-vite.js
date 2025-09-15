@@ -37,6 +37,20 @@ import { handleListBrandVoices, handleGetBrandVoiceTemplates, handleDeleteBrandV
 import { handleGetScripts, handleCreateScript, handleGetScriptById, handleUpdateScript, handleDeleteScript } from './src/api-routes/scripts.js';
 import { handleGetNotes, handleCreateNote, handleGetNoteById, handleUpdateNote, handleDeleteNote } from './src/api-routes/notes.js';
 import {
+  handleCENotesGet,
+  handleCENotesPost,
+  handleCENotesPut,
+  handleCENotesDelete,
+  handleCECollectionsGet,
+  handleCECollectionsPost,
+  handleCECollectionsAddVideo,
+  handleContentInboxPost,
+  handleIdeaInboxTextPost,
+  handleIdeaInboxVideoPost,
+  handleYouTubeTranscriptGet,
+  handleYouTubeTranscriptPost,
+} from './src/api-routes/chrome-extension.js';
+import {
   handleGetCollections,
   handleCreateCollection,
   handleGetUserCollections,
@@ -91,6 +105,28 @@ app.post('/api/collections/copy-video', handleCopyVideo);
 app.delete('/api/collections/delete', handleDeleteCollection);
 app.patch('/api/collections/update', handleUpdateCollection);
 app.post('/api/videos/add-to-collection', handleAddVideoToCollection);
+
+// Chrome Extension: Notes CRUD
+app.get('/api/chrome-extension/notes', handleCENotesGet);
+app.post('/api/chrome-extension/notes', handleCENotesPost);
+app.put('/api/chrome-extension/notes', handleCENotesPut);
+app.delete('/api/chrome-extension/notes', handleCENotesDelete);
+
+// Chrome Extension: Collections proxy and add-video
+app.get('/api/chrome-extension/collections', handleCECollectionsGet);
+app.post('/api/chrome-extension/collections', handleCECollectionsPost);
+app.post('/api/chrome-extension/collections/add-video', handleCECollectionsAddVideo);
+
+// Content Inbox + Idea Inbox
+app.post('/api/content-inbox/items', handleContentInboxPost);
+// Alias routes for compatibility
+app.post('/api/idea-inbox/items', handleContentInboxPost);
+app.post('/api/chrome-extension/idea-inbox/text', handleIdeaInboxTextPost);
+app.post('/api/chrome-extension/idea-inbox/video', handleIdeaInboxVideoPost);
+
+// YouTube transcript for extension
+app.get('/api/chrome-extension/youtube-transcript', handleYouTubeTranscriptGet);
+app.post('/api/chrome-extension/youtube-transcript', handleYouTubeTranscriptPost);
 
 // Compatibility routes (legacy)
 // POST /api/collections/user — legacy endpoint expecting { userId } in body
