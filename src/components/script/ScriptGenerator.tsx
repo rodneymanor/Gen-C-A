@@ -5,12 +5,14 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { TextArea } from '../ui/TextArea';
 import type { AIGenerationRequest, BrandPersona } from '../../types';
+import { DEFAULT_BRAND_VOICE_ID } from '../../constants/brand-voices';
 
 export interface ScriptGeneratorProps {
   onGenerate?: (request: AIGenerationRequest) => void;
   onVoiceInput?: () => void;
   isLoading?: boolean;
   personas?: BrandPersona[];
+  defaultPersonaId?: string;
 }
 
 const generatorStyles = css`
@@ -203,17 +205,26 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   onGenerate,
   onVoiceInput,
   isLoading = false,
-  personas = []
+  personas = [],
+  defaultPersonaId = DEFAULT_BRAND_VOICE_ID
 }) => {
   const [formData, setFormData] = useState({
     prompt: '',
     aiModel: 'creative',
-    length: 'short',
+    length: 'medium',
     // Keep defaults for request payload, but no UI controls
     style: 'engaging',
     platform: 'tiktok' as const,
     persona: ''
   });
+
+  React.useEffect(() => {
+    if (formData.persona) return;
+    if (!defaultPersonaId) return;
+    const found = personas.find(p => p.id === defaultPersonaId);
+    if (!found) return;
+    setFormData(prev => ({ ...prev, persona: defaultPersonaId }));
+  }, [defaultPersonaId, personas, formData.persona]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));

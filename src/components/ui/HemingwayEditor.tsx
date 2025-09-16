@@ -15,6 +15,7 @@ import { ScriptComponentEditor } from './ScriptComponentEditor';
 import { InteractiveScript } from '../writing-analysis/interactive-script';
 import { useScriptGeneration } from '@/hooks/use-script-generation';
 import type { BrandPersona } from '@/types';
+import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME } from '@/constants/brand-voices';
 
 // Re-export interfaces from child components for convenience
 export type { ReadabilityMetrics, WritingStats } from './EditorSidebar';
@@ -215,6 +216,8 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const handleRegenerateRef = useRef<(() => Promise<void>) | null>(null);
+  const previousPersonaRef = useRef<string | null>(null);
   
   // Calculate writing statistics - handle both script and regular mode
   const getContentForStats = () => {
@@ -419,7 +422,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
         if (isMounted && res.ok && data?.success && Array.isArray(data.voices)) {
           const mapped: BrandPersona[] = data.voices.map((v: any) => ({
             id: v.id,
-            name: v.name,
+            name: v.id === DEFAULT_BRAND_VOICE_ID ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
             description: v.description || '',
             tone: v.tone || 'Varied',
             voice: v.voice || 'Derived from analysis',
@@ -429,6 +432,11 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
             created: v.created ? new Date(v.created._seconds ? v.created._seconds * 1000 : v.created) : new Date(),
           }));
           setPersonas(mapped);
+          setSelectedPersonaId(prev => {
+            if (prev) return prev;
+            const defaultPersona = mapped.find(p => p.id === DEFAULT_BRAND_VOICE_ID);
+            return defaultPersona ? defaultPersona.id : prev;
+          });
         }
       } catch (_) {
         // silent fallback
@@ -479,6 +487,33 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
       setIsRegenerating(false);
     }
   }, [isScriptMode, onScriptElementsChange, deriveIdeaFromEditor, decideLength, selectedPersonaId, generateScript]);
+
+  // Keep the latest regenerate handler in a ref so persona effect doesn't retrigger when dependencies change
+  useEffect(() => {
+    handleRegenerateRef.current = handleRegenerate;
+  }, [handleRegenerate]);
+
+  // Trigger an automatic regenerate when the persona changes after mount
+  useEffect(() => {
+    if (!isScriptMode || !onScriptElementsChange) {
+      previousPersonaRef.current = selectedPersonaId;
+      return;
+    }
+
+    const previousPersona = previousPersonaRef.current;
+    previousPersonaRef.current = selectedPersonaId;
+
+    if (previousPersona === null) {
+      // Skip first run on mount
+      return;
+    }
+
+    if (previousPersona === selectedPersonaId) {
+      return;
+    }
+
+    handleRegenerateRef.current?.();
+  }, [selectedPersonaId, isScriptMode, onScriptElementsChange]);
 
   return (
     <EditorContainer focusMode={focusMode} className={className}>

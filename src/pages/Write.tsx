@@ -7,6 +7,7 @@ import { ScriptEditor } from '../components/script/ScriptEditor';
 import { Button } from '../components/ui/Button';
 import { useScriptGeneration } from '../hooks/use-script-generation';
 import type { AIGenerationRequest, AIGenerationResponse, Script, BrandPersona } from '../types';
+import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME } from '../constants/brand-voices';
 
 const writeStyles = css`
   max-width: 1200px;
@@ -131,6 +132,74 @@ export const Write: React.FC = () => {
     stage: ''
   });
 
+  const persistGeneratedScript = React.useCallback(async (
+    params: {
+      request: AIGenerationRequest;
+      scriptContent: string;
+      mappedLength: "15" | "20" | "30" | "45" | "60" | "90";
+      components: { hook: string; bridge: string; goldenNugget: string; wta: string };
+      title: string;
+    }
+  ) => {
+    const { request, scriptContent, mappedLength, components, title } = params;
+    const personaDetails = request.persona ? personas.find(p => p.id === request.persona) : undefined;
+
+    const payload = {
+      title,
+      content: scriptContent,
+      summary: scriptContent.slice(0, 200),
+      approach: 'speed-write' as const,
+      voice: personaDetails
+        ? {
+            id: personaDetails.id,
+            name: personaDetails.name,
+            badges: Array.isArray(personaDetails.keywords)
+              ? personaDetails.keywords.slice(0, 3)
+              : []
+          }
+        : undefined,
+      originalIdea: request.prompt,
+      targetLength: mappedLength,
+      source: 'scripting' as const,
+      platform: request.platform,
+      status: 'draft' as const,
+      tags: ['ai-generated', request.platform].filter(Boolean),
+      isThread: false,
+      elements: {
+        hook: components.hook,
+        bridge: components.bridge,
+        goldenNugget: components.goldenNugget,
+        wta: components.wta
+      }
+    };
+
+    try {
+      const response = await fetch('/api/scripts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        console.warn('⚠️ [Write] Failed to persist generated script', {
+          status: response.status,
+          data
+        });
+        return null;
+      }
+
+      console.log('💾 [Write] Generated script saved', data.script?.id);
+      return data.script ?? null;
+    } catch (err) {
+      console.error('❌ [Write] Persisting script failed', err);
+      return null;
+    }
+  }, [personas]);
+
   const simulateGeneration = async (request: AIGenerationRequest): Promise<Script> => {
     const stages = [
       'Analyzing your prompt...',
@@ -225,7 +294,7 @@ ${request.prompt.toLowerCase().includes('skincare') ?
 
       if (result.success && result.script) {
         console.log("✅ [Write] Script generation successful, creating content...");
-        
+        const title = `Generated Script: ${request.prompt.slice(0, 50)}...`;
         // Create script content for Hemingway editor from components
         const scriptContent = `[HOOK - First 3 seconds]
 ${result.script.hook}
@@ -241,14 +310,31 @@ ${result.script.wta}`;
 
         console.log("📝 [Write] Generated script content:", scriptContent);
 
+        const savedScript = await persistGeneratedScript({
+          request,
+          scriptContent,
+          mappedLength,
+          components: {
+            hook: result.script.hook,
+            bridge: result.script.bridge,
+            goldenNugget: result.script.goldenNugget,
+            wta: result.script.wta
+          },
+          title
+        });
+
         // Navigate to editor with script content and metadata
         const params = new URLSearchParams({
           content: scriptContent,
-          title: `Generated Script: ${request.prompt.slice(0, 50)}...`,
+          title,
           platform: request.platform,
           length: request.length,
           style: request.style
         });
+
+        if (savedScript?.id) {
+          params.set('scriptId', savedScript.id);
+        }
         
         const editorUrl = `/editor?${params.toString()}`;
         console.log("🧭 [Write] Navigating to:", editorUrl);
@@ -275,7 +361,7 @@ ${result.script.wta}`;
           // Map to BrandPersona
           const mapped: BrandPersona[] = data.voices.map((v: any) => ({
             id: v.id,
-            name: v.name,
+            name: v.id === DEFAULT_BRAND_VOICE_ID ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
             description: v.description || '',
             tone: v.tone || 'Varied',
             voice: v.voice || 'Derived from analysis',
@@ -367,6 +453,7 @@ ${result.script.wta}`;
               onVoiceInput={handleVoiceInput}
               isLoading={isLoading}
               personas={personas}
+              defaultPersonaId={DEFAULT_BRAND_VOICE_ID}
             />
             
             <TrendingIdeas
