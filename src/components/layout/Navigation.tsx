@@ -564,6 +564,10 @@ export const Navigation: React.FC<NavigationProps> = ({
                   align-items: center;
                   justify-content: center;
                   color: inherit;
+                  /* Ensure the dot centers like other 40x40 icons */
+                  width: 40px;
+                  height: 40px;
+                  margin: 0 auto;
                 `}
               >
                 <div aria-hidden="true" css={collapsedLogoDotStyles} />

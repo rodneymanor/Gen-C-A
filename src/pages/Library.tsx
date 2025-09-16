@@ -276,7 +276,45 @@ const previewPanelStyles = css`
       border: 1px solid var(--color-neutral-200);
       border-radius: var(--radius-medium);
     }
-    
+
+    .script-preview {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+
+      .script-section {
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-medium);
+        padding: var(--space-3);
+        background: var(--color-neutral-0);
+
+        .section-title {
+          font-size: var(--font-size-body-small);
+          font-weight: var(--font-weight-semibold);
+          color: var(--color-neutral-700);
+          margin: 0 0 var(--space-2) 0;
+        }
+
+        .section-content {
+          font-size: var(--font-size-body);
+          color: var(--color-neutral-800);
+          line-height: var(--line-height-relaxed);
+          white-space: pre-wrap;
+          margin: 0;
+        }
+      }
+
+      .script-raw {
+        border: 1px dashed var(--color-neutral-300);
+        border-radius: var(--radius-medium);
+        padding: var(--space-3);
+        white-space: pre-wrap;
+        font-size: var(--font-size-body);
+        color: var(--color-neutral-700);
+        margin: 0;
+      }
+    }
+
     .preview-meta {
       display: flex;
       flex-direction: column;
@@ -465,6 +503,13 @@ export const Library: React.FC = () => {
     );
   };
 
+  const selectedScriptElements = selectedItem?.type === 'script'
+    ? (selectedItem.metadata?.elements as Record<string, string> | undefined)
+    : undefined;
+  const selectedScriptContent = selectedItem?.type === 'script'
+    ? (selectedItem.metadata?.content as string | undefined)
+    : undefined;
+
   return (
     <div css={libraryStyles}>
       <div css={headerStyles}>
@@ -595,6 +640,41 @@ export const Library: React.FC = () => {
                 <p className="preview-description">
                   {selectedItem.description}
                 </p>
+              )}
+
+              {selectedItem.type === 'script' && (
+                <div className="script-preview">
+                  {selectedScriptElements ? (
+                    <>
+                      {selectedScriptElements.hook && (
+                        <div className="script-section">
+                          <h4 className="section-title">Hook</h4>
+                          <p className="section-content">{selectedScriptElements.hook}</p>
+                        </div>
+                      )}
+                      {selectedScriptElements.bridge && (
+                        <div className="script-section">
+                          <h4 className="section-title">Bridge</h4>
+                          <p className="section-content">{selectedScriptElements.bridge}</p>
+                        </div>
+                      )}
+                      {selectedScriptElements.goldenNugget && (
+                        <div className="script-section">
+                          <h4 className="section-title">Golden Nugget</h4>
+                          <p className="section-content">{selectedScriptElements.goldenNugget}</p>
+                        </div>
+                      )}
+                      {selectedScriptElements.wta && (
+                        <div className="script-section">
+                          <h4 className="section-title">Call to Action</h4>
+                          <p className="section-content">{selectedScriptElements.wta}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : selectedScriptContent ? (
+                    <pre className="script-raw">{selectedScriptContent}</pre>
+                  ) : null}
+                </div>
               )}
               
               <div className="preview-meta">

@@ -79,6 +79,9 @@ function mapScriptToItem(s: any): ContentItem {
       duration: s.duration,
       source: s.source,
       characterCount: s.characterCount,
+      content: s.content,
+      elements: s.elements,
+      voice: s.voice,
     },
   } satisfies ContentItem;
 }
@@ -104,7 +107,9 @@ export async function getLibraryContent(): Promise<ContentItem[]> {
   let transcriptItems: ContentItem[] = [];
   if (USE_LOCAL_LIBRARY) {
     try {
-      const mod = await import("../../data/creators/aronsogi.json");
+      const mod = await import(
+        /* @vite-ignore */ "../../data/creators/aronsogi.json"
+      );
       const aronsogi = (mod?.default || mod) as CreatorTranscriptJson;
       transcriptItems = mapTranscriptsToItems(aronsogi);
     } catch (e: any) {

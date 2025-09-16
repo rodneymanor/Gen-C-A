@@ -24,6 +24,7 @@ import ImageIcon from '@atlaskit/icon/glyph/image';
 import VideoIcon from '@atlaskit/icon/glyph/vid-play';
 import CalendarIcon from '@atlaskit/icon/glyph/calendar';
 import StarFilledIcon from '@atlaskit/icon/glyph/star-filled';
+import CrossIcon from '@atlaskit/icon/glyph/cross';
 import NatureIcon from '@atlaskit/icon/glyph/emoji/nature';
 import { useDebugger, DEBUG_LEVELS } from '../utils/debugger';
 import { usePageLoad } from '../contexts/PageLoadContext';
@@ -68,7 +69,7 @@ const modalBodyStyles = css`
 
 const headerStyles = css`
   display: flex;
-  justify-content: between;
+  justify-content: space-between;
   align-items: center;
   gap: var(--space-4);
   margin-bottom: var(--space-8);
@@ -81,6 +82,27 @@ const headerStyles = css`
   
   .header-content {
     flex: 1;
+
+    .header-title-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .create-icon-button {
+      padding: 0;
+      width: 40px;
+      min-width: 40px;
+      height: 40px;
+
+      .button-content {
+        gap: 0;
+      }
+
+      .button-text {
+        display: none;
+      }
+    }
     
     h1 {
       font-size: var(--font-size-h2);
@@ -93,15 +115,6 @@ const headerStyles = css`
       font-size: var(--font-size-body-large);
       color: var(--color-neutral-600);
       margin: 0;
-    }
-  }
-  
-  .header-actions {
-    display: flex;
-    gap: var(--space-3);
-    
-    @media (max-width: 768px) {
-      flex-wrap: wrap;
     }
   }
 `;
@@ -126,14 +139,15 @@ const filtersStyles = css`
       max-width: none;
     }
   }
-  
-  .filter-buttons {
+
+  .action-buttons {
     display: flex;
-    gap: var(--space-2);
+    gap: var(--space-3);
     flex-wrap: wrap;
-    
+    justify-content: flex-end;
+
     @media (max-width: 768px) {
-      justify-content: center;
+      justify-content: flex-start;
     }
   }
   
@@ -179,6 +193,7 @@ const favoritesStyles = css`
     padding-bottom: var(--space-2);
     
     .favorite-item {
+      position: relative;
       min-width: 200px;
       padding: var(--space-3) var(--space-4);
       /* Perplexity Flat Design - Minimal favorites */
@@ -208,6 +223,40 @@ const favoritesStyles = css`
         color: var(--color-text-secondary);
         margin: 0;
       }
+    }
+  }
+
+  .favorites-empty {
+    border: 1px dashed var(--color-neutral-200);
+    border-radius: var(--radius-medium);
+    padding: var(--space-4);
+    color: var(--color-neutral-600);
+    font-size: var(--font-size-body);
+  }
+
+  .remove-favorite {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--radius-small);
+    background: transparent;
+    color: var(--color-neutral-500);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: var(--color-neutral-700);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary-500);
+      outline-offset: 2px;
     }
   }
 `;
@@ -462,7 +511,6 @@ export const Collections: React.FC = () => {
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'size'>('recent');
-  const [platformFilter, setPlatformFilter] = useState<string>('all');
   const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [videos, setVideos] = useState<ContentItem[]>([]);
@@ -471,6 +519,7 @@ export const Collections: React.FC = () => {
   const [userId, setUserId] = useState<string>(() => {
     return (import.meta as any).env?.VITE_DEBUG_USER_ID || localStorage.getItem('userId') || '';
   });
+  const [hiddenFavoriteIds, setHiddenFavoriteIds] = useState<string[]>([]);
 
   // Unified modal state to prevent overlap
   const [activeModal, setActiveModal] = useState<null | 'add' | 'create'>(null);
@@ -525,14 +574,25 @@ export const Collections: React.FC = () => {
   }, []);
 
   const favoriteNames = ['Summer Content', 'Brand Guidelines', 'Viral Hooks'];
+  useEffect(() => {
+    if (!collections || collections.length === 0) {
+      setHiddenFavoriteIds(prev => (prev.length === 0 ? prev : []));
+      return;
+    }
+    setHiddenFavoriteIds(prev => {
+      const cleaned = prev.filter(id => collections.some(collection => collection.id === id));
+      return cleaned.length === prev.length ? prev : cleaned;
+    });
+  }, [collections]);
   const favoriteCollections = useMemo(() => {
     if (!collections || collections.length === 0) return [] as Collection[];
     const byName = new Map(collections.map(c => [c.name, c] as const));
     const list = favoriteNames
       .map(name => byName.get(name))
       .filter((c): c is Collection => Boolean(c));
-    return list.length > 0 ? list : collections.slice(0, Math.min(3, collections.length));
-  }, [collections]);
+    const base = list.length > 0 ? list : collections.slice(0, Math.min(3, collections.length));
+    return base.filter(collection => !hiddenFavoriteIds.includes(collection.id));
+  }, [collections, hiddenFavoriteIds]);
 
   const handleCreateCollection = () => {
     if (!userId) {
@@ -568,6 +628,10 @@ export const Collections: React.FC = () => {
     setAddVideoUrl('');
     setAddError('');
     setActiveModal('add');
+  };
+
+  const handleRemoveFavorite = (collectionId: string) => {
+    setHiddenFavoriteIds(prev => prev.includes(collectionId) ? prev : [...prev, collectionId]);
   };
 
   const handleConfirmAddVideo = async () => {
@@ -954,30 +1018,21 @@ export const Collections: React.FC = () => {
       {modals}
       <div css={headerStyles}>
         <div className="header-content">
-          <h1>Collections</h1>
+          <div className="header-title-row">
+            <h1>Collections</h1>
+            <Button 
+              variant="subtle"
+              size="small"
+              onClick={handleCreateCollection}
+              aria-label="Create Collection"
+              aria-haspopup="dialog"
+              aria-expanded={activeModal === 'create'}
+              data-testid="btn-create-collection"
+              className="create-icon-button"
+              iconBefore={<AddIcon label="" />}
+            />
+          </div>
           <p className="subtitle">Organize your video content</p>
-        </div>
-        <div className="header-actions">
-          <Button 
-            variant="subtle" 
-            onClick={handleCreateCollection}
-            aria-haspopup="dialog"
-            aria-expanded={activeModal === 'create'}
-            data-testid="btn-create-collection"
-            iconBefore={<SettingsIcon label="" />}
-          >
-            Create Collection
-          </Button>
-          <Button 
-            variant="soft" 
-            onClick={handleImportVideos}
-            aria-haspopup="dialog"
-            aria-expanded={activeModal === 'add'}
-            data-testid="btn-add-to-collections"
-            iconBefore={<AddIcon label="" />}
-          >
-            Add to Collections
-          </Button>
         </div>
       </div>
 
@@ -990,62 +1045,17 @@ export const Collections: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="filter-buttons">
+        <div className="action-buttons">
           <Button 
-            variant={platformFilter === 'all' ? 'secondary' : 'subtle'} 
-            size="small"
-            css={platformFilter === 'all' ? css`
-              background: transparent;
-              color: #0B5CFF;
-              border: var(--border-width-thin) solid #0B5CFF;
-              border-radius: var(--radius-medium);
-              font-weight: var(--font-weight-medium);
-              
-              &:hover {
-                background: rgba(11, 92, 255, 0.08);
-                border-color: #0A52E6;
-              }
-            ` : undefined}
+            variant="soft" 
+            onClick={handleImportVideos}
+            aria-haspopup="dialog"
+            aria-expanded={activeModal === 'add'}
+            data-testid="btn-add-to-collections"
+            iconBefore={<AddIcon label="" />}
           >
-            All
+            Add to Collections
           </Button>
-          <Button 
-            variant={platformFilter === 'tiktok' ? 'secondary' : 'subtle'} 
-            size="small"
-            css={platformFilter === 'tiktok' ? css`
-              background: transparent;
-              color: #0B5CFF;
-              border: var(--border-width-thin) solid #0B5CFF;
-              border-radius: var(--radius-medium);
-              font-weight: var(--font-weight-medium);
-              
-              &:hover {
-                background: rgba(11, 92, 255, 0.08);
-                border-color: #0A52E6;
-              }
-            ` : undefined}
-          >
-            TikTok
-          </Button>
-          <Button 
-            variant={platformFilter === 'instagram' ? 'secondary' : 'subtle'} 
-            size="small"
-            css={platformFilter === 'instagram' ? css`
-              background: transparent;
-              color: #0B5CFF;
-              border: var(--border-width-thin) solid #0B5CFF;
-              border-radius: var(--radius-medium);
-              font-weight: var(--font-weight-medium);
-              
-              &:hover {
-                background: rgba(11, 92, 255, 0.08);
-                border-color: #0A52E6;
-              }
-            ` : undefined}
-          >
-            Instagram
-          </Button>
-          {/* Removed YouTube filter per design update */}
         </div>
         {/* Removed collections slider per feedback */}
         <div className="sort-container">
@@ -1073,27 +1083,45 @@ export const Collections: React.FC = () => {
           <StarFilledIcon label="Favorites" />
           <h2>Favorites</h2>
         </div>
-        <div className="favorites-grid">
-          {favoriteCollections.map((fav) => (
-            <div
-              key={fav.id}
-              className="favorite-item"
-              role="button"
-              tabIndex={0}
-              onClick={() => handleViewCollection(fav)}
-              onKeyDown={(e: React.KeyboardEvent) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleViewCollection(fav);
-                }
-              }}
-              aria-label={`${fav.name} collection with ${fav.videoCount} videos`}
-            >
-              <p className="favorite-name">{fav.name}</p>
-              <p className="favorite-count">{fav.videoCount} video{fav.videoCount !== 1 ? 's' : ''}</p>
-            </div>
-          ))}
-        </div>
+        {favoriteCollections.length === 0 ? (
+          <div className="favorites-empty">
+            Favorites keep your go-to collections handy. When you mark a collection as a favorite, it will appear here for quick access.
+          </div>
+        ) : (
+          <div className="favorites-grid">
+            {favoriteCollections.map((fav) => (
+              <div
+                key={fav.id}
+                className="favorite-item"
+                role="button"
+                tabIndex={0}
+                onClick={() => handleViewCollection(fav)}
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleViewCollection(fav);
+                  }
+                }}
+                aria-label={`${fav.name} collection with ${fav.videoCount} videos`}
+              >
+                <button
+                  type="button"
+                  className="remove-favorite"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleRemoveFavorite(fav.id);
+                  }}
+                  aria-label={`Remove ${fav.name} from favorites`}
+                >
+                  <CrossIcon label="" size="small" />
+                </button>
+                <p className="favorite-name">{fav.name}</p>
+                <p className="favorite-count">{fav.videoCount} video{fav.videoCount !== 1 ? 's' : ''}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div css={collectionsGridStyles}>

@@ -5,15 +5,12 @@
  * Handles both the Vite dev server and API routes in a single process
  */
 
-import dotenv from 'dotenv';
 import express from 'express';
 import ViteExpress from 'vite-express';
 import cors from 'cors';
 import path from 'path';
 
-// Load environment variables from .env.local and .env files
-dotenv.config({ path: '.env.local' });
-dotenv.config(); // Load .env as fallback
+// Environment variables are loaded via Node's --env-file flag in the dev script.
 
 const app = express();
 
