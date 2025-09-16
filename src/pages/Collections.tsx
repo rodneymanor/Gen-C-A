@@ -514,6 +514,7 @@ export const Collections: React.FC = () => {
   const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [videos, setVideos] = useState<ContentItem[]>([]);
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'tiktok' | 'instagram'>('all');
   const [selectedVideo, setSelectedVideo] = useState<ContentItem | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [userId, setUserId] = useState<string>(() => {
@@ -712,17 +713,8 @@ export const Collections: React.FC = () => {
     setIsVideoModalOpen(true);
   };
 
-  const handleNavigateVideo = (direction: 'prev' | 'next') => {
-    if (!selectedVideo) return;
-    const currentIndex = videos.findIndex(v => v.id === selectedVideo.id);
-    if (currentIndex === -1 || videos.length === 0) return;
-    let newIndex = currentIndex;
-    if (direction === 'prev') {
-      newIndex = currentIndex > 0 ? currentIndex - 1 : videos.length - 1;
-    } else {
-      newIndex = currentIndex < videos.length - 1 ? currentIndex + 1 : 0;
-    }
-    setSelectedVideo(videos[newIndex]);
+  const handlePlatformFilterToggle = (platform: 'tiktok' | 'instagram') => {
+    setPlatformFilter(prev => (prev === platform ? 'all' : platform));
   };
 
   // Load collections on mount if userId available
@@ -769,10 +761,54 @@ export const Collections: React.FC = () => {
     return () => { cancelled = true; };
   }, [view, selectedCollection, userId]);
 
+  useEffect(() => {
+    setPlatformFilter('all');
+  }, [view, selectedCollection?.id]);
+
   const filteredCollections = collections.filter(collection =>
     collection.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     collection.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const filteredVideos = useMemo(() => {
+    let result = videos;
+    if (platformFilter !== 'all') {
+      result = result.filter(video => (video.platform || '').toLowerCase() === platformFilter);
+    }
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      result = result.filter(video => {
+        const title = video.title.toLowerCase();
+        const description = (video.description || '').toLowerCase();
+        const creator = (video.creator || '').toLowerCase();
+        const tags = video.tags.join(' ').toLowerCase();
+        return [title, description, creator, tags].some(text => text.includes(query));
+      });
+    }
+    return result;
+  }, [videos, platformFilter, searchQuery]);
+
+  useEffect(() => {
+    if (!selectedVideo) return;
+    if (!filteredVideos.some(video => video.id === selectedVideo.id)) {
+      setIsVideoModalOpen(false);
+      setSelectedVideo(null);
+    }
+  }, [filteredVideos, selectedVideo]);
+
+  const handleNavigateVideo = (direction: 'prev' | 'next') => {
+    if (!selectedVideo) return;
+    if (filteredVideos.length === 0) return;
+    const currentIndex = filteredVideos.findIndex(v => v.id === selectedVideo.id);
+    if (currentIndex === -1) return;
+    let newIndex = currentIndex;
+    if (direction === 'prev') {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : filteredVideos.length - 1;
+    } else {
+      newIndex = currentIndex < filteredVideos.length - 1 ? currentIndex + 1 : 0;
+    }
+    setSelectedVideo(filteredVideos[newIndex]);
+  };
 
   // Render modals once and reuse in both views to avoid unmount flicker
   const modals = (
@@ -971,20 +1007,24 @@ export const Collections: React.FC = () => {
               />
             </div>
             <div className="video-filters">
-              <Button 
-                variant={platformFilter === 'tiktok' ? 'secondary' : 'subtle'} 
+              <Button
+                variant={platformFilter === 'tiktok' ? 'secondary' : 'subtle'}
                 size="small"
+                onClick={() => handlePlatformFilterToggle('tiktok')}
+                aria-pressed={platformFilter === 'tiktok'}
               >
                 TikTok
               </Button>
-              <Button 
-                variant={platformFilter === 'instagram' ? 'secondary' : 'subtle'} 
+              <Button
+                variant={platformFilter === 'instagram' ? 'secondary' : 'subtle'}
                 size="small"
+                onClick={() => handlePlatformFilterToggle('instagram')}
+                aria-pressed={platformFilter === 'instagram'}
               >
                 Instagram
               </Button>
-              <Button 
-                variant="subtle" 
+              <Button
+                variant="subtle"
                 size="small"
               >
                 Newest
@@ -993,7 +1033,7 @@ export const Collections: React.FC = () => {
           </div>
 
           <VideoGrid
-            videos={videos}
+            videos={filteredVideos}
             onVideoSelect={handleVideoSelect}
             onVideoPlay={handleVideoPlay}
             selectedVideos={selectedVideos}
@@ -1004,7 +1044,7 @@ export const Collections: React.FC = () => {
           <VideoModal
             isOpen={isVideoModalOpen}
             video={selectedVideo}
-            videos={videos}
+            videos={filteredVideos}
             onClose={() => setIsVideoModalOpen(false)}
             onNavigateVideo={handleNavigateVideo}
           />

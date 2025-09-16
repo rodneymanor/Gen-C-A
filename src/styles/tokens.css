@@ -278,8 +278,8 @@
   --sidebar-bg: var(--color-neutral-50);
   --sidebar-border: var(--color-neutral-200);
   --sidebar-hover-bg: var(--color-neutral-100);
-  --sidebar-selected-bg: var(--color-neutral-200);
-  --sidebar-selected-border: var(--color-neutral-300);
+  --sidebar-selected-bg: rgba(11, 92, 255, 0.12);
+  --sidebar-selected-border: var(--color-primary-500);
 
   --input-bg: var(--color-neutral-0);
   --input-border: var(--color-neutral-300);
@@ -563,8 +563,8 @@
     --sidebar-bg: var(--color-neutral-0);
     --sidebar-border: var(--color-neutral-300);
     --sidebar-hover-bg: var(--color-neutral-100);
-    --sidebar-selected-bg: var(--color-neutral-200);
-    --sidebar-selected-border: var(--color-neutral-400);
+    --sidebar-selected-bg: rgba(11, 92, 255, 0.24);
+    --sidebar-selected-border: var(--color-primary-500);
     /* Primary button (dark) — soft gray */
     --button-primary-bg: var(--color-neutral-200);
     --button-primary-bg-hover: var(--color-neutral-300);

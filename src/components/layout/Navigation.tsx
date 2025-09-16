@@ -169,7 +169,7 @@ const navItemStyles = (isActive: boolean, isCollapsed: boolean) => css`
   padding: 0 var(--space-2);
   border-radius: var(--radius-medium);
   text-decoration: none;
-  color: ${isActive ? 'var(--color-neutral-800)' : 'var(--color-neutral-700)'};
+  color: ${isActive ? 'var(--color-primary-600)' : 'var(--color-neutral-700)'};
   background: ${isActive ? 'var(--sidebar-selected-bg)' : 'transparent'};
   border: ${isActive ? '1px solid var(--sidebar-selected-border)' : '1px solid transparent'};
   transition: var(--transition-all);
@@ -177,8 +177,8 @@ const navItemStyles = (isActive: boolean, isCollapsed: boolean) => css`
   position: relative;
   
   &:hover {
-    background: var(--sidebar-hover-bg);
-    color: var(--color-neutral-800);
+    background: ${isActive ? 'var(--sidebar-selected-bg)' : 'var(--sidebar-hover-bg)'};
+    color: ${isActive ? 'var(--color-primary-600)' : 'var(--color-neutral-800)'};
   }
   
   &:focus-visible {
@@ -187,6 +187,7 @@ const navItemStyles = (isActive: boolean, isCollapsed: boolean) => css`
   }
   
   .nav-icon {
+    color: inherit;
     font-size: 18px;
     margin-right: ${isCollapsed ? '0' : 'var(--space-3)'};
     flex-shrink: 0;
