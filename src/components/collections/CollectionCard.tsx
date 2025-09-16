@@ -21,14 +21,19 @@ export interface CollectionCardProps {
 const collectionCardStyles = css`
   height: 100%;
   cursor: pointer;
-  transition: var(--transition-colors);
-  
-  /* Perplexity Flat Design - Minimal hover effect */
+  transition: var(--transition-all);
+  display: flex;
+  flex-direction: column;
+
   &:hover {
-    border-color: var(--color-primary-500);  /* Bloom Blue accent */
-    /* Removed: transform and dramatic shadow for flat design */
+    border-color: var(--card-hover-border);
   }
-  
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--card-focus-border);
+  }
+
   &.selected {
     border-color: var(--color-primary-500);
     background: var(--color-primary-50);
@@ -81,7 +86,7 @@ const cardFooterStyles = css`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: var(--space-2); /* Reduced from space-4 for Perplexity flat design */
+  margin-top: auto; /* Keep footer anchored to bottom of card */
   padding-top: var(--space-2); /* Add subtle separation */
   border-top: 1px solid var(--color-border-subtle); /* Perplexity-style separator */
   
@@ -108,8 +113,8 @@ const actionButtonStyles = css`
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px; /* Smaller touch target for desktop-first Perplexity style */
-  min-height: 32px;
+  min-width: 36px; /* Align with compact button sizing */
+  min-height: 36px;
   
   /* Perplexity flat design - subtle hover */
   &:hover {

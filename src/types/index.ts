@@ -5,7 +5,7 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
-  role: 'creator' | 'admin' | 'team_member';
+  role: 'creator' | 'admin' | 'super_admin' | 'team_member';
   plan: 'free' | 'premium' | 'enterprise';
   preferences: UserPreferences;
 }
@@ -119,6 +119,7 @@ export interface BrandPersona {
   platforms: Platform[];
   examples?: string[];
   created: Date;
+  isDefault?: boolean;
 }
 
 export interface Activity {

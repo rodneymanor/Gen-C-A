@@ -201,16 +201,43 @@ const favoritesStyles = css`
       border: 1px solid var(--color-neutral-200);
       border-radius: var(--radius-medium);
       cursor: pointer;
-      transition: var(--transition-colors);
+      transition: var(--transition-all);
       display: flex;
       flex-direction: column;
       align-items: flex-start; /* Ensure title aligns to top-left */
-      
-      &:hover {
-        border-color: var(--color-primary-500);  /* Bloom Blue accent on hover */
-        /* REMOVED: Background and transform for flat design */
+      z-index: 0;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: transparent;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease, background-color 0.2s ease;
       }
-      
+
+      &:hover {
+        border-color: var(--card-hover-border);
+      }
+
+      &:hover::after {
+        background: var(--card-hover-overlay);
+        opacity: 1;
+      }
+
+      &:focus-visible {
+        outline: none;
+        border-color: var(--card-focus-border);
+        box-shadow: var(--card-focus-shadow);
+      }
+
+      &:focus-visible::after {
+        background: var(--card-focus-overlay);
+        opacity: 1;
+      }
+
       .favorite-name {
         font-size: var(--font-size-body);
         font-weight: var(--font-weight-medium);
@@ -304,11 +331,16 @@ const newCollectionCardStyles = css`
   padding: var(--space-8);
   cursor: pointer;
   transition: var(--transition-all);
-  
+
   /* Perplexity Flat Design - Minimal hover */
   &:hover {
-    border-color: var(--color-primary-500);  /* Bloom Blue accent */
-    /* REMOVED: Background and transform for flat design */
+    border-color: var(--card-hover-border);
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--card-focus-border);
+    box-shadow: var(--card-focus-shadow);
   }
   
   .new-icon {
@@ -1038,6 +1070,7 @@ export const Collections: React.FC = () => {
             onVideoPlay={handleVideoPlay}
             selectedVideos={selectedVideos}
             showBulkActions={true}
+            columns={{ sm: 1, md: 2, lg: 4 }}
           />
 
           {/* Video Insights Modal */}
@@ -1086,8 +1119,8 @@ export const Collections: React.FC = () => {
           />
         </div>
         <div className="action-buttons">
-          <Button 
-            variant="soft" 
+          <Button
+            variant="primary"
             onClick={handleImportVideos}
             aria-haspopup="dialog"
             aria-expanded={activeModal === 'add'}

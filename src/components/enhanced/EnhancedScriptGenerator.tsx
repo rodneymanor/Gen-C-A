@@ -98,8 +98,8 @@ const generatorStyles = css`
       .react-select__control {
         border-color: var(--atlassian-color-border-input);
         border-radius: var(--atlassian-border-radius-200);
-        min-height: var(--touch-target-min);
-        
+        min-height: var(--interactive-height-md);
+
         &:hover {
           border-color: var(--atlassian-color-border-default);
         }

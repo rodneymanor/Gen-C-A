@@ -114,12 +114,20 @@ export const Grid: React.FC<GridProps> = ({
 };
 
 // Specialized Grid variants for common use cases
-export const VideoGrid: React.FC<Omit<GridProps, 'columns' | 'minItemWidth'>> = (props) => (
-  <Grid 
-    // Constrain card size even with 1–2 items; prevent tracks from expanding to fill
-    // Use fixed max width per track so leftover space remains as gutter
-    columns="repeat(auto-fill, minmax(280px, 360px))"
-    justify="start"
+type VideoGridLayoutProps = Omit<GridProps, 'columns' | 'minItemWidth'> & {
+  columns?: GridProps['columns'];
+};
+
+export const VideoGrid: React.FC<VideoGridLayoutProps> = ({
+  // Preserve the previous sizing defaults so cards don't balloon when there are only a few items,
+  // while still allowing callers to supply a custom grid configuration (e.g., force four columns).
+  columns = 'repeat(auto-fill, minmax(280px, 360px))',
+  justify = 'start',
+  ...props
+}) => (
+  <Grid
+    columns={columns}
+    justify={justify}
     {...props}
   />
 );

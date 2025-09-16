@@ -47,14 +47,18 @@ const enhancedGridStyles = css`
       padding: var(--space-1);
       
       .toggle-button {
-        padding: var(--space-2) var(--space-3);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 var(--space-3);
         border: none;
         background: transparent;
         border-radius: var(--radius-small);
         cursor: pointer;
         transition: var(--transition-all);
         font-size: var(--font-size-body-small);
-        
+        min-height: 40px;
+
         &.active {
           background: var(--color-primary-500);
           color: white;

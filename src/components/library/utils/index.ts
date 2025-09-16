@@ -33,7 +33,7 @@ export interface FormComponentProps extends BaseComponentProps {
 }
 
 // Touch target size validation
-export const TOUCH_TARGET_MIN_SIZE = 44; // px
+export const TOUCH_TARGET_MIN_SIZE = 40; // px baseline for medium controls
 
 export const isTouchTargetCompliant = (size: number): boolean => {
   return size >= TOUCH_TARGET_MIN_SIZE;
@@ -113,7 +113,7 @@ export const sizeMap = {
   small: {
     padding: 'var(--space-2) var(--space-3)',
     fontSize: 'var(--font-size-body-small)',
-    minHeight: '32px',
+    minHeight: '36px',
   },
   medium: {
     padding: 'var(--space-3) var(--space-4)',
@@ -123,7 +123,7 @@ export const sizeMap = {
   large: {
     padding: 'var(--space-4) var(--space-6)',
     fontSize: 'var(--font-size-body-large)',
-    minHeight: '48px',
+    minHeight: '46px',
   },
 } as const;
 

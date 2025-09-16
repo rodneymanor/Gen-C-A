@@ -33,42 +33,50 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
   ${size === 'small' && css`
     padding: 0 var(--spacing-2-5, 10px);
     font-size: var(--font-size-sm, var(--font-size-body-small));
-    min-height: 40px; /* Unified 40px height */
+    min-height: 36px; /* Compact 36px height */
     gap: var(--spacing-two, var(--space-2));
     line-height: var(--line-height-loose, 1.75);
   `}
-  
+
   ${size === 'medium' && css`
     padding: 0 var(--spacing-2-5, 10px);
     font-size: var(--font-size-sm, var(--font-size-body));
-    min-height: 40px; /* Unified 40px height */
+    min-height: 40px; /* Standard 40px height */
     gap: var(--spacing-two, var(--space-2));
     line-height: var(--line-height-loose, 1.75);
   `}
-  
+
   ${size === 'large' && css`
     padding: 0 var(--space-4);
     font-size: var(--font-size-body-large);
-    min-height: 40px; /* Unified 40px height */
+    min-height: 46px; /* Emphasized 46px height */
     gap: var(--space-3);
   `}
   
-  /* Primary — soft gray over white background */
+  /* Primary — Bloom Blue brand button */
   ${variant === 'primary' && css`
-    background: var(--button-primary-bg, var(--color-neutral-100));
-    color: var(--button-primary-text, var(--color-neutral-800));
-    border: 1px solid var(--color-neutral-200);
+    background: var(--color-primary-500);
+    color: var(--bloom-primary-contrast, #ffffff);
+    border: 1px solid var(--color-primary-500);
     box-shadow: none;
     border-radius: 8px; /* rounded-lg */
     font-weight: var(--font-weight-semimedium, 550);
     line-height: var(--line-height-loose, 1.75);
 
     &:hover:not(:disabled) {
-      background: var(--button-primary-bg-hover, var(--color-neutral-200));
-      border-color: var(--color-neutral-300);
+      background: var(--color-primary-600);
+      border-color: var(--color-primary-600);
     }
-    &:active { transform: scale(0.97); }
-    &:focus-visible { outline: none; box-shadow: none; }
+
+    &:active {
+      background: var(--color-primary-700);
+      border-color: var(--color-primary-700);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--color-primary-100);
+    }
   `}
   
   /* Perplexity Primary (Black) - Editor scoped usage */

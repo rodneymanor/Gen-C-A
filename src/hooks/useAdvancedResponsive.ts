@@ -132,7 +132,7 @@ export const createProgressiveStyles = (viewport: AdvancedViewport) => ({
   animate: !viewport.prefersReducedMotion,
   
   // Touch-friendly sizing
-  touchTarget: viewport.isTouchDevice ? '48px' : '44px',
+  touchTarget: viewport.isTouchDevice ? '46px' : '44px',
   
   // Performance considerations
   highPerformance: viewport.connectionType !== 'slow-2g' && !viewport.saveData,

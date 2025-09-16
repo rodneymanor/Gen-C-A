@@ -122,9 +122,9 @@ Responsive typography with fluid scaling:
 <Button variant="subtle">Subtle Action</Button>
 
 // Size options (all touch-friendly)
-<Button size="small">Small (32px min-height)</Button>
+<Button size="small">Small (36px min-height)</Button>
 <Button size="medium">Medium (40px min-height)</Button>
-<Button size="large">Large (48px min-height)</Button>
+<Button size="large">Large (46px min-height)</Button>
 
 // With icons and loading states
 <Button 

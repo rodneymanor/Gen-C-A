@@ -43,6 +43,7 @@ const exampleStyles = css`
       border-radius: var(--radius-small);
       background: white;
       font-size: var(--font-size-body);
+      min-height: 40px;
     }
   }
 `;

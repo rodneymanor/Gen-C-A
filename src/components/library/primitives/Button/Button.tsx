@@ -33,21 +33,21 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
   ${size === 'small' && css`
     padding: var(--space-2) var(--space-3);
     font-size: var(--font-size-body-small);
-    min-height: 32px;
+    min-height: 36px;
     gap: var(--space-2);
   `}
-  
+
   ${size === 'medium' && css`
     padding: var(--space-3) var(--space-4);
     font-size: var(--font-size-body);
     min-height: 40px;
     gap: var(--space-2);
   `}
-  
+
   ${size === 'large' && css`
     padding: var(--space-4) var(--space-6);
     font-size: var(--font-size-body-large);
-    min-height: 48px;
+    min-height: 46px;
     gap: var(--space-3);
   `}
   

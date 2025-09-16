@@ -23,7 +23,7 @@ const getProgressiveEnhancements = (
   
   /* Adaptive sizing based on viewport */
   @media (max-width: 480px) {
-    min-height: 48px;
+    min-height: 46px;
     font-size: 1rem;
     padding: var(--space-responsive-md) var(--space-responsive-lg);
   }

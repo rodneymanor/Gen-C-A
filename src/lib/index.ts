@@ -58,6 +58,11 @@ export {
 } from './platform-rate-limiter';
 
 export {
+  withGlobalInstagramRateLimit,
+  retryWithGlobalBackoff
+} from './global-rate-limiter';
+
+export {
   globalAuthManager,
   authHelper,
   createAuthManager,

@@ -1,38 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import type { Firestore } from "firebase-admin/firestore";
 
-import type { CreateScriptRequest, Script, ScriptsResponse, ScriptResponse, UpdateScriptRequest } from "@/types/script";
+import { getCollectionRefByPath, getDb } from "@/api-routes/utils/firebase-admin.js";
+import type { CreateScriptRequest, Script, ScriptResponse, ScriptsResponse } from "@/types/script";
+import { fetchUserScripts, genId, readScripts, verifyRequestAuth, writeScripts } from "./utils";
 
-const SCRIPTS_FILE = path.join(process.cwd(), "data", "scripts.json");
-
-function ensureStore() {
-  const dir = path.dirname(SCRIPTS_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(SCRIPTS_FILE)) fs.writeFileSync(SCRIPTS_FILE, JSON.stringify({ scripts: [] }, null, 2));
-}
-
-function readScripts(): Script[] {
-  ensureStore();
+export async function GET(request: NextRequest) {
   try {
-    const raw = fs.readFileSync(SCRIPTS_FILE, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : Array.isArray(parsed.scripts) ? parsed.scripts : [];
-  } catch {
-    return [];
+    const auth = await verifyRequestAuth(request);
+    const db = getDb();
+    if (auth && db) {
+      const scripts = await fetchUserScripts(db, auth.uid);
+      return NextResponse.json({ success: true, scripts } satisfies ScriptsResponse);
+    }
+  } catch (error) {
+    console.warn("[scripts] Firestore GET failed, fallback JSON:", (error as Error)?.message);
   }
-}
 
-function writeScripts(scripts: Script[]) {
-  ensureStore();
-  fs.writeFileSync(SCRIPTS_FILE, JSON.stringify({ scripts }, null, 2));
-}
-
-function genId() {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-}
-
-export async function GET() {
   const scripts = readScripts();
   return NextResponse.json({ success: true, scripts } satisfies ScriptsResponse);
 }
@@ -40,27 +24,27 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as CreateScriptRequest;
-    const now = new Date().toISOString();
-
-    const userId = "local"; // Optionally parse Authorization and set real UID
-    const wordCount = (body.content || "").trim().split(/\s+/).filter(Boolean).length;
+    const nowIso = new Date().toISOString();
+    const content = body.content || "";
+    const trimmed = content.trim();
+    const wordCount = trimmed ? trimmed.split(/\s+/).length : 0;
 
     const script: Script = {
       id: genId(),
       title: body.title || "Untitled Script",
-      content: body.content || "",
+      content,
       authors: "You",
       status: body.status ?? "draft",
       performance: { views: 0, engagement: 0 },
       category: body.category || "General",
-      createdAt: now,
-      updatedAt: now,
-      viewedAt: now,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      viewedAt: nowIso,
       duration: "0:30",
-      tags: body.tags || [],
+      tags: Array.isArray(body.tags) ? body.tags : [],
       fileType: "Script",
-      summary: body.summary || (body.content || "").slice(0, 160),
-      userId,
+      summary: body.summary || content.slice(0, 160),
+      userId: "local",
       approach: body.approach,
       voice: body.voice,
       originalIdea: body.originalIdea,
@@ -71,16 +55,52 @@ export async function POST(request: NextRequest) {
       isThread: body.isThread,
       threadParts: body.threadParts,
       wordCount,
-      characterCount: (body.content || "").length,
+      characterCount: content.length,
     };
+
+    try {
+      const auth = await verifyRequestAuth(request);
+      const db = getDb();
+      if (auth && db) {
+        const saved = await persistScriptToFirestore(db, auth.uid, script);
+        return NextResponse.json({ success: true, script: saved } satisfies ScriptResponse);
+      }
+    } catch (error) {
+      console.warn("[scripts] Firestore POST failed, using JSON store:", (error as Error)?.message);
+    }
 
     const scripts = readScripts();
     scripts.unshift(script);
     writeScripts(scripts);
 
     return NextResponse.json({ success: true, script } satisfies ScriptResponse);
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error?.message || "Invalid request" } satisfies ScriptResponse, { status: 400 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid request";
+    return NextResponse.json({ success: false, error: message } satisfies ScriptResponse, { status: 400 });
+  }
+}
+
+async function persistScriptToFirestore(db: Firestore, uid: string, script: Script): Promise<Script> {
+  const toSave = { ...script, id: undefined, userId: uid } as Omit<Script, "id"> & { id?: string };
+  const timestamps = { createdAt: new Date(), updatedAt: new Date() } as const;
+  const configuredPath = process.env.CONTENT_SCRIPTS_PATH;
+
+  const configuredRef = configuredPath ? getCollectionRefByPath(db, configuredPath, uid) : null;
+  if (configuredRef) {
+    const ref = await configuredRef.add({ ...toSave, ...timestamps });
+    return { ...script, id: ref.id, userId: uid };
+  }
+
+  try {
+    const subRef = await db
+      .collection("users")
+      .doc(uid)
+      .collection("scripts")
+      .add({ ...toSave, ...timestamps });
+    return { ...script, id: subRef.id, userId: uid };
+  } catch {
+    const ref = await db.collection("scripts").add({ ...toSave, ...timestamps });
+    return { ...script, id: ref.id, userId: uid };
   }
 }
 

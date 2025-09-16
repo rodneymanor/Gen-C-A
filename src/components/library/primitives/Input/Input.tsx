@@ -35,19 +35,19 @@ const getInputStyles = (
   ${size === 'small' && css`
     padding: var(--space-2) var(--space-3);
     font-size: var(--font-size-body-small);
-    min-height: 32px;
+    min-height: 36px;
   `}
-  
+
   ${size === 'medium' && css`
     padding: var(--space-3) var(--space-4);
     font-size: var(--font-size-body);
     min-height: 40px;
   `}
-  
+
   ${size === 'large' && css`
     padding: var(--space-4) var(--space-5);
     font-size: var(--font-size-body-large);
-    min-height: 48px;
+    min-height: 46px;
   `}
   
   /* Icon spacing */

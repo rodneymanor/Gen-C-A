@@ -5,61 +5,111 @@
 
 :root {
   /* ========================================
-     FOUNDATION COLOR PALETTE (Preserve All Values ✅)
+     BLOOM BLUE CORE PALETTE
      ======================================== */
-  
-  /* Bloom Blue Primary Scale - UPDATED */
-  --color-primary-50: #eff6ff;    /* Lightest primary tint */
-  --color-primary-100: #dbeafe;   /* Very light primary */
-  --color-primary-200: #bfdbfe;   /* Light primary */
-  --color-primary-300: #93c5fd;   /* Soft primary */
-  --color-primary-400: #60a5fa;   /* Medium-light primary */
-  --color-primary-500: #0B5CFF;   /* Base primary - Bloom Blue */
-  --color-primary-600: #2563eb;   /* Medium-dark primary */
-  --color-primary-700: #1d4ed8;   /* Dark primary */
-  --color-primary-800: #1e40af;   /* Darker primary */
-  --color-primary-900: #1e3a8a;   /* Darkest primary */
 
-  /* Neutral Gray Scale - PRESERVED */
-  --color-neutral-0: #ffffff;     /* Pure white */
-  --color-neutral-50: #fafbfc;    /* Off-white surface */
-  --color-neutral-100: #f4f5f7;   /* Light gray surface */
-  --color-neutral-200: #e4e6ea;   /* Subtle border */
-  --color-neutral-300: #c1c7d0;   /* Light border */
-  --color-neutral-400: #8590a2;   /* Medium border/disabled text */
-  --color-neutral-500: #5e6c84;   /* Tertiary text */
-  --color-neutral-600: #42526e;   /* Secondary text */
-  --color-neutral-700: #253858;   /* Strong text */
-  --color-neutral-800: #172b4d;   /* Primary text */
-  --color-neutral-900: #091e42;   /* Darkest text */
+  /* Bloom Blue ramp */
+  --bloom-primary-50: #eff6ff;    /* Lightest primary tint */
+  --bloom-primary-100: #dbeafe;   /* Very light primary */
+  --bloom-primary-200: #bfdbfe;   /* Light primary */
+  --bloom-primary-300: #93c5fd;   /* Soft primary */
+  --bloom-primary-400: #60a5fa;   /* Medium-light primary */
+  --bloom-primary-500: #0b5cff;   /* Base primary - Bloom Blue */
+  --bloom-primary-600: #2563eb;   /* Medium-dark primary */
+  --bloom-primary-700: #1d4ed8;   /* Dark primary */
+  --bloom-primary-800: #1e40af;   /* Darker primary */
+  --bloom-primary-900: #1e3a8a;   /* Darkest primary */
+  --bloom-primary: var(--bloom-primary-500);
+  --bloom-primary-contrast: #ffffff;
 
-  /* Semantic Color Scales - PRESERVED */
-  --color-success-50: #e3fcef;    /* Success tint */
-  --color-success-100: #abf5d1;   /* Light success */
-  --color-success-400: #00875a;   /* Medium success */
-  --color-success-500: #006644;   /* Base success */
+  /* Neutral Gray Scale */
+  --bloom-neutral-0: #ffffff;     /* Pure white */
+  --bloom-neutral-50: #fafbfc;    /* Off-white surface */
+  --bloom-neutral-100: #f4f5f7;   /* Light gray surface */
+  --bloom-neutral-200: #e4e6ea;   /* Subtle border */
+  --bloom-neutral-300: #c1c7d0;   /* Light border */
+  --bloom-neutral-400: #8590a2;   /* Medium border/disabled text */
+  --bloom-neutral-500: #5e6c84;   /* Tertiary text */
+  --bloom-neutral-600: #42526e;   /* Secondary text */
+  --bloom-neutral-700: #253858;   /* Strong text */
+  --bloom-neutral-800: #172b4d;   /* Primary text */
+  --bloom-neutral-900: #091e42;   /* Darkest text */
 
-  --color-warning-50: #fffae6;    /* Warning tint */
-  --color-warning-100: #fff0b3;   /* Light warning */
-  --color-warning-400: #ff8b00;   /* Medium warning */
-  --color-warning-500: #ff7400;   /* Base warning */
+  /* Semantic scales */
+  --bloom-success-50: #e3fcef;    /* Success tint */
+  --bloom-success-100: #abf5d1;   /* Light success */
+  --bloom-success-400: #00875a;   /* Medium success */
+  --bloom-success-500: #006644;   /* Base success */
 
-  --color-error-50: #ffebe6;      /* Error tint */
-  --color-error-100: #ffbdad;     /* Light error */
-  --color-error-400: #de350b;     /* Medium error */
-  --color-error-500: #bf2600;     /* Base error */
+  --bloom-warning-50: #fffae6;    /* Warning tint */
+  --bloom-warning-100: #fff0b3;   /* Light warning */
+  --bloom-warning-400: #ff8b00;   /* Medium warning */
+  --bloom-warning-500: #ff7400;   /* Base warning */
 
-  --color-info-50: #deebff;       /* Info tint */
-  --color-info-100: #b3d4ff;      /* Light info */
-  --color-info-400: #0065ff;      /* Medium info */
-  --color-info-500: #0052cc;      /* Base info */
+  --bloom-error-50: #ffebe6;      /* Error tint */
+  --bloom-error-100: #ffbdad;     /* Light error */
+  --bloom-error-400: #de350b;     /* Medium error */
+  --bloom-error-500: #bf2600;     /* Base error */
 
-  /* AI & Creative Accent Colors - FLAT DESIGN (No Gradients) */
-  /* REMOVED: AI gradients for Perplexity flat design */
-  --color-creative-purple: #8b5cf6;    /* Creative purple */
-  --color-creative-blue: #06b6d4;      /* Creative cyan */
-  --color-creative-green: #10b981;     /* Creative emerald */
-  --color-creative-pink: #f472b6;      /* Creative pink */
+  --bloom-info-50: #deebff;       /* Info tint */
+  --bloom-info-100: #b3d4ff;      /* Light info */
+  --bloom-info-400: #0065ff;      /* Medium info */
+  --bloom-info-500: #0052cc;      /* Base info */
+
+  /* Accent colors */
+  --bloom-accent-purple: #8b5cf6;    /* Creative purple */
+  --bloom-accent-blue: #06b6d4;      /* Creative cyan */
+  --bloom-accent-green: #10b981;     /* Creative emerald */
+  --bloom-accent-pink: #f472b6;      /* Creative pink */
+
+  /* Legacy token mapping */
+  --color-primary-50: var(--bloom-primary-50);
+  --color-primary-100: var(--bloom-primary-100);
+  --color-primary-200: var(--bloom-primary-200);
+  --color-primary-300: var(--bloom-primary-300);
+  --color-primary-400: var(--bloom-primary-400);
+  --color-primary-500: var(--bloom-primary-500);
+  --color-primary-600: var(--bloom-primary-600);
+  --color-primary-700: var(--bloom-primary-700);
+  --color-primary-800: var(--bloom-primary-800);
+  --color-primary-900: var(--bloom-primary-900);
+
+  --color-neutral-0: var(--bloom-neutral-0);
+  --color-neutral-50: var(--bloom-neutral-50);
+  --color-neutral-100: var(--bloom-neutral-100);
+  --color-neutral-200: var(--bloom-neutral-200);
+  --color-neutral-300: var(--bloom-neutral-300);
+  --color-neutral-400: var(--bloom-neutral-400);
+  --color-neutral-500: var(--bloom-neutral-500);
+  --color-neutral-600: var(--bloom-neutral-600);
+  --color-neutral-700: var(--bloom-neutral-700);
+  --color-neutral-800: var(--bloom-neutral-800);
+  --color-neutral-900: var(--bloom-neutral-900);
+
+  --color-success-50: var(--bloom-success-50);
+  --color-success-100: var(--bloom-success-100);
+  --color-success-400: var(--bloom-success-400);
+  --color-success-500: var(--bloom-success-500);
+
+  --color-warning-50: var(--bloom-warning-50);
+  --color-warning-100: var(--bloom-warning-100);
+  --color-warning-400: var(--bloom-warning-400);
+  --color-warning-500: var(--bloom-warning-500);
+
+  --color-error-50: var(--bloom-error-50);
+  --color-error-100: var(--bloom-error-100);
+  --color-error-400: var(--bloom-error-400);
+  --color-error-500: var(--bloom-error-500);
+
+  --color-info-50: var(--bloom-info-50);
+  --color-info-100: var(--bloom-info-100);
+  --color-info-400: var(--bloom-info-400);
+  --color-info-500: var(--bloom-info-500);
+
+  --color-creative-purple: var(--bloom-accent-purple);
+  --color-creative-blue: var(--bloom-accent-blue);
+  --color-creative-green: var(--bloom-accent-green);
+  --color-creative-pink: var(--bloom-accent-pink);
 
   /* ========================================
      SEMANTIC COLOR SYSTEM (Enhanced Organization)
@@ -273,6 +323,12 @@
   /* All application cards use 12px radius */
   --card-radius: var(--radius-large);
   --card-padding: var(--space-6);
+  --card-hover-border: var(--color-neutral-300);
+  --card-hover-overlay: rgba(15, 23, 42, 0.04);
+  --card-focus-overlay: rgba(15, 23, 42, 0.08);
+  --card-hover-shadow: 0 14px 30px -18px rgba(15, 23, 42, 0.3);
+  --card-focus-shadow: 0 0 0 1px rgba(15, 23, 42, 0.18), 0 16px 36px -18px rgba(15, 23, 42, 0.45);
+  --card-focus-border: var(--color-neutral-300);
 
   /* Sidebar tokens (light mode) */
   --sidebar-bg: var(--color-neutral-50);
@@ -440,12 +496,12 @@
      TOUCH TARGET & ACCESSIBILITY SPECS
      ======================================== */
   
-  /* Touch Target Minimum Sizes (WCAG 2.1 AA Compliance) */
-  --touch-target-min: 44px;        /* WCAG minimum */
-  --touch-target-comfortable: 48px; /* Comfortable size */
-  --touch-target-large: 56px;      /* Large touch target */
+  /* Touch Target Minimum Sizes aligned to design button heights */
+  --touch-target-min: 36px;        /* Compact controls */
+  --touch-target-comfortable: 40px; /* Standard medium controls */
+  --touch-target-large: 46px;      /* Prominent large controls */
   --touch-target-spacing: 8px;     /* Minimum spacing between targets */
-  
+
   /* Interactive Element Heights */
   --interactive-height-sm: var(--touch-target-min);
   --interactive-height-md: var(--touch-target-comfortable);
@@ -497,17 +553,17 @@
   @media (prefers-color-scheme: dark) {
     :root {
     /* Dark Mode Base Neutrals */
-    --color-neutral-0: #0f1419;       /* Dark surface */
-    --color-neutral-50: #1a1d23;      /* Elevated surface */
-    --color-neutral-100: #22252a;     /* Card background */
-    --color-neutral-200: #2c2f36;     /* Hover surface */
-    --color-neutral-300: #3c4043;     /* Border color */
-    --color-neutral-400: #5f6368;     /* Subtle border */
-    --color-neutral-500: #80868b;     /* Tertiary text */
-    --color-neutral-600: #9aa0a6;     /* Secondary text */
-    --color-neutral-700: #bdc1c6;     /* Subtle text */
-    --color-neutral-800: #e8eaed;     /* Primary text */
-    --color-neutral-900: #ffffff;     /* Inverse text */
+    --bloom-neutral-0: #0f1419;       /* Dark surface */
+    --bloom-neutral-50: #1a1d23;      /* Elevated surface */
+    --bloom-neutral-100: #22252a;     /* Card background */
+    --bloom-neutral-200: #2c2f36;     /* Hover surface */
+    --bloom-neutral-300: #3c4043;     /* Border color */
+    --bloom-neutral-400: #5f6368;     /* Subtle border */
+    --bloom-neutral-500: #80868b;     /* Tertiary text */
+    --bloom-neutral-600: #9aa0a6;     /* Secondary text */
+    --bloom-neutral-700: #bdc1c6;     /* Subtle text */
+    --bloom-neutral-800: #e8eaed;     /* Primary text */
+    --bloom-neutral-900: #ffffff;     /* Inverse text */
     
     /* Dark Mode Surface Tokens */
     --color-surface: var(--color-neutral-0);
@@ -524,6 +580,12 @@
     
     /* Dark Mode Border Tokens */
     --color-border: var(--color-neutral-300);
+    --card-hover-border: rgba(255, 255, 255, 0.16);
+    --card-focus-border: rgba(255, 255, 255, 0.24);
+    --card-hover-overlay: rgba(255, 255, 255, 0.06);
+    --card-focus-overlay: rgba(255, 255, 255, 0.1);
+    --card-hover-shadow: 0 18px 36px -18px rgba(0, 0, 0, 0.6);
+    --card-focus-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 20px 40px -18px rgba(0, 0, 0, 0.7);
     --color-border-subtle: var(--color-neutral-200);
     --color-border-strong: var(--color-neutral-400);
     
@@ -559,6 +621,12 @@
     
     /* Component Dark Mode Updates */
     --card-bg: var(--color-surface-elevated);
+    --card-hover-border: rgba(255, 255, 255, 0.16);
+    --card-focus-border: rgba(255, 255, 255, 0.24);
+    --card-hover-overlay: rgba(255, 255, 255, 0.06);
+    --card-focus-overlay: rgba(255, 255, 255, 0.1);
+    --card-hover-shadow: 0 18px 36px -18px rgba(0, 0, 0, 0.6);
+    --card-focus-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 20px 40px -18px rgba(0, 0, 0, 0.7);
     /* Sidebar tokens (dark mode) */
     --sidebar-bg: var(--color-neutral-0);
     --sidebar-border: var(--color-neutral-300);
@@ -584,26 +652,57 @@
 }
 
 /* Additional data-color-mode selectors for Atlaskit theme system */
+html[data-color-mode="light"] {
+    /* Explicit light mode overrides */
+    --bloom-neutral-0: #ffffff;
+    --bloom-neutral-50: #fafbfc;
+    --bloom-neutral-100: #f4f5f7;
+    --bloom-neutral-200: #e4e6ea;
+    --bloom-neutral-300: #c1c7d0;
+    --bloom-neutral-400: #8590a2;
+    --bloom-neutral-500: #5e6c84;
+    --bloom-neutral-600: #42526e;
+    --bloom-neutral-700: #253858;
+    --bloom-neutral-800: #172b4d;
+    --bloom-neutral-900: #091e42;
+
+    --color-surface: var(--color-neutral-0);
+    --color-surface-elevated: var(--color-neutral-50);
+    --color-surface-hover: var(--color-neutral-100);
+    --color-surface-active: var(--color-neutral-200);
+    --color-text-primary: var(--color-neutral-800);
+    --color-text-secondary: var(--color-neutral-600);
+    --color-text-tertiary: var(--color-neutral-500);
+    --color-text-quaternary: var(--color-neutral-400);
+    --color-border: var(--color-neutral-300);
+    --color-border-subtle: var(--color-neutral-200);
+}
+
 html[data-color-mode="dark"] {
     /* Dark Mode Base Neutrals - Same as media query */
-    --color-neutral-0: #0f1419;       
-    --color-neutral-50: #1a1d23;      
-    --color-neutral-100: #22252a;     
-    --color-neutral-200: #2c2f36;     
-    --color-neutral-300: #3c4043;     
-    --color-neutral-400: #5f6368;     
-    --color-neutral-500: #80868b;     
-    --color-neutral-600: #9aa0a6;     
-    --color-neutral-700: #bdc1c6;     
-    --color-neutral-800: #e8eaed;     
-    --color-neutral-900: #ffffff;     
-    
+    --bloom-neutral-0: #0f1419;
+    --bloom-neutral-50: #1a1d23;
+    --bloom-neutral-100: #22252a;
+    --bloom-neutral-200: #2c2f36;
+    --bloom-neutral-300: #3c4043;
+    --bloom-neutral-400: #5f6368;
+    --bloom-neutral-500: #80868b;
+    --bloom-neutral-600: #9aa0a6;
+    --bloom-neutral-700: #bdc1c6;
+    --bloom-neutral-800: #e8eaed;
+    --bloom-neutral-900: #ffffff;
+
     /* Dark Mode Surface Tokens */
     --color-surface: var(--color-neutral-0);
     --color-surface-elevated: var(--color-neutral-50);
+    --color-surface-hover: var(--color-neutral-100);
+    --color-surface-active: var(--color-neutral-200);
     --color-text-primary: var(--color-neutral-800);
     --color-text-secondary: var(--color-neutral-600);
+    --color-text-tertiary: var(--color-neutral-500);
+    --color-text-quaternary: var(--color-neutral-400);
     --color-border: var(--color-neutral-300);
+    --color-border-subtle: var(--color-neutral-200);
 }
 
 /* ========================================
@@ -697,8 +796,8 @@ html[data-color-mode="dark"] {
 @media (min-resolution: 2x) and (max-width: 767px) {
   :root {
     /* Larger touch targets for high DPI small screens */
-    --touch-target-min: 48px;
-    --touch-target-comfortable: 52px;
+    --touch-target-min: 40px;
+    --touch-target-comfortable: 44px;
     --interactive-height-sm: var(--touch-target-comfortable);
     --interactive-height-md: var(--touch-target-large);
   }
@@ -744,8 +843,9 @@ html[data-color-mode="dark"] {
 @media (max-width: 480px) {
   :root {
     /* Enhanced touch targets for small screens */
-    --touch-target-min: 48px;
-    --touch-target-comfortable: 52px;
+    --touch-target-min: 40px;
+    --touch-target-comfortable: 44px;
+    --touch-target-large: 46px;
     --button-min-height: var(--touch-target-comfortable);
     --input-min-height: var(--touch-target-comfortable);
     
@@ -764,7 +864,7 @@ html[data-color-mode="dark"] {
 @media (min-width: 481px) and (max-width: 1024px) {
   :root {
     /* Tablet-friendly touch targets */
-    --touch-target-comfortable: 50px;
+    --touch-target-comfortable: 44px;
     --interactive-height-md: var(--touch-target-comfortable);
     
     /* Balanced spacing for tablet */

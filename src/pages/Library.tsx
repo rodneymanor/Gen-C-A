@@ -1,26 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { css } from '@emotion/react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent } from '../components/ui/Card';
-import { formatRelativeTime, getContentTypeIcon, getPlatformIconComponent, truncate } from '../utils/format';
+import { formatRelativeTime } from '../utils/format';
 import type { ContentItem } from '../types';
 import { getLibraryContent } from './library-data';
 import { useDebugger, DEBUG_LEVELS } from '../utils/debugger';
 import { usePageLoad } from '../contexts/PageLoadContext';
 
 // Atlassian Design System Icons
-import DownloadIcon from '@atlaskit/icon/glyph/download';
-import AddIcon from '@atlaskit/icon/glyph/add';
 import SearchIcon from '@atlaskit/icon/glyph/search';
 import DocumentIcon from '@atlaskit/icon/glyph/document';
 import EditIcon from '@atlaskit/icon/glyph/edit';
 import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb';
 import VideoIcon from '@atlaskit/icon/glyph/vid-play';
-import CalendarIcon from '@atlaskit/icon/glyph/calendar';
 import ViewIcon from '@atlaskit/icon/glyph/watch';
-import UploadIcon from '@atlaskit/icon/glyph/upload';
-import FolderIcon from '@atlaskit/icon/glyph/folder';
 import CrossIcon from '@atlaskit/icon/glyph/cross';
 import MoreIcon from '@atlaskit/icon/glyph/more';
 
@@ -165,34 +161,56 @@ const contentItemStyles = (isSelected: boolean) => css`
   border: 1px solid var(--color-neutral-200);
   cursor: pointer;
   transition: var(--transition-all);
-  
+  position: relative;
+  z-index: 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: transparent;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+  }
+
   ${isSelected && css`
     border-color: ${AGENT_PRIMARY};
-    background: transparent;
+    background: ${AGENT_TINT_20};
   `}
-  
+
   &:hover {
-    border-color: ${AGENT_PRIMARY};
-    background: transparent;
+    border-color: var(--card-hover-border);
   }
-  
+
+  &:hover::after {
+    background: var(--card-hover-overlay);
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--card-focus-border);
+    box-shadow: var(--card-focus-shadow);
+  }
+
+  &:focus-visible::after {
+    background: var(--card-focus-overlay);
+    opacity: 1;
+  }
+
   .content-checkbox {
     margin-top: var(--space-1);
     width: 16px;
     height: 16px;
     flex-shrink: 0;
   }
-  
-  .content-icon {
-    font-size: 24px;
-    flex-shrink: 0;
-    margin-top: var(--space-1);
-  }
-  
+
   .content-info {
     flex: 1;
     min-width: 0;
-    
+
     .content-title {
       font-size: var(--font-size-body);
       font-weight: var(--font-weight-medium);
@@ -200,47 +218,23 @@ const contentItemStyles = (isSelected: boolean) => css`
       margin: 0 0 var(--space-1) 0;
       line-height: var(--line-height-normal);
     }
-    
-    .content-preview {
-      font-size: var(--font-size-body-small);
-      color: var(--color-neutral-600);
-      line-height: var(--line-height-normal);
-      margin: 0 0 var(--space-2) 0;
-    }
-    
+
     .content-meta {
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
       font-size: var(--font-size-body-small);
       color: var(--color-neutral-500);
-      
-      .meta-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-1);
-      }
-      
-      .content-type {
-        background: transparent;
-        color: ${AGENT_PRIMARY};
-        padding: var(--space-1) var(--space-2);
-        border: 1px solid ${AGENT_PRIMARY};
-        border-radius: var(--radius-small);
-        font-size: var(--font-size-caption);
-        font-weight: var(--font-weight-medium);
-        text-transform: capitalize;
-      }
+      line-height: var(--line-height-normal);
+      margin: 0;
     }
   }
-  
+
   .content-actions {
     flex-shrink: 0;
     opacity: 0;
     transition: var(--transition-all);
   }
-  
-  &:hover .content-actions {
+
+  &:hover .content-actions,
+  &:focus-visible .content-actions {
     opacity: 1;
   }
 `;
@@ -396,32 +390,11 @@ const ContentItem: React.FC<{
         onClick={(e) => e.stopPropagation()}
       />
       
-      <div className="content-icon" aria-hidden="true">
-        {getContentTypeIcon(item.type)}
-      </div>
-      
       <div className="content-info">
         <h3 className="content-title">{item.title}</h3>
-        {item.description && (
-          <p className="content-preview">
-            {truncate(item.description, 120)}
-          </p>
-        )}
-        <div className="content-meta">
-          <div className="meta-item">
-            <span className="content-type">{item.type}</span>
-          </div>
-          {item.platform && (
-            <div className="meta-item">
-              <span>{getPlatformIconComponent(item.platform)}</span>
-              <span>{item.platform}</span>
-            </div>
-          )}
-          <div className="meta-item">
-            <CalendarIcon label="" />
-            <span>{formatRelativeTime(item.created)}</span>
-          </div>
-        </div>
+        <p className="content-meta">
+          Added {formatRelativeTime(item.created)}
+        </p>
       </div>
       
       <div className="content-actions">
@@ -444,6 +417,7 @@ const ContentItem: React.FC<{
 };
 
 export const Library: React.FC = () => {
+  const navigate = useNavigate();
   const debug = useDebugger('LibraryPage', { level: DEBUG_LEVELS.DEBUG });
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<ContentType>('all');
@@ -518,18 +492,19 @@ export const Library: React.FC = () => {
           <p className="subtitle">Your creative asset repository</p>
         </div>
         <div className="header-actions">
-          <Button 
+          <Button
             variant="subtle"
-            iconBefore={<DownloadIcon label="" />}
+            iconBefore={<LightbulbIcon label="" />}
           >
-            Import
+            Add Idea
           </Button>
-        <Button 
-          variant="primary"
-          iconBefore={<AddIcon label="" />}
-        >
-          Add Content
-        </Button>
+          <Button
+            variant="primary"
+            iconBefore={<EditIcon label="" />}
+            onClick={() => navigate('/write')}
+          >
+            Write Script
+          </Button>
         </div>
       </div>
 
@@ -612,12 +587,7 @@ export const Library: React.FC = () => {
         {selectedItem && (
           <Card appearance="elevated" spacing="comfortable" css={previewPanelStyles}>
             <div className="preview-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                <span style={{ color: AGENT_PRIMARY, fontSize: '20px' }}>
-                  {getContentTypeIcon(selectedItem.type)}
-                </span>
-                <h3 className="preview-title">{selectedItem.title}</h3>
-              </div>
+              <h3 className="preview-title">{selectedItem.title}</h3>
               <Button
                 variant="subtle"
                 size="small"
@@ -700,8 +670,8 @@ export const Library: React.FC = () => {
             </div>
             
             <div className="preview-actions">
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 fullWidth
                 iconBefore={<ViewIcon label="" />}
                 css={css`
@@ -715,8 +685,8 @@ export const Library: React.FC = () => {
               >
                 View
               </Button>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 fullWidth
                 iconBefore={<EditIcon label="" />}
                 css={css`
@@ -729,44 +699,6 @@ export const Library: React.FC = () => {
                 `}
               >
                 Edit
-              </Button>
-              <Button 
-                variant="subtle" 
-                fullWidth
-                iconBefore={<UploadIcon label="" />}
-                css={css`
-                  background: transparent;
-                  color: var(--color-text-secondary);
-                  border: none;
-                  font-weight: var(--font-weight-medium);
-                  text-decoration: none;
-                  
-                  &:hover {
-                    color: var(--color-text-primary);
-                    text-decoration: underline;
-                  }
-                `}
-              >
-                Download
-              </Button>
-              <Button 
-                variant="subtle" 
-                fullWidth
-                iconBefore={<FolderIcon label="" />}
-                css={css`
-                  background: transparent;
-                  color: var(--color-text-secondary);
-                  border: none;
-                  font-weight: var(--font-weight-medium);
-                  text-decoration: none;
-                  
-                  &:hover {
-                    color: var(--color-text-primary);
-                    text-decoration: underline;
-                  }
-                `}
-              >
-                Add to Collection
               </Button>
             </div>
           </Card>

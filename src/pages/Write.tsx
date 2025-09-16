@@ -7,7 +7,9 @@ import { ScriptEditor } from '../components/script/ScriptEditor';
 import { Button } from '../components/ui/Button';
 import { useScriptGeneration } from '../hooks/use-script-generation';
 import type { AIGenerationRequest, AIGenerationResponse, Script, BrandPersona } from '../types';
-import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME } from '../constants/brand-voices';
+import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME, resolveDefaultBrandVoiceId } from '../constants/brand-voices';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../config/firebase';
 
 const writeStyles = css`
   max-width: 1200px;
@@ -126,6 +128,7 @@ export const Write: React.FC = () => {
   const [view, setView] = useState<'generate' | 'edit'>('generate');
   const [generatedScript, setGeneratedScript] = useState<Script | null>(null);
   const [personas, setPersonas] = useState<BrandPersona[]>([]);
+  const [defaultPersonaId, setDefaultPersonaId] = useState<string>(DEFAULT_BRAND_VOICE_ID);
   const [generationState, setGenerationState] = useState<GenerationState>({
     isGenerating: false,
     progress: 0,
@@ -174,11 +177,76 @@ export const Write: React.FC = () => {
     };
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'X-Client': 'write-page'
+      };
+
+      const resolveAuthToken = async (): Promise<string | null> => {
+        if (!auth) return null;
+
+        try {
+          const maybeAuthStateReady = (auth as unknown as { authStateReady?: () => Promise<void> }).authStateReady;
+          if (typeof maybeAuthStateReady === 'function') {
+            try {
+              await maybeAuthStateReady.call(auth);
+            } catch (readyError) {
+              console.warn('⚠️ [Write] authStateReady check failed', readyError);
+            }
+          }
+
+          if (auth.currentUser) {
+            return await auth.currentUser.getIdToken();
+          }
+
+          return await new Promise<string | null>((resolve) => {
+            let resolved = false;
+            let unsubscribe: (() => void) | null = null;
+
+            const finalize = (token: string | null) => {
+              if (resolved) return;
+              resolved = true;
+              if (unsubscribe) unsubscribe();
+              resolve(token);
+            };
+
+            const timeoutId = setTimeout(() => finalize(null), 5000);
+
+            unsubscribe = onAuthStateChanged(
+              auth,
+              async (user) => {
+                clearTimeout(timeoutId);
+                const token = user ? await user.getIdToken().catch(() => null) : null;
+                finalize(token);
+              },
+              (listenerError) => {
+                clearTimeout(timeoutId);
+                console.warn('⚠️ [Write] Auth listener error while resolving token', listenerError);
+                finalize(null);
+              }
+            );
+          });
+        } catch (tokenError) {
+          console.warn('⚠️ [Write] Unexpected error resolving auth token', tokenError);
+          return null;
+        }
+      };
+
+      try {
+        const token = await resolveAuthToken();
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+          console.log('🔐 [Write] Attached auth token for script persistence');
+        } else {
+          console.warn('⚠️ [Write] No auth token available; script will be stored locally');
+        }
+      } catch (tokenError) {
+        console.warn('⚠️ [Write] Failed to retrieve auth token for script persistence', tokenError);
+      }
+
       const response = await fetch('/api/scripts', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(payload)
       });
 
@@ -359,18 +427,23 @@ ${result.script.wta}`;
         const data = await res.json().catch(() => null);
         if (isMounted && res.ok && data?.success && Array.isArray(data.voices)) {
           // Map to BrandPersona
-          const mapped: BrandPersona[] = data.voices.map((v: any) => ({
-            id: v.id,
-            name: v.id === DEFAULT_BRAND_VOICE_ID ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
-            description: v.description || '',
-            tone: v.tone || 'Varied',
-            voice: v.voice || 'Derived from analysis',
-            targetAudience: v.targetAudience || 'General',
-            keywords: v.keywords || [],
-            platforms: v.platforms || ['tiktok'],
-            created: v.created ? new Date(v.created._seconds ? v.created._seconds * 1000 : v.created) : new Date(),
-          }));
+          const mapped: BrandPersona[] = data.voices.map((v: any) => {
+            const isDefault = v.isDefault === true || v.id === DEFAULT_BRAND_VOICE_ID;
+            return {
+              id: v.id,
+              name: isDefault ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
+              description: v.description || '',
+              tone: v.tone || 'Varied',
+              voice: v.voice || 'Derived from analysis',
+              targetAudience: v.targetAudience || 'General',
+              keywords: v.keywords || [],
+              platforms: v.platforms || ['tiktok'],
+              created: v.created ? new Date(v.created._seconds ? v.created._seconds * 1000 : v.created) : new Date(),
+              isDefault,
+            };
+          });
           setPersonas(mapped);
+          setDefaultPersonaId(resolveDefaultBrandVoiceId(mapped));
         } else {
           // Silent fallback
         }
@@ -453,7 +526,7 @@ ${result.script.wta}`;
               onVoiceInput={handleVoiceInput}
               isLoading={isLoading}
               personas={personas}
-              defaultPersonaId={DEFAULT_BRAND_VOICE_ID}
+              defaultPersonaId={defaultPersonaId}
             />
             
             <TrendingIdeas

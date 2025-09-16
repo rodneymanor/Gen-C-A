@@ -15,7 +15,7 @@ import { ScriptComponentEditor } from './ScriptComponentEditor';
 import { InteractiveScript } from '../writing-analysis/interactive-script';
 import { useScriptGeneration } from '@/hooks/use-script-generation';
 import type { BrandPersona } from '@/types';
-import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME } from '@/constants/brand-voices';
+import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME, resolveDefaultBrandVoiceId } from '@/constants/brand-voices';
 
 // Re-export interfaces from child components for convenience
 export type { ReadabilityMetrics, WritingStats } from './EditorSidebar';
@@ -204,6 +204,8 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   const [personas, setPersonas] = useState<BrandPersona[]>([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date>(new Date());
+  const [, forceRelativeRefresh] = useState(0);
   
   // Log script mode status
   useEffect(() => {
@@ -218,6 +220,46 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const handleRegenerateRef = useRef<(() => Promise<void>) | null>(null);
   const previousPersonaRef = useRef<string | null>(null);
+  const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep editor content/title in sync with incoming props (e.g., navigation from generator)
+  useEffect(() => {
+    if (typeof initialContent === 'string' && initialContent !== content) {
+      setContent(initialContent);
+      setLastSaved(new Date());
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current);
+        autosaveTimeoutRef.current = null;
+      }
+    }
+  }, [initialContent, content]);
+
+  useEffect(() => {
+    if (typeof initialTitle === 'string') {
+      const nextTitle = initialTitle.trim() ? initialTitle : 'Untitled Document';
+      if (nextTitle !== title) {
+        setTitle(nextTitle);
+        setLastSaved(new Date());
+        if (autosaveTimeoutRef.current) {
+          clearTimeout(autosaveTimeoutRef.current);
+          autosaveTimeoutRef.current = null;
+        }
+      }
+    }
+  }, [initialTitle, title]);
+
+  useEffect(() => () => {
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      forceRelativeRefresh(value => value + 1);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
   
   // Calculate writing statistics - handle both script and regular mode
   const getContentForStats = () => {
@@ -267,7 +309,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
     words,
     characters,
     readingTime,
-    lastSaved: new Date(Date.now() - 300000), // 5 minutes ago
+    lastSaved,
   };
 
   // Format "Saved ... ago" for header placement
@@ -288,15 +330,28 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   const { generateScript, isLoading: isGenLoading } = useScriptGeneration();
 
   // Handlers
+  const scheduleAutosave = useCallback(() => {
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+    }
+
+    autosaveTimeoutRef.current = setTimeout(() => {
+      setLastSaved(new Date());
+      autosaveTimeoutRef.current = null;
+    }, 1500);
+  }, []);
+
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
     onContentChange?.(newContent);
-  }, [onContentChange]);
+    scheduleAutosave();
+  }, [onContentChange, scheduleAutosave]);
 
   const handleTitleChange = useCallback((newTitle: string) => {
     setTitle(newTitle);
     onTitleChange?.(newTitle);
-  }, [onTitleChange]);
+    scheduleAutosave();
+  }, [onTitleChange, scheduleAutosave]);
 
   // Helper function to convert script elements to formatted text for InteractiveScript
   const formatScriptElementsToText = useCallback((elements: ScriptElements): string => {
@@ -365,7 +420,13 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   const handleInteractiveScriptUpdate = useCallback((updatedScript: string) => {
     const updatedElements = parseTextToScriptElements(updatedScript);
     onScriptElementsChange?.(updatedElements);
-  }, [parseTextToScriptElements, onScriptElementsChange]);
+    scheduleAutosave();
+  }, [parseTextToScriptElements, onScriptElementsChange, scheduleAutosave]);
+
+  const handleScriptElementsChangeInternal = useCallback((elements: ScriptElements) => {
+    onScriptElementsChange?.(elements);
+    scheduleAutosave();
+  }, [onScriptElementsChange, scheduleAutosave]);
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed(prev => !prev);
@@ -420,22 +481,27 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
         const res = await fetch('/api/brand-voices/list');
         const data = await res.json().catch(() => null);
         if (isMounted && res.ok && data?.success && Array.isArray(data.voices)) {
-          const mapped: BrandPersona[] = data.voices.map((v: any) => ({
-            id: v.id,
-            name: v.id === DEFAULT_BRAND_VOICE_ID ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
-            description: v.description || '',
-            tone: v.tone || 'Varied',
-            voice: v.voice || 'Derived from analysis',
-            targetAudience: v.targetAudience || 'General',
-            keywords: v.keywords || [],
-            platforms: v.platforms || ['tiktok'],
-            created: v.created ? new Date(v.created._seconds ? v.created._seconds * 1000 : v.created) : new Date(),
-          }));
+          const mapped: BrandPersona[] = data.voices.map((v: any) => {
+            const isDefault = v.isDefault === true || v.id === DEFAULT_BRAND_VOICE_ID;
+            return {
+              id: v.id,
+              name: isDefault ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
+              description: v.description || '',
+              tone: v.tone || 'Varied',
+              voice: v.voice || 'Derived from analysis',
+              targetAudience: v.targetAudience || 'General',
+              keywords: v.keywords || [],
+              platforms: v.platforms || ['tiktok'],
+              created: v.created ? new Date(v.created._seconds ? v.created._seconds * 1000 : v.created) : new Date(),
+              isDefault,
+            };
+          });
           setPersonas(mapped);
           setSelectedPersonaId(prev => {
             if (prev) return prev;
-            const defaultPersona = mapped.find(p => p.id === DEFAULT_BRAND_VOICE_ID);
-            return defaultPersona ? defaultPersona.id : prev;
+            const resolvedDefaultId = resolveDefaultBrandVoiceId(mapped);
+            const hasDefault = mapped.some(p => p.id === resolvedDefaultId);
+            return hasDefault ? resolvedDefaultId : prev;
           });
         }
       } catch (_) {
@@ -581,7 +647,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
             ) : (
               <ScriptComponentEditor
                 scriptElements={scriptElements}
-                onScriptElementsChange={onScriptElementsChange || (() => {})}
+                onScriptElementsChange={handleScriptElementsChangeInternal}
                 readOnly={false}
               />
             )

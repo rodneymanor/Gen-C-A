@@ -93,13 +93,43 @@ const cardStyles = css`
   gap: var(--space-4);
   min-height: 200px;
   justify-content: center;
-  
-  &:hover {
-    box-shadow: var(--shadow-elevated);
-    transform: translateY(-2px);
-    border-color: var(--color-primary-500);
+  position: relative;
+  z-index: 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: transparent;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
   }
-  
+
+  &:hover {
+    box-shadow: var(--card-hover-shadow);
+    transform: translateY(-2px);
+    border-color: var(--card-hover-border);
+  }
+
+  &:hover::after {
+    background: var(--card-hover-overlay);
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--card-focus-shadow);
+    border-color: var(--card-focus-border);
+    transform: translateY(-2px);
+  }
+
+  &:focus-visible::after {
+    background: var(--card-focus-overlay);
+    opacity: 1;
+  }
+
   .card-icon {
     width: 48px;
     height: 48px;

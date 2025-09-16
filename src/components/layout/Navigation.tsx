@@ -452,6 +452,10 @@ const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isColl
     setShowMenu(false);
   };
 
+  const hasBrandVoiceAdminAccess = user?.role === 'admin'
+    || user?.role === 'super_admin'
+    || (typeof window !== 'undefined' && window.localStorage?.getItem('bypassAuth') === '1');
+
   return (
     <div
       ref={menuRef}
@@ -496,7 +500,7 @@ const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isColl
           <button className="dropdown-item" onClick={openSettings} role="menuitem">
             Settings
           </button>
-          {(user?.role === 'admin' || (typeof window !== 'undefined' && window.localStorage?.getItem('bypassAuth') === '1')) && (
+          {hasBrandVoiceAdminAccess && (
             <>
               <button className="dropdown-item" onClick={makeDefaultSharedBrandVoice} role="menuitem">
                 Admin: Make Default & Share…

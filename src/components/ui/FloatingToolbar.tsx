@@ -540,7 +540,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                           border: `1px solid ${token('color.border')}`,
                           borderRadius: token('border.radius'),
                           background: token('color.background.input'),
-                          color: token('color.text')
+                          color: token('color.text'),
+                          minHeight: '40px'
                         }}
                       >
                         <option value="">No brand voice</option>

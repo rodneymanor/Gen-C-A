@@ -4,6 +4,7 @@ import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { VideoGrid as Grid } from '../layout/Grid';
+import type { GridProps } from '../layout/Grid';
 import { formatDuration, getPlatformIcon, formatRelativeTime, formatViewCount } from '../../utils/format';
 import type { ContentItem } from '../../types';
 import { token } from '@atlaskit/tokens';
@@ -27,6 +28,7 @@ export interface VideoGridProps {
   selectedVideos?: string[];
   favoriteVideos?: string[];
   showBulkActions?: boolean;
+  columns?: GridProps['columns'];
 }
 
 
@@ -512,7 +514,8 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   onVideoContextMenu,
   selectedVideos = [],
   favoriteVideos = [],
-  showBulkActions = false
+  showBulkActions = false,
+  columns
 }) => {
   if (videos.length === 0) {
     return (
@@ -545,7 +548,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   }
 
   return (
-    <Grid role="grid" aria-label="Video collection">
+    <Grid role="grid" aria-label="Video collection" columns={columns}>
       {videos.map(video => (
         <VideoCard
           key={video.id}

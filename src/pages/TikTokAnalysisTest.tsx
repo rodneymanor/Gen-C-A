@@ -16,6 +16,325 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 
+type PlatformType = 'tiktok' | 'instagram';
+
+interface NormalizedHandleResult {
+  identifier: string;
+  displayHandle: string;
+}
+
+const getPlatformLabel = (platform: PlatformType) => (platform === 'instagram' ? 'Instagram' : 'TikTok');
+
+const extractInstagramUsernameFromInput = (input: string): string | null => {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const clean = trimmed.replace(/^@/, '');
+
+  if (/^https?:\/\//i.test(clean)) {
+    try {
+      const url = new URL(clean);
+      if (!url.hostname.includes('instagram.com')) {
+        return null;
+      }
+      const pathParts = url.pathname.split('/').filter(Boolean);
+      if (!pathParts.length) {
+        return null;
+      }
+      const candidate = pathParts[0].replace(/^@/, '').split(/[?#]/)[0];
+      return /^[a-zA-Z0-9._]+$/.test(candidate) ? candidate : null;
+    } catch (error) {
+      console.warn('⚠️ Unable to parse Instagram URL', error);
+      return null;
+    }
+  }
+
+  const username = clean.split(/[?#]/)[0];
+  return /^[a-zA-Z0-9._]+$/.test(username) ? username : null;
+};
+
+const normalizeHandleInput = (input: string, platform: PlatformType): NormalizedHandleResult => {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    throw new Error('Please enter a username or profile URL.');
+  }
+
+  if (platform === 'instagram') {
+    const username = extractInstagramUsernameFromInput(trimmed);
+    if (!username) {
+      throw new Error('Unable to extract an Instagram username from the provided input.');
+    }
+    return { identifier: username, displayHandle: `@${username}` };
+  }
+
+  let working = trimmed;
+  if (/^https?:\/\//i.test(working)) {
+    try {
+      const url = new URL(working);
+      if (url.hostname.includes('tiktok.com')) {
+        const segments = url.pathname.split('/').filter(Boolean);
+        const atHandle = segments.find((segment) => segment.startsWith('@'));
+        if (atHandle) {
+          working = atHandle.slice(1);
+        } else if (segments.length) {
+          working = segments[0];
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Unable to parse TikTok URL', error);
+    }
+  }
+
+  working = working.replace(/^@/, '').split(/[/?#]/)[0];
+  if (!working) {
+    throw new Error('TikTok username could not be determined from the input.');
+  }
+
+  return { identifier: working, displayHandle: `@${working}` };
+};
+
+interface InstagramUserIdApiResponse {
+  success?: boolean;
+  user_id?: string | number;
+  error?: string;
+}
+
+interface InstagramReelsApiResponse {
+  success?: boolean;
+  data?: { items?: any[] };
+  error?: string;
+}
+
+const parseJsonResponse = async <T,>(
+  response: Response,
+  context: string
+): Promise<{ data: T | null; raw: string }> => {
+  const raw = await response.text();
+
+  if (!raw) {
+    return { data: null, raw };
+  }
+
+  try {
+    return { data: JSON.parse(raw) as T, raw };
+  } catch (error) {
+    console.warn(`⚠️ ${context}: Failed to parse JSON (status ${response.status}). Raw response:`, raw);
+    throw new Error(`${context}: Received invalid JSON (status ${response.status}).`);
+  }
+};
+
+interface DashManifestUrls {
+  videoUrl?: string;
+  audioUrl?: string;
+}
+
+const parseDashManifestForLowestUrls = (manifest?: string | null): DashManifestUrls => {
+  const result: DashManifestUrls = {};
+  if (!manifest || typeof manifest !== 'string') {
+    return result;
+  }
+
+  try {
+    if (typeof DOMParser === 'undefined') {
+      return result;
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(manifest, 'application/xml');
+    const adaptationSets = Array.from(doc.getElementsByTagName('AdaptationSet'));
+
+    let lowestVideo: { url?: string; bandwidth: number } = { bandwidth: Number.POSITIVE_INFINITY };
+    let lowestAudio: { url?: string; bandwidth: number } = { bandwidth: Number.POSITIVE_INFINITY };
+
+    adaptationSets.forEach((set) => {
+      const contentType = set.getAttribute('contentType') ?? '';
+      const representations = Array.from(set.getElementsByTagName('Representation'));
+      representations.forEach((rep) => {
+        const bandwidthAttr = rep.getAttribute('bandwidth');
+        const bandwidth = bandwidthAttr ? parseInt(bandwidthAttr, 10) : Number.POSITIVE_INFINITY;
+        const baseUrl = rep.getElementsByTagName('BaseURL')[0]?.textContent?.trim();
+        if (!baseUrl) return;
+
+        if (contentType === 'video') {
+          if (bandwidth < lowestVideo.bandwidth) {
+            lowestVideo = { url: baseUrl, bandwidth };
+          }
+        } else if (contentType === 'audio') {
+          if (bandwidth < lowestAudio.bandwidth) {
+            lowestAudio = { url: baseUrl, bandwidth };
+          }
+        }
+      });
+    });
+
+    if (lowestVideo.url) {
+      result.videoUrl = lowestVideo.url;
+    }
+    if (lowestAudio.url) {
+      result.audioUrl = lowestAudio.url;
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to parse DASH manifest', error);
+  }
+
+  return result;
+};
+
+type VideoVersion = { bandwidth?: number; url?: string };
+
+const selectLowestBandwidthVersion = <T extends VideoVersion>(versions?: T[] | null): T | null => {
+  if (!Array.isArray(versions) || versions.length === 0) {
+    return null;
+  }
+
+  const sorted = [...versions].sort((a, b) => (a.bandwidth ?? Number.POSITIVE_INFINITY) - (b.bandwidth ?? Number.POSITIVE_INFINITY));
+  return sorted.find((item) => typeof item?.url === 'string' && item.url.length > 0) ?? null;
+};
+
+const mapInstagramMediaToVideo = (media: any) => {
+  if (!media) return null;
+
+  const dashManifest =
+    media.video_dash_manifest ||
+    media?.clips_metadata?.original_sound_info?.dash_manifest ||
+    media?.clips_metadata?.music_info?.music_asset_info?.dash_manifest;
+
+  const dashUrls = parseDashManifestForLowestUrls(dashManifest);
+  const lowestVersion = selectLowestBandwidthVersion(media?.video_versions);
+
+  const coverCandidate =
+    media?.image_versions2?.candidates?.[0]?.url ||
+    media?.image_versions2?.additional_candidates?.first_frame?.url ||
+    media?.image_versions2?.additional_candidates?.igtv_first_frame?.url ||
+    '';
+
+  const audioUrl =
+    dashUrls.audioUrl ||
+    media?.clips_metadata?.original_sound_info?.progressive_download_url ||
+    media?.clips_metadata?.music_info?.music_asset_info?.progressive_download_url ||
+    null;
+
+  const playUrl = lowestVersion?.url || dashUrls.videoUrl || audioUrl || '';
+  const downloadUrl = audioUrl || playUrl;
+
+  if (!downloadUrl) {
+    return null;
+  }
+
+  const author = media?.user ?? {};
+  const captionText = media?.caption?.text ?? '';
+
+  return {
+    id: media?.id || media?.code || String(media?.pk ?? ''),
+    description: captionText,
+    createTime: media?.taken_at ?? 0,
+    duration: media?.video_duration ?? 0,
+    cover: coverCandidate,
+    playUrl,
+    downloadUrl,
+    audioUrl,
+    stats: {
+      diggCount: media?.like_count ?? 0,
+      shareCount: 0,
+      commentCount: media?.comment_count ?? 0,
+      playCount: media?.play_count ?? 0,
+      collectCount: 0,
+    },
+    music: {
+      id:
+        media?.clips_metadata?.music_info?.music_asset_info?.id ||
+        String(media?.clips_metadata?.original_sound_info?.audio_asset_id ?? ''),
+      title:
+        media?.clips_metadata?.music_info?.music_asset_info?.title ||
+        media?.clips_metadata?.original_sound_info?.original_audio_title ||
+        'Original Audio',
+      author:
+        media?.clips_metadata?.music_info?.music_asset_info?.display_artist ||
+        media?.clips_metadata?.original_sound_info?.ig_artist?.username ||
+        author?.username ||
+        '',
+      playUrl:
+        media?.clips_metadata?.music_info?.music_asset_info?.progressive_download_url ||
+        media?.clips_metadata?.original_sound_info?.progressive_download_url ||
+        audioUrl ||
+        '',
+      cover:
+        media?.clips_metadata?.music_info?.music_asset_info?.cover_artwork_uri ||
+        media?.clips_metadata?.music_info?.music_asset_info?.cover_artwork_thumbnail_uri ||
+        '',
+      original: !media?.clips_metadata?.music_info?.music_asset_info?.id,
+      duration:
+        media?.clips_metadata?.original_sound_info?.duration_in_ms
+          ? media?.clips_metadata?.original_sound_info?.duration_in_ms / 1000
+          : media?.video_duration ?? 0,
+    },
+    author: {
+      id: String(author?.pk ?? author?.pk_id ?? author?.fbid_v2 ?? ''),
+      username: author?.username ?? '',
+      nickname: author?.full_name ?? author?.username ?? '',
+      avatar: author?.profile_pic_url ?? '',
+      verified: author?.is_verified ?? false,
+      signature: '',
+      stats: {
+        followingCount: 0,
+        followerCount: author?.follower_count ?? 0,
+        heartCount: 0,
+        videoCount: 0,
+        diggCount: 0,
+      },
+    },
+    platform: 'instagram',
+    permalink: media?.code ? `https://www.instagram.com/reel/${media.code}/` : undefined,
+  };
+};
+
+const mapInstagramItemsToResult = (items: any[], userId: string, username: string) => {
+  const videos = (items || [])
+    .map((item) => mapInstagramMediaToVideo(item?.media))
+    .filter((video): video is ReturnType<typeof mapInstagramMediaToVideo> => Boolean(video));
+
+  const firstMediaUser = items?.find((item) => item?.media?.user)?.media?.user;
+  const userInfo = firstMediaUser
+    ? {
+        id: String(firstMediaUser?.pk ?? firstMediaUser?.pk_id ?? firstMediaUser?.fbid_v2 ?? userId),
+        username: firstMediaUser?.username ?? username,
+        nickname: firstMediaUser?.full_name ?? firstMediaUser?.username ?? username,
+        avatar: firstMediaUser?.profile_pic_url ?? '',
+        signature: '',
+        verified: firstMediaUser?.is_verified ?? false,
+        stats: {
+          followingCount: 0,
+          followerCount: firstMediaUser?.follower_count ?? 0,
+          heartCount: 0,
+          videoCount: videos.length,
+          diggCount: 0,
+        },
+      }
+    : {
+        id: userId,
+        username,
+        nickname: username,
+        avatar: '',
+        signature: '',
+        verified: false,
+        stats: {
+          followingCount: 0,
+          followerCount: 0,
+          heartCount: 0,
+          videoCount: videos.length,
+          diggCount: 0,
+        },
+      };
+
+  return {
+    success: true,
+    platform: 'instagram' as const,
+    userInfo,
+    videos,
+    platformUserId: userId,
+  };
+};
+
 const pageStyles = css`
   max-width: 1200px;
   margin: 0 auto;
@@ -56,6 +375,21 @@ const formStyles = css`
     gap: var(--space-3);
     align-items: center;
     flex-wrap: wrap;
+  }
+
+  .platform-select {
+    min-width: 160px;
+  }
+
+  .platform-select select {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-medium);
+    background: var(--color-surface);
+    font-family: var(--font-family-body);
+    font-size: var(--font-size-body);
+    color: var(--color-text-primary);
   }
 
   .input-container {
@@ -251,6 +585,7 @@ export const TikTokAnalysisTest: React.FC = () => {
   // Controls
   const VIDEO_LIMIT = 20; // Number of videos to fetch/transcribe/analyze
   const TRANSCRIBE_CONCURRENCY = 3; // Parallel transcriptions
+  const [platform, setPlatform] = useState<PlatformType>('tiktok');
   const [username, setUsername] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [customPrompt, setCustomPrompt] = useState<string>(
@@ -280,36 +615,109 @@ export const TikTokAnalysisTest: React.FC = () => {
     setStep3({ status: 'pending' });
     setStep4({ status: 'pending' });
     setStep5({ status: 'pending' });
+    setStepRunPrompt({ status: 'pending' });
+    setStepSave({ status: 'pending' });
+  };
+
+  const fetchInstagramStepData = async (identifier: string, displayHandle: string) => {
+    console.log('📸 Resolving Instagram user ID for', displayHandle);
+    const userIdResponse = await fetch(`/api/instagram/user-id?username=${encodeURIComponent(identifier)}`);
+    const { data: userIdResult } = await parseJsonResponse<InstagramUserIdApiResponse>(
+      userIdResponse,
+      'Instagram user lookup'
+    );
+
+    if (!userIdResponse.ok || !userIdResult?.success || !userIdResult?.user_id) {
+      const userIdError = userIdResult?.error?.trim();
+      const errorMessage = userIdError && userIdError.length > 0
+        ? userIdError
+        : `Failed to resolve Instagram user ID (HTTP ${userIdResponse.status})`;
+      throw new Error(errorMessage);
+    }
+
+    if (!userIdResult) {
+      throw new Error('Failed to resolve Instagram user ID (empty response).');
+    }
+
+    const userId = String(userIdResult.user_id);
+    console.log(`📸 Fetching Instagram reels for user ID: ${userId}`);
+
+    const reelsResponse = await fetch(
+      `/api/instagram/user-reels?user_id=${encodeURIComponent(userId)}&include_feed_video=true`
+    );
+    const { data: reelsResult } = await parseJsonResponse<InstagramReelsApiResponse>(
+      reelsResponse,
+      'Instagram reels fetch'
+    );
+
+    if (!reelsResponse.ok || !reelsResult?.success) {
+      const reelsError = reelsResult?.error?.trim();
+      const errorMessage = reelsError && reelsError.length > 0
+        ? reelsError
+        : `Failed to fetch Instagram reels (HTTP ${reelsResponse.status})`;
+      throw new Error(errorMessage);
+    }
+
+    if (!reelsResult) {
+      throw new Error('Failed to fetch Instagram reels (empty response).');
+    }
+
+    const items = reelsResult?.data?.items ?? [];
+    const mapped = mapInstagramItemsToResult(items, userId, identifier);
+
+    return {
+      ...mapped,
+      platform: 'instagram' as const,
+      platformUserId: userId,
+      raw: { userId: userIdResult, reels: reelsResult },
+    };
   };
 
   const handleStep1 = async () => {
     if (!username.trim()) return;
 
+    setIsRunning(true);
     setStep1({ status: 'running' });
 
     try {
-      console.log('🚀 Step 1: Fetching TikTok user videos for:', username.trim());
+      const { identifier, displayHandle } = normalizeHandleInput(username, platform);
+      setUsername(displayHandle);
 
-      const response = await fetch('/api/tiktok/user-feed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), count: VIDEO_LIMIT })
-      });
+      const platformLabel = getPlatformLabel(platform);
+      console.log(`🚀 Step 1: Fetching ${platformLabel} videos for:`, displayHandle);
 
-      const result = await response.json();
+      let baseResult: any;
 
-      if (!response.ok) {
-        throw new Error(result.error || `API returned ${response.status}`);
-      }
+      if (platform === 'tiktok') {
+        const response = await fetch('/api/tiktok/user-feed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: identifier, count: VIDEO_LIMIT })
+        });
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch videos');
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || `API returned ${response.status}`);
+        }
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch videos');
+        }
+
+        baseResult = {
+          ...result,
+          platform: 'tiktok' as const,
+          platformUserId: result?.userInfo?.id ?? identifier,
+        };
+      } else {
+        baseResult = await fetchInstagramStepData(identifier, displayHandle);
       }
 
       // Optionally filter out videos already analyzed for this creator
-      let filtered = result?.videos || [];
+      let filtered = baseResult?.videos || [];
       try {
-        const lookup = await fetch(`/api/creator/analyzed-video-ids?handle=${encodeURIComponent(username.trim().replace(/^@/, ''))}`);
+        const lookup = await fetch(`/api/creator/analyzed-video-ids?handle=${encodeURIComponent(identifier)}`);
         const idsRes = await lookup.json();
         if (lookup.ok && idsRes?.success && Array.isArray(idsRes.videoIds) && idsRes.videoIds.length) {
           const existing = new Set(idsRes.videoIds.map(String));
@@ -321,12 +729,17 @@ export const TikTokAnalysisTest: React.FC = () => {
         console.warn('Skipping analyzed-video-ids check:', (e as any)?.message || e);
       }
 
-      setStep1({ status: 'success', data: { ...result, videos: filtered } });
-      console.log('✅ Step 1 completed:', result.videos?.length, 'videos found');
-
+      setStep1({ status: 'success', data: { ...baseResult, videos: filtered, displayHandle } });
+      console.log(
+        `✅ Step 1 completed (${getPlatformLabel(baseResult?.platform ?? platform)}):`,
+        filtered.length,
+        'videos ready'
+      );
     } catch (error: any) {
       console.error('❌ Step 1 failed:', error);
       setStep1({ status: 'error', error: error.message });
+    } finally {
+      setIsRunning(false);
     }
   };
 
@@ -758,6 +1171,8 @@ OUTPUT FORMAT:
         throw new Error('Authentication token not found');
       }
 
+      const personaPlatform = ((step1.data as any)?.platform ?? platform) as PlatformType;
+
       const response = await fetch('/api/personas/create', {
         method: 'POST',
         headers: {
@@ -767,7 +1182,7 @@ OUTPUT FORMAT:
         body: JSON.stringify({
           name: step4.data.title || `${username} Persona`,
           description: step4.data.description,
-          platform: 'tiktok',
+          platform: personaPlatform,
           username: username,
           analysis: step3.data,
           tags: step4.data.suggestedTags || [],
@@ -821,14 +1236,33 @@ OUTPUT FORMAT:
     return JSON.stringify(data, null, 2);
   };
 
+  const step1Data: any = step1.data;
+  const selectedPlatformLabel = getPlatformLabel(platform);
+  const handlePlaceholder =
+    platform === 'instagram'
+      ? 'Enter Instagram username or profile URL (e.g., @creator or instagram.com/creator)'
+      : 'Enter TikTok username or profile URL (e.g., @creator or tiktok.com/@creator)';
+  const normalizedUsername = username.trim();
+  const fallbackHandle =
+    normalizedUsername.length > 0
+      ? normalizedUsername.startsWith('@')
+        ? normalizedUsername
+        : `@${normalizedUsername.replace(/^@/, '')}`
+      : '';
+  const resolvedHandleForDisplay: string = step1Data?.displayHandle ?? fallbackHandle;
+  const stepPlatformLabel = step1Data?.platform
+    ? getPlatformLabel(step1Data.platform as PlatformType)
+    : selectedPlatformLabel;
+  const latestVideosLabel = stepPlatformLabel === 'Instagram' ? 'reels' : 'videos';
+
   return (
     <div css={pageStyles}>
       <header css={headerStyles}>
         <h1>
-          <SearchIcon label="TikTok Analysis" />
-          TikTok Analysis Test
+          <SearchIcon label="Short-form Analysis" />
+          TikTok & Instagram Analysis Test
         </h1>
-        <p>Step-by-step TikTok username analysis: Fetch videos → Transcribe → Analyze → Generate persona</p>
+        <p>Step-by-step TikTok and Instagram analysis: Fetch videos or reels → Transcribe → Analyze → Generate persona</p>
         <p style={{ marginTop: '8px' }}>
           <a href="#voice-analysis">Jump to Voice Analysis</a>
         </p>
@@ -838,11 +1272,26 @@ OUTPUT FORMAT:
         <form css={formStyles} onSubmit={(e) => e.preventDefault()}>
           <div className="form-group">
             <div className="form-actions">
+              <div className="platform-select">
+                <select
+                  value={platform}
+                  onChange={(e) => {
+                    const next = e.target.value as PlatformType;
+                    setPlatform(next);
+                    resetSteps();
+                  }}
+                  disabled={isRunning}
+                  aria-label="Select platform"
+                >
+                  <option value="tiktok">TikTok</option>
+                  <option value="instagram">Instagram</option>
+                </select>
+              </div>
               <div className="input-container">
                 <PersonIcon className="handle-icon" label="Username" />
                 <Input
                   type="text"
-                  placeholder="Enter TikTok username (e.g., @username)"
+                  placeholder={handlePlaceholder}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={isRunning}
@@ -862,12 +1311,12 @@ OUTPUT FORMAT:
         </form>
 
         <div css={stepsContainerStyles}>
-          {/* Step 1: Fetch Videos */}
+          {/* Step 1: Fetch Videos/Reels */}
           <Card css={stepCardStyles}>
             <div className="step-header">
               <h3>
                 <VideoIcon label="Videos" />
-                Step 1: Fetch Videos
+                Step 1: Fetch Videos/Reels
               </h3>
               <div className={`step-status ${step1.status}`}>
                 {getStatusIcon(step1.status)}
@@ -875,16 +1324,21 @@ OUTPUT FORMAT:
               </div>
             </div>
             <div className="step-description">
-              Fetch user videos from TikTok using the username
+              Fetch latest {latestVideosLabel} from {stepPlatformLabel} using a username or profile URL
             </div>
             {step1.data && (
               <div className="step-content">
-                Found {step1.data.videos?.length || 0} videos for @{username}
+                Found {step1.data.videos?.length || 0} {latestVideosLabel} for {resolvedHandleForDisplay || 'this creator'}
                 {step1.data.userInfo && (
-                  <div>
-                    User: {step1.data.userInfo.nickname} ({step1.data.userInfo.username})
-                    Followers: {step1.data.userInfo.stats?.followerCount || 0}
+                  <div style={{ marginTop: 6 }}>
+                    <div>
+                      User: {step1.data.userInfo.nickname} ({step1.data.userInfo.username})
+                    </div>
+                    <div>Followers: {step1.data.userInfo.stats?.followerCount ?? 0}</div>
                   </div>
+                )}
+                {step1.data.platformUserId && (
+                  <div style={{ marginTop: 6 }}>Platform user ID: {step1.data.platformUserId}</div>
                 )}
                 {/* Video list with thumbnail, title, and caption */}
                 {Array.isArray(step1.data.videos) && step1.data.videos.length > 0 && (
@@ -893,7 +1347,7 @@ OUTPUT FORMAT:
                       fontWeight: 600,
                       marginBottom: 8,
                       color: 'var(--color-text-secondary)'
-                    }}>Latest videos</div>
+                    }}>Latest {latestVideosLabel}</div>
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: 'minmax(120px, 160px) 1fr',

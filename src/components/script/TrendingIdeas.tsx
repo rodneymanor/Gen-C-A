@@ -76,13 +76,42 @@ const trendingItemStyles = css`
   border-radius: var(--radius-medium);
   transition: var(--transition-all);
   cursor: pointer;
-  
+  position: relative;
+  z-index: 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: transparent;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+  }
+
   &:hover {
-    background: var(--color-primary-50);
-    border-color: var(--color-primary-300);
+    border-color: var(--card-hover-border);
     transform: translateY(-1px);
   }
-  
+
+  &:hover::after {
+    background: var(--card-hover-overlay);
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--card-focus-border);
+    box-shadow: var(--card-focus-shadow);
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible::after {
+    background: var(--card-focus-overlay);
+    opacity: 1;
+  }
+
   .trending-emoji {
     font-size: 20px;
     flex-shrink: 0;
@@ -126,8 +155,9 @@ const trendingItemStyles = css`
     transition: var(--transition-all);
     flex-shrink: 0;
   }
-  
-  &:hover .trending-action {
+
+  &:hover .trending-action,
+  &:focus-visible .trending-action {
     opacity: 1;
   }
 `;

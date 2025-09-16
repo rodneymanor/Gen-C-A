@@ -13,78 +13,110 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const getCardStyles = (
-  appearance: CardProps['appearance'], 
+  appearance: CardProps['appearance'],
   spacing: CardProps['spacing'],
   isHoverable: boolean,
   isClickable: boolean
-) => css`
-  background: var(--card-bg);
-  border-radius: var(--card-radius);
-  transition: var(--transition-all);
-  position: relative;
-  display: block;
-  width: 100%;
-  
-  /* Spacing variants */
-  ${spacing === 'compact' && css`
-    padding: var(--space-3);
-  `}
-  
-  ${spacing === 'default' && css`
-    padding: var(--space-4);
-  `}
-  
-  ${spacing === 'comfortable' && css`
-    padding: var(--space-6);
-  `}
-  
-  /* Appearance variants - Perplexity Flat Design */
-  ${appearance === 'subtle' && css`
-    border: 1px solid var(--card-border);
-    /* REMOVED: All shadows for flat design */
-    background: var(--color-neutral-50);
-  `}
-  
-  ${appearance === 'raised' && css`
-    border: 1px solid var(--card-border);
-    /* REMOVED: Card shadow for flat design */
-  `}
-  
-  ${appearance === 'elevated' && css`
-    border: 1px solid var(--card-border);
-    /* REMOVED: Elevated shadow for flat design */
-  `}
-  
-  ${appearance === 'selected' && css`
-    border: 2px solid var(--color-primary-500);  /* Bloom Blue preserved */
-    /* REMOVED: Shadow - use border + background only */
-    background: var(--color-primary-50);
-  `}
-  
-  /* Interactive states */
-  ${isClickable && css`
-    cursor: pointer;
-    
-    &:focus-visible {
+) => {
+  const allowHover = isHoverable || isClickable;
+
+  return css`
+    background: var(--card-bg);
+    border-radius: var(--card-radius);
+    transition: var(--transition-all);
+    position: relative;
+    display: block;
+    width: 100%;
+    z-index: 0;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: transparent;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, background-color 0.2s ease;
+    }
+
+    /* Spacing variants */
+    ${spacing === 'compact' && css`
+      padding: var(--space-3);
+    `}
+
+    ${spacing === 'default' && css`
+      padding: var(--space-4);
+    `}
+
+    ${spacing === 'comfortable' && css`
+      padding: var(--space-6);
+    `}
+
+    /* Appearance variants - Perplexity Flat Design */
+    ${appearance === 'subtle' && css`
+      border: 1px solid var(--card-border);
+      /* REMOVED: All shadows for flat design */
+      background: var(--color-neutral-50);
+    `}
+
+    ${appearance === 'raised' && css`
+      border: 1px solid var(--card-border);
+      /* REMOVED: Card shadow for flat design */
+    `}
+
+    ${appearance === 'elevated' && css`
+      border: 1px solid var(--card-border);
+      /* REMOVED: Elevated shadow for flat design */
+    `}
+
+    ${appearance === 'selected' && css`
+      border: 2px solid var(--color-primary-500);  /* Bloom Blue preserved */
+      /* REMOVED: Shadow - use border + background only */
+      background: var(--color-primary-50);
+    `}
+
+    /* Interactive states */
+    ${isClickable && css`
+      cursor: pointer;
+
+      &:focus-visible {
+        outline: none;
+        border-color: var(--card-focus-border);
+        box-shadow: var(--card-focus-shadow);
+      }
+
+      &:focus-visible::before {
+        background: var(--card-focus-overlay);
+        opacity: 1;
+      }
+    `}
+
+    ${allowHover && css`
+      &:hover {
+        border-color: var(--card-hover-border);
+        box-shadow: var(--card-hover-shadow);
+      }
+
+      &:hover::before {
+        background: var(--card-hover-overlay);
+        opacity: 1;
+      }
+    `}
+
+    /* Ensure proper focus management */
+    &[tabindex]:focus-visible {
       outline: none;
-      box-shadow: var(--focus-ring);
+      border-color: var(--card-focus-border);
+      box-shadow: var(--card-focus-shadow);
     }
-  `}
-  
-  ${isHoverable && css`
-    &:hover {
-      /* Perplexity Flat Design - Simple border color change only */
-      border-color: var(--color-neutral-300);
-      /* REMOVED: All shadows and transforms for flat design */
+
+    &[tabindex]:focus-visible::before {
+      background: var(--card-focus-overlay);
+      opacity: 1;
     }
-  `}
-  
-  /* Ensure proper focus management */
-  &[tabindex]:focus-visible {
-    outline: none;
-    box-shadow: var(--focus-ring);
-  }
-`;
+  `;
+};
 
 const cardHeaderStyles = css`
   margin-bottom: var(--space-4);
@@ -106,7 +138,7 @@ const cardFooterStyles = css`
   }
 `;
 
-export const Card = forwardRef<HTMLDivElement, CardProps>(({
+export const Card = forwardRef<HTMLDivElement, CardProps>(({ 
   children,
   appearance = 'raised',
   spacing = 'default',
@@ -117,12 +149,14 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(({
   onClick,
   ...props
 }, ref) => {
+  const computedClickable = isClickable || Boolean(onClick);
+
   const motionProps = {
     initial: { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
     transition: { duration: 0.3 },
     whileHover: isHoverable ? { y: -4 } : undefined,
-    whileTap: isClickable ? { scale: 0.98 } : undefined,
+    whileTap: computedClickable ? { scale: 0.98 } : undefined,
   };
 
   // Separate motion-specific props from HTML div props
@@ -139,13 +173,13 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(({
   return (
     <motion.div
       ref={ref}
-      css={getCardStyles(appearance, spacing, isHoverable, isClickable)}
+      css={getCardStyles(appearance, spacing, isHoverable, computedClickable)}
       className={clsx('gen-card', className)}
       onClick={onClick}
       data-testid={testId}
-      tabIndex={isClickable ? 0 : undefined}
-      role={isClickable ? 'button' : undefined}
-      onKeyDown={isClickable ? (e) => {
+      tabIndex={computedClickable ? 0 : undefined}
+      role={computedClickable ? 'button' : undefined}
+      onKeyDown={computedClickable ? (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onClick?.(e as any);

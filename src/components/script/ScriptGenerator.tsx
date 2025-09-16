@@ -303,7 +303,7 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
           {/* Generate Actions - positioned under input */}
           <div className="generate-actions">
             <Button
-              variant="ai-powered"
+              variant="primary"
               size="large"
               onClick={handleGenerate}
               isLoading={isLoading}
@@ -354,7 +354,8 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
                     border: '1px solid var(--color-neutral-300)',
                     borderRadius: 'var(--radius-medium)',
                     fontSize: 'var(--font-size-body)',
-                    background: 'var(--color-neutral-0)'
+                    background: 'var(--color-neutral-0)',
+                    minHeight: '40px'
                   }}
                 >
                   {aiModelOptions.map(option => (
@@ -385,7 +386,8 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
                     border: '1px solid var(--color-neutral-300)',
                     borderRadius: 'var(--radius-medium)',
                     fontSize: 'var(--font-size-body)',
-                    background: 'var(--color-neutral-0)'
+                    background: 'var(--color-neutral-0)',
+                    minHeight: '40px'
                   }}
                 >
                   {lengthOptions.map(option => (
@@ -427,7 +429,8 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
                   border: '1px solid var(--color-neutral-300)',
                   borderRadius: 'var(--radius-medium)',
                   fontSize: 'var(--font-size-body)',
-                  background: 'var(--color-neutral-0)'
+                  background: 'var(--color-neutral-0)',
+                  minHeight: '40px'
                 }}
               >
                 <option value="">Select persona (optional)</option>

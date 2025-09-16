@@ -59,19 +59,19 @@ export const layout = {
   sidebarCollapsed: 'var(--sidebar-collapsed)', // 64px
 } as const;
 
-// Touch target spacing (WCAG compliance)
+// Touch target spacing aligned to design guidelines
 export const touchTarget = {
-  min: 'var(--touch-target-min)',           // 44px
-  comfortable: 'var(--touch-target-comfortable)', // 48px
-  large: 'var(--touch-target-large)',       // 56px
+  min: 'var(--touch-target-min)',           // 36px
+  comfortable: 'var(--touch-target-comfortable)', // 40px
+  large: 'var(--touch-target-large)',       // 46px
   spacing: 'var(--touch-target-spacing)',   // 8px
 } as const;
 
 // Interactive element heights
 export const interactiveHeight = {
-  sm: 'var(--interactive-height-sm)',       // 44px
-  md: 'var(--interactive-height-md)',       // 48px
-  lg: 'var(--interactive-height-lg)',       // 56px
+  sm: 'var(--interactive-height-sm)',       // 36px
+  md: 'var(--interactive-height-md)',       // 40px
+  lg: 'var(--interactive-height-lg)',       // 46px
 } as const;
 
 // Tap spacing for different UI densities
