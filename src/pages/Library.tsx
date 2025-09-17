@@ -3,12 +3,14 @@ import { css } from '@emotion/react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Card, CardContent } from '../components/ui/Card';
+import { Card } from '../components/ui/Card';
 import { formatRelativeTime } from '../utils/format';
 import type { ContentItem } from '../types';
 import { getLibraryContent } from './library-data';
 import { useDebugger, DEBUG_LEVELS } from '../utils/debugger';
 import { usePageLoad } from '../contexts/PageLoadContext';
+import DropdownMenu, { DropdownItem, DropdownItemGroup } from '@atlaskit/dropdown-menu';
+import { auth } from '../lib/firebase';
 
 // Atlassian Design System Icons
 import SearchIcon from '@atlaskit/icon/glyph/search';
@@ -252,14 +254,20 @@ const contentItemStyles = (isSelected: boolean, isChecked: boolean) => css`
   }
 
   .content-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     flex-shrink: 0;
     opacity: 0;
-    transition: var(--transition-all);
+    pointer-events: none;
+    transition: opacity 0.2s ease;
   }
 
   &:hover .content-actions,
-  &:focus-visible .content-actions {
+  &:focus-within .content-actions {
     opacity: 1;
+    pointer-events: auto;
   }
 `;
 
@@ -394,8 +402,11 @@ const ContentItem: React.FC<{
   isSelected: boolean;
   onSelect: (item: ContentItem) => void;
   onCheckboxChange: (item: ContentItem, checked: boolean) => void;
+  onEdit: (item: ContentItem) => void;
+  onDelete: (item: ContentItem) => Promise<void> | void;
   isChecked: boolean;
-}> = ({ item, isSelected, onSelect, onCheckboxChange, isChecked }) => {
+  isDeleting: boolean;
+}> = ({ item, isSelected, onSelect, onCheckboxChange, onEdit, onDelete, isChecked, isDeleting }) => {
   return (
     <div
       css={contentItemStyles(isSelected, isChecked)}
@@ -423,20 +434,63 @@ const ContentItem: React.FC<{
         </p>
       </div>
       
-      <div className="content-actions">
-        <Button 
-          variant="subtle" 
-          size="small"
-          iconBefore={<MoreIcon label="More options" />}
-          css={css`
-            min-height: 32px;
-            height: 32px;
-            width: 32px;
-            border-radius: 8px;
-            background: var(--color-neutral-100);
-            &:hover { background: var(--color-neutral-200); }
-          `}
-        />
+      <div
+        className="content-actions"
+        onClick={event => event.stopPropagation()}
+        onKeyDown={event => event.stopPropagation()}
+      >
+        <DropdownMenu
+          placement="bottom-end"
+          trigger={({ triggerRef, ...triggerProps }) => {
+            const { onClick, onKeyDown, ...restProps } = triggerProps as React.ComponentProps<'button'>;
+
+            return (
+              <Button
+                {...restProps}
+                ref={triggerRef}
+                variant="subtle"
+                size="small"
+                iconBefore={<MoreIcon label="More options" />}
+                aria-label="More actions"
+                css={css`
+                  min-height: 32px;
+                  height: 32px;
+                  width: 32px;
+                  border-radius: 8px;
+                  background: var(--color-neutral-100);
+
+                  &:hover {
+                    background: var(--color-neutral-200);
+                  }
+                `}
+                onClick={event => {
+                  event.stopPropagation();
+                  onClick?.(event);
+                }}
+                onKeyDown={event => {
+                  event.stopPropagation();
+                  onKeyDown?.(event);
+                }}
+              />
+            );
+          }}
+        >
+          <DropdownItemGroup>
+            <DropdownItem onClick={() => onEdit(item)}>
+              Edit
+            </DropdownItem>
+          </DropdownItemGroup>
+          <DropdownItemGroup>
+            <DropdownItem
+              isDisabled={isDeleting}
+              onClick={() => {
+                void onDelete(item);
+              }}
+            >
+              {isDeleting ? 'Deleting…' : 'Delete'}
+            </DropdownItem>
+          </DropdownItemGroup>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -450,6 +504,7 @@ export const Library: React.FC = () => {
   const [content, setContent] = useState<ContentItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const { beginPageLoad, endPageLoad } = usePageLoad();
 
   useEffect(() => {
@@ -496,11 +551,83 @@ export const Library: React.FC = () => {
   };
 
   const handleCheckboxChange = (item: ContentItem, checked: boolean) => {
-    setCheckedItems(prev => 
-      checked 
+    setCheckedItems(prev =>
+      checked
         ? [...prev, item.id]
         : prev.filter(id => id !== item.id)
     );
+  };
+
+  const handleEditItem = (item: ContentItem) => {
+    const params = new URLSearchParams();
+    params.set('title', item.title);
+
+    const scriptContent = typeof item.metadata?.content === 'string' ? item.metadata.content : '';
+    const fallbackContent = item.description ?? '';
+    const contentForEditor = scriptContent.trim() ? scriptContent : fallbackContent;
+
+    if (contentForEditor) {
+      params.set('content', contentForEditor);
+    }
+
+    if (item.type === 'script') {
+      params.set('scriptId', item.id);
+    }
+
+    params.set('source', 'library');
+
+    navigate(`/editor?${params.toString()}`);
+  };
+
+  const handleDeleteItem = async (item: ContentItem) => {
+    let endpoint: string | null = null;
+
+    if (item.type === 'script') {
+      endpoint = `/api/scripts/${item.id}`;
+    } else if (item.type === 'note') {
+      endpoint = `/api/notes/${item.id}`;
+    }
+
+    if (!endpoint) {
+      debug.warn('Delete not supported for this content type', { type: item.type });
+      return;
+    }
+
+    try {
+      setDeletingItemId(item.id);
+      const token = auth.currentUser ? await auth.currentUser.getIdToken(true) : null;
+      const headers: Record<string, string> = {
+        Accept: 'application/json',
+        'X-Client': 'library-actions',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      };
+
+      const response = await fetch(endpoint, {
+        method: 'DELETE',
+        headers
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(errorText || `Failed to delete content (status ${response.status})`);
+      }
+
+      setContent(prev => prev.filter(existing => existing.id !== item.id));
+      setCheckedItems(prev => prev.filter(id => id !== item.id));
+
+      if (selectedItem?.id === item.id) {
+        setSelectedItem(null);
+      }
+
+      debug.info('Deleted content item', { id: item.id, type: item.type });
+    } catch (error: any) {
+      debug.error('Failed to delete content item', {
+        id: item.id,
+        message: error?.message ?? 'Unknown error'
+      });
+    } finally {
+      setDeletingItemId(current => (current === item.id ? null : current));
+    }
   };
 
   const selectedScriptElements = selectedItem?.type === 'script'
@@ -588,7 +715,10 @@ export const Library: React.FC = () => {
                   isSelected={selectedItem?.id === item.id}
                   onSelect={handleItemSelect}
                   onCheckboxChange={handleCheckboxChange}
+                  onEdit={handleEditItem}
+                  onDelete={handleDeleteItem}
                   isChecked={checkedItems.includes(item.id)}
+                  isDeleting={deletingItemId === item.id}
                 />
               ))}
             </div>
