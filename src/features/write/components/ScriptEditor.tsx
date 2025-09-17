@@ -1,29 +1,29 @@
-import React, { useState } from 'react';
-import { css } from '@emotion/react';
-import { Card, CardHeader, CardContent, CardFooter } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { TextArea } from '../ui/TextArea';
-import type { Script, ScriptInsight } from '../../types';
+import React, { useState } from 'react'
+import { css } from '@emotion/react'
+import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { TextArea } from '@/components/ui/TextArea'
+import type { Script, ScriptInsight } from '@/types'
 
 // Atlassian Design System Icons
-import RefreshIcon from '@atlaskit/icon/glyph/refresh';
-import AudioIcon from '@atlaskit/icon/glyph/audio';
-import DocumentIcon from '@atlaskit/icon/glyph/document';
-import SearchIcon from '@atlaskit/icon/glyph/search';
-import ChartIcon from '@atlaskit/icon/glyph/graph-line';
-import SuccessIcon from '@atlaskit/icon/glyph/check-circle';
-import WarningIcon from '@atlaskit/icon/glyph/warning';
-import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb';
-import DownloadIcon from '@atlaskit/icon/glyph/download';
-import FolderIcon from '@atlaskit/icon/glyph/folder';
+import RefreshIcon from '@atlaskit/icon/glyph/refresh'
+import AudioIcon from '@atlaskit/icon/glyph/audio'
+import DocumentIcon from '@atlaskit/icon/glyph/document'
+import SearchIcon from '@atlaskit/icon/glyph/search'
+import ChartIcon from '@atlaskit/icon/glyph/graph-line'
+import SuccessIcon from '@atlaskit/icon/glyph/check-circle'
+import WarningIcon from '@atlaskit/icon/glyph/warning'
+import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb'
+import DownloadIcon from '@atlaskit/icon/glyph/download'
+import FolderIcon from '@atlaskit/icon/glyph/folder'
 
 export interface ScriptEditorProps {
-  script?: Script;
-  onSave?: (script: Script) => void;
-  onExport?: (script: Script) => void;
-  onRegenerate?: () => void;
-  onVoicePreview?: (script: Script) => void;
-  isLoading?: boolean;
+  script?: Script
+  onSave?: (script: Script) => void
+  onExport?: (script: Script) => void
+  onRegenerate?: () => void
+  onVoicePreview?: (script: Script) => void
+  isLoading?: boolean
 }
 
 const editorStyles = css`
@@ -33,56 +33,56 @@ const editorStyles = css`
     align-items: flex-start;
     gap: var(--space-4);
     margin-bottom: var(--space-6);
-    
+
     @media (max-width: 768px) {
       flex-direction: column;
       align-items: stretch;
     }
-    
+
     .header-content {
       flex: 1;
-      
+
       h1 {
         font-size: var(--font-size-h3);
         font-weight: var(--font-weight-semibold);
         color: var(--color-neutral-800);
         margin: 0 0 var(--space-1) 0;
       }
-      
+
       .header-subtitle {
         font-size: var(--font-size-body);
         color: var(--color-neutral-600);
         margin: 0;
       }
     }
-    
+
     .header-actions {
       display: flex;
       gap: var(--space-2);
       flex-shrink: 0;
-      
+
       @media (max-width: 768px) {
         flex-wrap: wrap;
       }
     }
   }
-  
+
   .editor-layout {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: var(--space-6);
-    
+
     @media (max-width: 1024px) {
       grid-template-columns: 1fr;
       gap: var(--space-4);
     }
   }
-`;
+`
 
 const scriptEditorStyles = css`
   .script-title {
     margin-bottom: var(--space-4);
-    
+
     .title-input {
       font-size: var(--font-size-h4);
       font-weight: var(--font-weight-semibold);
@@ -91,18 +91,18 @@ const scriptEditorStyles = css`
       color: var(--color-neutral-800);
       width: 100%;
       padding: var(--space-2) 0;
-      
+
       &:focus {
         outline: none;
         border-bottom: 2px solid var(--color-primary-500);
       }
-      
+
       &::placeholder {
         color: var(--color-neutral-400);
       }
     }
   }
-  
+
   .script-content {
     .content-editor {
       font-family: var(--font-family-primary);
@@ -110,30 +110,30 @@ const scriptEditorStyles = css`
       min-height: 400px;
     }
   }
-  
+
   .script-structure-guide {
     margin-top: var(--space-4);
     padding: var(--space-4);
     background: var(--color-info-50);
     border: 1px solid var(--color-info-200);
     border-radius: var(--radius-medium);
-    
+
     .guide-title {
       font-size: var(--font-size-body-small);
       font-weight: var(--font-weight-semibold);
       color: var(--color-info-700);
       margin: 0 0 var(--space-2) 0;
     }
-    
+
     .guide-sections {
       display: flex;
       flex-direction: column;
       gap: var(--space-2);
-      
+
       .guide-section {
         font-size: var(--font-size-body-small);
         color: var(--color-info-600);
-        
+
         .section-tag {
           font-weight: var(--font-weight-semibold);
           margin-right: var(--space-2);
@@ -141,7 +141,7 @@ const scriptEditorStyles = css`
       }
     }
   }
-`;
+`
 
 const insightsStyles = css`
   .insights-header {
@@ -149,77 +149,83 @@ const insightsStyles = css`
     align-items: center;
     gap: var(--space-2);
     margin-bottom: var(--space-4);
-    
+
     h2 {
       font-size: var(--font-size-h5);
       font-weight: var(--font-weight-semibold);
       color: var(--color-neutral-800);
       margin: 0;
     }
-    
+
     .insights-icon {
       font-size: 18px;
     }
   }
-  
+
   .insights-list {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
     margin-bottom: var(--space-6);
   }
-  
+
   .insight-item {
     display: flex;
     align-items: flex-start;
     gap: var(--space-3);
     padding: var(--space-3);
     border-radius: var(--radius-medium);
-    
+
     &.success {
       background: var(--color-success-50);
       border: 1px solid var(--color-success-200);
     }
-    
+
     &.warning {
       background: var(--color-warning-50);
       border: 1px solid var(--color-warning-200);
     }
-    
+
     &.suggestion {
       background: var(--color-info-50);
       border: 1px solid var(--color-info-200);
     }
-    
+
     .insight-icon {
       font-size: 16px;
       flex-shrink: 0;
       margin-top: 2px;
     }
-    
+
     .insight-message {
       font-size: var(--font-size-body-small);
       line-height: var(--line-height-normal);
       margin: 0;
-      
-      &.success { color: var(--color-success-600); }
-      &.warning { color: var(--color-warning-600); }
-      &.suggestion { color: var(--color-info-600); }
+
+      &.success {
+        color: var(--color-success-600);
+      }
+      &.warning {
+        color: var(--color-warning-600);
+      }
+      &.suggestion {
+        color: var(--color-info-600);
+      }
     }
   }
-  
+
   .script-stats {
     padding: var(--space-4);
     background: var(--color-neutral-100);
     border-radius: var(--radius-medium);
-    
+
     .stats-title {
       font-size: var(--font-size-body-small);
       font-weight: var(--font-weight-semibold);
       color: var(--color-neutral-700);
       margin: 0 0 var(--space-2) 0;
     }
-    
+
     .stats-content {
       font-size: var(--font-size-body-small);
       color: var(--color-neutral-600);
@@ -227,28 +233,28 @@ const insightsStyles = css`
       display: flex;
       align-items: center;
       gap: var(--space-2);
-      
+
       .stats-icon {
         font-size: 14px;
       }
     }
   }
-`;
+`
 
 const actionsStyles = css`
   display: flex;
   gap: var(--space-3);
   justify-content: flex-end;
-  
+
   @media (max-width: 768px) {
     flex-wrap: wrap;
     justify-content: stretch;
-    
+
     .action-button {
       flex: 1;
     }
   }
-`;
+`
 
 // Mock insights data
 const mockInsights: ScriptInsight[] = [
@@ -282,7 +288,7 @@ const mockInsights: ScriptInsight[] = [
     message: 'Estimated engagement: High (based on similar content)',
     category: 'engagement'
   }
-];
+]
 
 const mockScript: Script = {
   id: '1',
@@ -310,17 +316,17 @@ const mockScript: Script = {
   insights: mockInsights,
   created: new Date(),
   updated: new Date()
-};
+}
 
 const InsightIcon: React.FC<{ type: ScriptInsight['type'] }> = ({ type }) => {
   const icons = {
     success: <SuccessIcon label="Success" />,
     warning: <WarningIcon label="Warning" />,
     suggestion: <LightbulbIcon label="Suggestion" />
-  };
-  
-  return <span className="insight-icon">{icons[type]}</span>;
-};
+  }
+
+  return <span className="insight-icon">{icons[type]}</span>
+}
 
 export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   script = mockScript,
@@ -330,37 +336,37 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   onVoicePreview,
   isLoading = false
 }) => {
-  const [editableScript, setEditableScript] = useState<Script>(script);
+  const [editableScript, setEditableScript] = useState<Script>(script)
 
   const handleTitleChange = (title: string) => {
-    setEditableScript(prev => ({ ...prev, title }));
-  };
+    setEditableScript((prev) => ({ ...prev, title }))
+  }
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const content = e.target.value;
-    const wordCount = content.trim().split(/\s+/).length;
-    const estimatedDuration = Math.ceil(wordCount / 2.5); // ~150 words per minute for speaking
-    
-    setEditableScript(prev => ({
+    const content = e.target.value
+    const wordCount = content.trim().split(/\s+/).length
+    const estimatedDuration = Math.ceil(wordCount / 2.5) // ~150 words per minute for speaking
+
+    setEditableScript((prev) => ({
       ...prev,
       content,
       wordCount,
       estimatedDuration,
       updated: new Date()
-    }));
-  };
+    }))
+  }
 
   const handleSave = () => {
-    onSave?.(editableScript);
-  };
+    onSave?.(editableScript)
+  }
 
   const handleExport = () => {
-    onExport?.(editableScript);
-  };
+    onExport?.(editableScript)
+  }
 
   const handleVoicePreview = () => {
-    onVoicePreview?.(editableScript);
-  };
+    onVoicePreview?.(editableScript)
+  }
 
   return (
     <div css={editorStyles}>
@@ -370,7 +376,12 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           <p className="header-subtitle">Ready for refinement</p>
         </div>
         <div className="header-actions">
-          <Button variant="subtle" onClick={onRegenerate} isDisabled={isLoading} iconBefore={<RefreshIcon label="" />}>
+          <Button
+            variant="subtle"
+            onClick={onRegenerate}
+            isDisabled={isLoading}
+            iconBefore={<RefreshIcon label="" />}
+          >
             Regenerate
           </Button>
           <Button variant="subtle" onClick={handleVoicePreview} iconBefore={<AudioIcon label="" />}>
@@ -403,7 +414,9 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           </div>
 
           <div className="script-structure-guide">
-            <h3 className="guide-title"><DocumentIcon label="" /> Script Structure Guide</h3>
+            <h3 className="guide-title">
+              <DocumentIcon label="" /> Script Structure Guide
+            </h3>
             <div className="guide-sections">
               <div className="guide-section">
                 <span className="section-tag">[HOOK]</span>
@@ -427,39 +440,54 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
         <Card appearance="subtle" spacing="comfortable" css={insightsStyles}>
           <div className="insights-header">
-            <span className="insights-icon"><SearchIcon label="Insights" /></span>
+            <span className="insights-icon">
+              <SearchIcon label="Insights" />
+            </span>
             <h2>Script Insights</h2>
           </div>
 
           <div className="insights-list">
-            {editableScript.insights.map(insight => (
+            {editableScript.insights.map((insight) => (
               <div key={insight.id} className={`insight-item ${insight.type}`}>
                 <InsightIcon type={insight.type} />
-                <p className={`insight-message ${insight.type}`}>
-                  {insight.message}
-                </p>
+                <p className={`insight-message ${insight.type}`}>{insight.message}</p>
               </div>
             ))}
           </div>
 
           <div className="script-stats">
-            <h3 className="stats-title"><ChartIcon label="" /> Script Stats</h3>
+            <h3 className="stats-title">
+              <ChartIcon label="" /> Script Stats
+            </h3>
             <p className="stats-content">
-              <span className="stats-icon"><ChartIcon label="Stats" /></span>
-              {editableScript.estimatedDuration} seconds • {editableScript.wordCount} words • {editableScript.platform} optimized
+              <span className="stats-icon">
+                <ChartIcon label="Stats" />
+              </span>
+              {editableScript.estimatedDuration} seconds • {editableScript.wordCount} words •{' '}
+              {editableScript.platform} optimized
             </p>
           </div>
         </Card>
       </div>
 
       <CardFooter css={actionsStyles}>
-        <Button variant="subtle" onClick={handleExport} className="action-button" iconBefore={<DownloadIcon label="" />}>
+        <Button
+          variant="subtle"
+          onClick={handleExport}
+          className="action-button"
+          iconBefore={<DownloadIcon label="" />}
+        >
           Export
         </Button>
-        <Button variant="secondary" onClick={handleSave} className="action-button" iconBefore={<FolderIcon label="" />}>
+        <Button
+          variant="secondary"
+          onClick={handleSave}
+          className="action-button"
+          iconBefore={<FolderIcon label="" />}
+        >
           Save to Library
         </Button>
       </CardFooter>
     </div>
-  );
-};
+  )
+}

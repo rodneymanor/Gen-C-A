@@ -263,7 +263,7 @@ export function useNewFeature(): UseNewFeatureReturn {
 
 #### Adding New AI Model Options
 ```typescript
-// src/components/script/ScriptGenerator.tsx
+// src/features/write/components/ScriptGenerator.tsx
 const aiModelOptions = [
   { value: 'creative', label: 'Creative (Recommended)' },
   { value: 'balanced', label: 'Balanced' },
@@ -286,7 +286,7 @@ export type Platform =
   | 'snapchat'  // New platform
   | 'other';
 
-// src/components/script/ScriptGenerator.tsx
+// src/features/write/components/ScriptGenerator.tsx
 const platformOptions = [
   { value: 'tiktok', label: 'TikTok' },
   { value: 'instagram', label: 'Instagram' },
