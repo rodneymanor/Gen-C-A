@@ -20,7 +20,6 @@ import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME, resolveDefaultBrandVo
 
 // Re-export interfaces from child components for convenience
 export type { ReadabilityMetrics, WritingStats } from './EditorSidebar';
-export type { WritingStats as ToolbarStats } from './FloatingToolbar';
 
 export interface HemingwayEditorProps {
   /** Initial content for the editor */
@@ -198,7 +197,6 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   const [personas, setPersonas] = useState<BrandPersona[]>([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [lastGeneratedBrandVoiceId, setLastGeneratedBrandVoiceId] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date>(new Date());
   const [, forceRelativeRefresh] = useState(0);
   
@@ -300,13 +298,6 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
     readingTime,
   };
   
-  const toolbarStats = {
-    words,
-    characters,
-    readingTime,
-    lastSaved,
-  };
-
   // Format "Saved ... ago" for header placement
   const formatLastSaved = (date: Date) => {
     const now = new Date();
@@ -428,20 +419,11 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
             };
           });
           setPersonas(mapped);
-          const resolvedDefaultId = resolveDefaultBrandVoiceId(mapped);
-          const hasDefault = resolvedDefaultId ? mapped.some(p => p.id === resolvedDefaultId) : false;
-
           setSelectedPersonaId(prev => {
             if (prev) return prev;
-            return hasDefault && resolvedDefaultId ? resolvedDefaultId : prev;
-          });
-
-          setLastGeneratedBrandVoiceId(prev => {
-            if (prev !== null) return prev;
-            if (hasDefault && resolvedDefaultId) {
-              return resolvedDefaultId;
-            }
-            return '';
+            const resolvedDefaultId = resolveDefaultBrandVoiceId(mapped);
+            const hasDefault = mapped.some(p => p.id === resolvedDefaultId);
+            return hasDefault ? resolvedDefaultId : prev;
           });
         }
       } catch (_) {
@@ -476,9 +458,9 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
       setIsRegenerating(true);
       const idea = deriveIdeaFromEditor();
       const length = decideLength();
-      const personaIdUsed = selectedPersonaId || resolveDefaultBrandVoiceId(personas) || '';
+      const persona = selectedPersonaId || undefined;
 
-      const result = await generateScript(idea, length, personaIdUsed || undefined);
+      const result = await generateScript(idea, length, persona);
       if (result.success && result.script) {
         onScriptElementsChange({
           hook: result.script.hook,
@@ -486,14 +468,13 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
           goldenNugget: result.script.goldenNugget,
           wta: result.script.wta,
         });
-        setLastGeneratedBrandVoiceId(personaIdUsed);
       } else {
         console.error('[HemingwayEditor] Regenerate failed:', result.error);
       }
     } finally {
       setIsRegenerating(false);
     }
-  }, [isScriptMode, onScriptElementsChange, deriveIdeaFromEditor, decideLength, selectedPersonaId, personas, generateScript]);
+  }, [isScriptMode, onScriptElementsChange, deriveIdeaFromEditor, decideLength, selectedPersonaId, generateScript]);
 
   // Keep the latest regenerate handler in a ref so persona effect doesn't retrigger when dependencies change
   useEffect(() => {
@@ -536,13 +517,13 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
         </div>
         
         <HeaderActions>
-          {toolbarStats.lastSaved && (
+          {lastSaved && (
             <span style={{
               fontSize: token('font.size.075', '12px'),
               color: token('color.text.subtlest', '#6b778c'),
               marginRight: token('space.100', '0.25rem')
             }}>
-              Saved {formatLastSaved(toolbarStats.lastSaved)}
+              Saved {formatLastSaved(lastSaved)}
             </span>
           )}
           <Button
@@ -617,7 +598,6 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
 
       {/* Floating Toolbar */}
       <FloatingToolbar
-        stats={toolbarStats}
         canUndo={false} // TODO: Implement undo/redo functionality
         canRedo={false}
         onUndo={() => console.log('Undo')}
@@ -628,7 +608,6 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
         brandVoices={personas}
         selectedBrandVoiceId={selectedPersonaId}
         onBrandVoiceChange={setSelectedPersonaId}
-        activeBrandVoiceId={lastGeneratedBrandVoiceId ?? undefined}
         onSave={() => console.log('Save')}
         onExport={() => console.log('Export')}
         onShare={() => console.log('Share')}

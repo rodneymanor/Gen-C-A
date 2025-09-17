@@ -12,8 +12,8 @@ The Hemingway Editor system has been successfully migrated to your new applicati
 - ✅ `src/components/editor/floating-toolbar.tsx` - Floating action toolbar
 
 ### Script Panel System
-- ✅ `src/features/write/components/script-panel/script-panel.tsx` - Main panel container
-- ✅ `src/features/write/components/script-panel/script-panel-components.tsx` - Tab views and components
+- ✅ `src/components/script-panel/script-panel.tsx` - Main panel container
+- ✅ `src/components/script-panel/script-panel-components.tsx` - Tab views and components
 - ✅ `src/contexts/script-panel-context.tsx` - State management context
 
 ### Core Services

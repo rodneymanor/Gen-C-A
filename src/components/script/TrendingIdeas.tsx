@@ -1,29 +1,29 @@
-import React from 'react'
-import { css } from '@emotion/react'
-import { Card, CardHeader, CardContent } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { formatCount } from '@/utils/format'
-import { token } from '@atlaskit/tokens'
+import React from 'react';
+import { css } from '@emotion/react';
+import { Card, CardHeader, CardContent } from '../ui/Card';
+import { Button } from '../ui/Button';
+import { formatCount } from '../../utils/format';
+import { token } from '@atlaskit/tokens';
 
 // Atlassian Design System Icons
-import StarIcon from '@atlaskit/icon/glyph/star'
-import WorldIcon from '@atlaskit/icon/glyph/world'
-import StarFilledIcon from '@atlaskit/icon/glyph/star-filled'
-import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb-filled'
-import FrequentIcon from '@atlaskit/icon/glyph/emoji/frequent'
+import StarIcon from '@atlaskit/icon/glyph/star';
+import WorldIcon from '@atlaskit/icon/glyph/world';
+import StarFilledIcon from '@atlaskit/icon/glyph/star-filled';
+import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb-filled';
+import FrequentIcon from '@atlaskit/icon/glyph/emoji/frequent';
 
-export interface TrendingIdea {
-  id: string
-  title: string
-  views: number
-  platform: string
-  emoji: string
+interface TrendingIdea {
+  id: string;
+  title: string;
+  views: number;
+  platform: string;
+  emoji: string;
 }
 
 export interface TrendingIdeasProps {
-  ideas?: TrendingIdea[]
-  onUseIdea?: (idea: TrendingIdea) => void
-  onExploreMore?: () => void
+  ideas?: TrendingIdea[];
+  onUseIdea?: (idea: TrendingIdea) => void;
+  onExploreMore?: () => void;
 }
 
 const trendingStyles = css`
@@ -32,10 +32,10 @@ const trendingStyles = css`
     align-items: center;
     justify-content: between;
     margin-bottom: var(--space-4);
-
+    
     .header-content {
       flex: 1;
-
+      
       h2 {
         display: flex;
         align-items: center;
@@ -44,12 +44,12 @@ const trendingStyles = css`
         font-weight: var(--font-weight-semibold);
         color: var(--color-neutral-800);
         margin: 0;
-
+        
         .trending-icon {
           font-size: 20px;
         }
       }
-
+      
       .trending-subtitle {
         font-size: var(--font-size-body-small);
         color: var(--color-neutral-600);
@@ -57,14 +57,14 @@ const trendingStyles = css`
       }
     }
   }
-
+  
   .trending-list {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
     margin-bottom: var(--space-4);
   }
-`
+`;
 
 const trendingItemStyles = css`
   display: flex;
@@ -87,9 +87,7 @@ const trendingItemStyles = css`
     background: transparent;
     opacity: 0;
     pointer-events: none;
-    transition:
-      opacity 0.2s ease,
-      background-color 0.2s ease;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
   }
 
   &:hover {
@@ -118,11 +116,11 @@ const trendingItemStyles = css`
     font-size: 20px;
     flex-shrink: 0;
   }
-
+  
   .trending-content {
     flex: 1;
     min-width: 0;
-
+    
     .trending-title {
       font-size: var(--font-size-body);
       font-weight: var(--font-weight-medium);
@@ -130,17 +128,17 @@ const trendingItemStyles = css`
       margin: 0 0 var(--space-1) 0;
       line-height: var(--line-height-normal);
     }
-
+    
     .trending-meta {
       font-size: var(--font-size-body-small);
       color: var(--color-neutral-600);
       margin: 0;
-
+      
       .views {
         font-weight: var(--font-weight-medium);
         color: var(--color-primary-600);
       }
-
+      
       .platform {
         margin-left: var(--space-2);
         padding: var(--space-1) var(--space-2);
@@ -151,7 +149,7 @@ const trendingItemStyles = css`
       }
     }
   }
-
+  
   .trending-action {
     opacity: 0;
     transition: var(--transition-all);
@@ -162,7 +160,7 @@ const trendingItemStyles = css`
   &:focus-visible .trending-action {
     opacity: 1;
   }
-`
+`;
 
 const exploreMoreStyles = css`
   text-align: center;
@@ -170,46 +168,42 @@ const exploreMoreStyles = css`
   background: linear-gradient(135deg, var(--color-ai-gradient-start), var(--color-ai-gradient-end));
   border-radius: var(--radius-medium);
   color: white;
-
+  
   .explore-icon {
     font-size: 32px;
     margin-bottom: var(--space-3);
     opacity: 0.9;
   }
-
+  
   .explore-title {
     font-size: var(--font-size-h5);
     font-weight: var(--font-weight-semibold);
     margin: 0 0 var(--space-2) 0;
   }
-
+  
   .explore-description {
     font-size: var(--font-size-body-small);
     opacity: 0.9;
     margin: 0 0 var(--space-4) 0;
     line-height: var(--line-height-relaxed);
   }
-`
+`;
 
 // Helper function to map emoji strings to professional icons with theme-aware colors
 const getEmojiIcon = (emoji: string) => {
-  const iconColor = token('color.icon')
-
+  const iconColor = token('color.icon');
+  
   switch (emoji) {
     case '🔥':
-      return <FrequentIcon label="Trending" size="medium" primaryColor={iconColor} />
+      return <FrequentIcon label="Trending" size="medium" primaryColor={iconColor} />;
     case '🌟':
-      return (
-        <StarFilledIcon label="Featured" size="medium" primaryColor={token('color.icon.warning')} />
-      )
+      return <StarFilledIcon label="Featured" size="medium" primaryColor={token('color.icon.warning')} />;
     case '💡':
-      return (
-        <LightbulbIcon label="Idea" size="medium" primaryColor={token('color.icon.discovery')} />
-      )
+      return <LightbulbIcon label="Idea" size="medium" primaryColor={token('color.icon.discovery')} />;
     default:
-      return <StarIcon label="Trending" size="medium" primaryColor={iconColor} />
+      return <StarIcon label="Trending" size="medium" primaryColor={iconColor} />;
   }
-}
+};
 
 const defaultIdeas: TrendingIdea[] = [
   {
@@ -233,7 +227,7 @@ const defaultIdeas: TrendingIdea[] = [
     platform: 'YouTube',
     emoji: '💡'
   }
-]
+];
 
 export const TrendingIdeas: React.FC<TrendingIdeasProps> = ({
   ideas = defaultIdeas,
@@ -253,17 +247,17 @@ export const TrendingIdeas: React.FC<TrendingIdeasProps> = ({
           <p className="trending-subtitle">Trending Today</p>
         </div>
       </div>
-
+      
       <div className="trending-list" role="list">
-        {ideas.map((idea) => (
+        {ideas.map(idea => (
           <div
             key={idea.id}
             css={trendingItemStyles}
             onClick={() => onUseIdea?.(idea)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onUseIdea?.(idea)
+                e.preventDefault();
+                onUseIdea?.(idea);
               }
             }}
             tabIndex={0}
@@ -273,7 +267,7 @@ export const TrendingIdeas: React.FC<TrendingIdeasProps> = ({
             <span className="trending-emoji" aria-hidden="true">
               {getEmojiIcon(idea.emoji)}
             </span>
-
+            
             <div className="trending-content">
               <p className="trending-title">"{idea.title}"</p>
               <p className="trending-meta">
@@ -281,7 +275,7 @@ export const TrendingIdeas: React.FC<TrendingIdeasProps> = ({
                 <span className="platform">{idea.platform}</span>
               </p>
             </div>
-
+            
             <div className="trending-action">
               <Button variant="subtle" size="small">
                 Use Idea
@@ -290,7 +284,7 @@ export const TrendingIdeas: React.FC<TrendingIdeasProps> = ({
           </div>
         ))}
       </div>
-
+      
       <div css={exploreMoreStyles}>
         <div className="explore-icon" aria-hidden="true">
           <WorldIcon label="" size="large" primaryColor="white" />
@@ -302,8 +296,8 @@ export const TrendingIdeas: React.FC<TrendingIdeasProps> = ({
         <Button
           variant="secondary"
           onClick={onExploreMore}
-          style={{
-            background: 'rgba(255, 255, 255, 0.2)',
+          style={{ 
+            background: 'rgba(255, 255, 255, 0.2)', 
             borderColor: 'rgba(255, 255, 255, 0.3)',
             color: 'white'
           }}
@@ -312,5 +306,5 @@ export const TrendingIdeas: React.FC<TrendingIdeasProps> = ({
         </Button>
       </div>
     </Card>
-  )
-}
+  );
+};

@@ -1,19 +1,19 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
+import React, { useState } from "react";
 
-import { useScriptCopy } from '@/hooks/use-script-copy'
-import { useScriptDownload } from '@/hooks/use-script-download'
-import { cn } from '@/lib/utils'
-import { ScriptPanelProps, ScriptTabConfig, ScriptData } from '@/types/script-panel'
+import { useScriptCopy } from "@/hooks/use-script-copy";
+import { useScriptDownload } from "@/hooks/use-script-download";
+import { cn } from "@/lib/utils";
+import { ScriptPanelProps, ScriptTabConfig, ScriptData } from "@/types/script-panel";
 
 import {
   ScriptPanelHeader,
   ScriptPanelTabs,
   FullScriptView,
   ComponentsView,
-  HooksView
-} from './script-panel-components'
+  HooksView,
+} from "./script-panel-components";
 
 /**
  * ScriptPanel - A comprehensive script display component with tabs,
@@ -22,10 +22,10 @@ import {
 // Helper function to get tab configuration
 function getTabConfiguration(componentsLength: number, hooksLength: number): ScriptTabConfig[] {
   return [
-    { key: 'full', label: 'Full Script', enabled: true },
-    { key: 'components', label: 'Components', enabled: componentsLength > 0 },
-    { key: 'hooks', label: 'Hooks', enabled: hooksLength > 0 }
-  ]
+    { key: "full", label: "Full Script", enabled: true },
+    { key: "components", label: "Components", enabled: componentsLength > 0 },
+    { key: "hooks", label: "Hooks", enabled: hooksLength > 0 },
+  ];
 }
 
 export function ScriptPanel({
@@ -37,27 +37,27 @@ export function ScriptPanel({
   className,
   showDownload = true,
   showMetrics = true,
-  customActions
+  customActions,
 }: ScriptPanelProps) {
-  const [activeTab, setActiveTab] = useState<'full' | 'components' | 'hooks'>('full')
-  const { copyText, copyStatus } = useScriptCopy()
-  const { downloadScript, isDownloading } = useScriptDownload()
+  const [activeTab, setActiveTab] = useState<"full" | "components" | "hooks">("full");
+  const { copyText, copyStatus } = useScriptCopy();
+  const { downloadScript, isDownloading } = useScriptDownload();
 
-  const tabs = getTabConfiguration(scriptData.components.length, scriptData.hooks?.length || 0)
+  const tabs = getTabConfiguration(scriptData.components.length, scriptData.hooks?.length || 0);
 
   const handleCopy = async (content: string, componentType?: string) => {
-    const success = await copyText(content)
+    const success = await copyText(content);
     if (success && onCopy) {
-      onCopy(content, componentType as any)
+      onCopy(content, componentType as any);
     }
-  }
+  };
 
   const handleDownload = () => {
-    downloadScript(scriptData)
+    downloadScript(scriptData);
     if (onDownload) {
-      onDownload(scriptData)
+      onDownload(scriptData);
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -67,11 +67,11 @@ export function ScriptPanel({
           <span className="text-sm">Loading script...</span>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className={cn('flex h-full flex-col', className)}>
+    <div className={cn("flex h-full flex-col", className)}>
       <ScriptPanelHeader
         scriptData={scriptData}
         copyStatus={copyStatus}
@@ -93,30 +93,24 @@ export function ScriptPanel({
         copyStatus={copyStatus}
       />
     </div>
-  )
+  );
 }
 
 /**
  * Script Panel Content Component
  */
 interface ScriptPanelContentProps {
-  activeTab: string
-  scriptData: ScriptData
-  showMetrics: boolean
-  onCopy: (content: string, type?: string) => void
-  copyStatus: string
+  activeTab: string;
+  scriptData: ScriptData;
+  showMetrics: boolean;
+  onCopy: (content: string, type?: string) => void;
+  copyStatus: string;
 }
 
-function ScriptPanelContent({
-  activeTab,
-  scriptData,
-  showMetrics,
-  onCopy,
-  copyStatus
-}: ScriptPanelContentProps) {
+function ScriptPanelContent({ activeTab, scriptData, showMetrics, onCopy, copyStatus }: ScriptPanelContentProps) {
   return (
     <div className="flex-1 overflow-y-auto">
-      {activeTab === 'full' && (
+      {activeTab === "full" && (
         <FullScriptView
           script={scriptData.fullScript}
           metrics={scriptData.metrics}
@@ -126,13 +120,11 @@ function ScriptPanelContent({
         />
       )}
 
-      {activeTab === 'components' && (
-        <ComponentsView components={scriptData.components} onCopy={onCopy} />
-      )}
+      {activeTab === "components" && <ComponentsView components={scriptData.components} onCopy={onCopy} />}
 
-      {activeTab === 'hooks' && <HooksView hooks={scriptData.hooks || []} onCopy={onCopy} />}
+      {activeTab === "hooks" && <HooksView hooks={scriptData.hooks || []} onCopy={onCopy} />}
     </div>
-  )
+  );
 }
 
-export default ScriptPanel
+export default ScriptPanel;

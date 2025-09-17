@@ -1,13 +1,13 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
+import React, { useState } from "react";
 
-import { FileText, Clock, Download } from 'lucide-react'
+import { FileText, Clock, Download } from "lucide-react";
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { SlideoutHeader } from '@/components/ui/slideout-header'
-import { cn } from '@/lib/utils'
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { SlideoutHeader } from "@/components/ui/slideout-header";
+import { cn } from "@/lib/utils";
 import {
   ScriptTabConfig,
   SCRIPT_COMPONENT_ICONS,
@@ -17,21 +17,21 @@ import {
   ScriptData,
   ScriptMetrics,
   ScriptComponent,
-  ScriptHook
-} from '@/types/script-panel'
+  ScriptHook,
+} from "@/types/script-panel";
 
 /**
  * Script Panel Header Component
  */
 interface ScriptPanelHeaderProps {
-  scriptData: ScriptData
-  copyStatus: string
-  isDownloading: boolean
-  showDownload: boolean
-  customActions?: React.ReactNode
-  onCopy: (content: string) => void
-  onDownload: () => void
-  onClose?: () => void
+  scriptData: ScriptData;
+  copyStatus: string;
+  isDownloading: boolean;
+  showDownload: boolean;
+  customActions?: React.ReactNode;
+  onCopy: (content: string) => void;
+  onDownload: () => void;
+  onClose?: () => void;
 }
 
 export function ScriptPanelHeader({
@@ -42,7 +42,7 @@ export function ScriptPanelHeader({
   customActions,
   onCopy,
   onDownload,
-  onClose
+  onClose,
 }: ScriptPanelHeaderProps) {
   return (
     <SlideoutHeader
@@ -59,17 +59,13 @@ export function ScriptPanelHeader({
               variant="ghost"
               size="sm"
               onClick={() => onCopy(scriptData.fullScript)}
-              disabled={copyStatus === 'copying'}
+              disabled={copyStatus === "copying"}
               className={cn(
-                'h-9 rounded-none border-r border-neutral-200 px-2.5 text-xs font-medium transition-colors duration-200',
-                copyStatus === 'success' && 'bg-success-50 text-success-600 dark:bg-success-950/20'
+                "h-9 rounded-none border-r border-neutral-200 px-2.5 text-xs font-medium transition-colors duration-200",
+                copyStatus === "success" && "bg-success-50 text-success-600 dark:bg-success-950/20",
               )}
             >
-              {copyStatus === 'copying'
-                ? 'Copying...'
-                : copyStatus === 'success'
-                  ? 'Copied'
-                  : 'Copy'}
+              {copyStatus === "copying" ? "Copying..." : copyStatus === "success" ? "Copied" : "Copy"}
             </Button>
 
             {showDownload && (
@@ -91,16 +87,16 @@ export function ScriptPanelHeader({
       }
       onClose={onClose || (() => {})}
     />
-  )
+  );
 }
 
 /**
  * Script Panel Tabs Component
  */
 interface ScriptPanelTabsProps {
-  tabs: ScriptTabConfig[]
-  activeTab: string
-  onTabChange: (tab: 'full' | 'components' | 'hooks') => void
+  tabs: ScriptTabConfig[];
+  activeTab: string;
+  onTabChange: (tab: "full" | "components" | "hooks") => void;
 }
 
 export function ScriptPanelTabs({ tabs, activeTab, onTabChange }: ScriptPanelTabsProps) {
@@ -111,39 +107,33 @@ export function ScriptPanelTabs({ tabs, activeTab, onTabChange }: ScriptPanelTab
         .map((tab) => (
           <button
             key={tab.key}
-            onClick={() => onTabChange(tab.key as 'full' | 'components' | 'hooks')}
+            onClick={() => onTabChange(tab.key as "full" | "components" | "hooks")}
             className={cn(
-              '-mb-px border-b-2 px-4 py-3 text-sm font-medium transition-all duration-200',
+              "-mb-px border-b-2 px-4 py-3 text-sm font-medium transition-all duration-200",
               activeTab === tab.key
-                ? 'border-neutral-900 text-neutral-900'
-                : 'border-transparent text-neutral-600 hover:text-neutral-900'
+                ? "border-neutral-900 text-neutral-900"
+                : "border-transparent text-neutral-600 hover:text-neutral-900",
             )}
           >
             {tab.label}
           </button>
         ))}
     </div>
-  )
+  );
 }
 
 /**
  * Full Script View Component
  */
 interface FullScriptViewProps {
-  script: string
-  metrics: ScriptMetrics
-  showMetrics: boolean
-  onCopy: (content: string) => void
-  copyStatus: string
+  script: string;
+  metrics: ScriptMetrics;
+  showMetrics: boolean;
+  onCopy: (content: string) => void;
+  copyStatus: string;
 }
 
-export function FullScriptView({
-  script,
-  metrics,
-  showMetrics,
-  onCopy,
-  copyStatus
-}: FullScriptViewProps) {
+export function FullScriptView({ script, metrics, showMetrics, onCopy, copyStatus }: FullScriptViewProps) {
   return (
     <div className="p-6">
       <div className="relative">
@@ -153,9 +143,7 @@ export function FullScriptView({
             <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-button)] border border-neutral-200 bg-neutral-50">
               <span className="text-sm font-semibold text-neutral-600">T</span>
             </div>
-            <span className="text-xs font-semibold tracking-wide text-neutral-600 uppercase">
-              Transcript
-            </span>
+            <span className="text-xs font-semibold tracking-wide text-neutral-600 uppercase">Transcript</span>
           </div>
 
           {/* Copy Button */}
@@ -164,18 +152,15 @@ export function FullScriptView({
             size="sm"
             onClick={() => onCopy(script)}
             className={cn(
-              'absolute top-5 right-5 h-7 px-3 text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100',
-              copyStatus === 'success' &&
-                'bg-success-50 text-success-600 dark:bg-success-950/20 opacity-100'
+              "absolute top-5 right-5 h-7 px-3 text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+              copyStatus === "success" && "bg-success-50 text-success-600 dark:bg-success-950/20 opacity-100",
             )}
           >
-            {copyStatus === 'success' ? 'Copied' : 'Copy'}
+            {copyStatus === "success" ? "Copied" : "Copy"}
           </Button>
 
           {/* Script Content */}
-          <div className="mt-8 text-sm leading-relaxed whitespace-pre-wrap text-neutral-900">
-            {script}
-          </div>
+          <div className="mt-8 text-sm leading-relaxed whitespace-pre-wrap text-neutral-900">{script}</div>
         </div>
 
         {/* Metrics */}
@@ -193,26 +178,26 @@ export function FullScriptView({
         )}
       </div>
     </div>
-  )
+  );
 }
 
 /**
  * Components View
  */
 interface ComponentsViewProps {
-  components: ScriptComponent[]
-  onCopy: (content: string, type?: string) => void
+  components: ScriptComponent[];
+  onCopy: (content: string, type?: string) => void;
 }
 
 export function ComponentsView({ components, onCopy }: ComponentsViewProps) {
-  const [copiedComponent, setCopiedComponent] = useState<string | null>(null)
+  const [copiedComponent, setCopiedComponent] = useState<string | null>(null);
 
   const handleComponentCopy = (content: string, componentId: string, componentType: string) => {
-    setCopiedComponent(componentId)
+    setCopiedComponent(componentId);
     Promise.resolve(onCopy(content, componentType)).finally(() => {
-      setTimeout(() => setCopiedComponent(null), 2000)
-    })
-  }
+      setTimeout(() => setCopiedComponent(null), 2000);
+    });
+  };
 
   return (
     <div className="space-y-4 p-6">
@@ -225,7 +210,7 @@ export function ComponentsView({ components, onCopy }: ComponentsViewProps) {
           <div className="mb-3 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-button)] border border-neutral-200 bg-neutral-50">
               <span className="text-sm font-semibold text-neutral-600">
-                {component.icon ?? SCRIPT_COMPONENT_ICONS[component.type] ?? '?'}
+                {component.icon ?? SCRIPT_COMPONENT_ICONS[component.type] ?? "?"}
               </span>
             </div>
             <span className="text-xs font-semibold tracking-wide text-neutral-600 uppercase">
@@ -239,12 +224,11 @@ export function ComponentsView({ components, onCopy }: ComponentsViewProps) {
             size="sm"
             onClick={() => handleComponentCopy(component.content, component.id, component.type)}
             className={cn(
-              'absolute top-5 right-5 h-7 px-3 text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100',
-              copiedComponent === component.id &&
-                'bg-success-50 text-success-600 dark:bg-success-950/20 opacity-100'
+              "absolute top-5 right-5 h-7 px-3 text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+              copiedComponent === component.id && "bg-success-50 text-success-600 dark:bg-success-950/20 opacity-100",
             )}
           >
-            {copiedComponent === component.id ? 'Copied' : 'Copy'}
+            {copiedComponent === component.id ? "Copied" : "Copy"}
           </Button>
 
           {/* Component Content */}
@@ -264,26 +248,26 @@ export function ComponentsView({ components, onCopy }: ComponentsViewProps) {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 /**
  * Hooks View Component - Display list of generated hooks
  */
 interface HooksViewProps {
-  hooks: ScriptHook[]
-  onCopy: (content: string, type?: string) => void
+  hooks: ScriptHook[];
+  onCopy: (content: string, type?: string) => void;
 }
 
 export function HooksView({ hooks, onCopy }: HooksViewProps) {
-  const [copiedHook, setCopiedHook] = useState<string | null>(null)
+  const [copiedHook, setCopiedHook] = useState<string | null>(null);
 
   const handleHookCopy = (content: string, hookId: string, hookType: string) => {
-    setCopiedHook(hookId)
+    setCopiedHook(hookId);
     Promise.resolve(onCopy(content, `hook-${hookType}`)).finally(() => {
-      setTimeout(() => setCopiedHook(null), 2000)
-    })
-  }
+      setTimeout(() => setCopiedHook(null), 2000);
+    });
+  };
 
   if (hooks.length === 0) {
     return (
@@ -294,7 +278,7 @@ export function HooksView({ hooks, onCopy }: HooksViewProps) {
         <p className="text-sm text-neutral-600">No hooks generated yet</p>
         <p className="mt-1 text-xs text-neutral-500">Hooks will appear here once generated</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -303,8 +287,8 @@ export function HooksView({ hooks, onCopy }: HooksViewProps) {
       <div className="mb-6 rounded-[var(--radius-card)] border border-neutral-200 bg-neutral-100/50 p-4">
         <h3 className="mb-2 text-sm font-semibold text-neutral-900">Generated Hooks</h3>
         <p className="text-xs text-neutral-600">
-          {hooks.length} hook{hooks.length !== 1 ? 's' : ''} generated for your script. Each hook is
-          optimized to capture attention and engagement.
+          {hooks.length} hook{hooks.length !== 1 ? "s" : ""} generated for your script. Each hook is optimized to
+          capture attention and engagement.
         </p>
       </div>
 
@@ -317,9 +301,7 @@ export function HooksView({ hooks, onCopy }: HooksViewProps) {
           {/* Hook Header */}
           <div className="mb-3 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-button)] border border-neutral-200 bg-neutral-50">
-              <span className="text-sm font-semibold text-neutral-600">
-                {SCRIPT_HOOK_ICONS[hook.type] ?? 'H'}
-              </span>
+              <span className="text-sm font-semibold text-neutral-600">{SCRIPT_HOOK_ICONS[hook.type] ?? "H"}</span>
             </div>
             <div className="flex-1">
               <span className="text-xs font-semibold tracking-wide text-neutral-600 uppercase">
@@ -346,18 +328,15 @@ export function HooksView({ hooks, onCopy }: HooksViewProps) {
             size="sm"
             onClick={() => handleHookCopy(hook.content, hook.id, hook.type)}
             className={cn(
-              'absolute top-5 right-5 h-7 px-3 text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100',
-              copiedHook === hook.id &&
-                'bg-success-50 text-success-600 dark:bg-success-950/20 opacity-100'
+              "absolute top-5 right-5 h-7 px-3 text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+              copiedHook === hook.id && "bg-success-50 text-success-600 dark:bg-success-950/20 opacity-100",
             )}
           >
-            {copiedHook === hook.id ? 'Copied' : 'Copy'}
+            {copiedHook === hook.id ? "Copied" : "Copy"}
           </Button>
 
           {/* Hook Content */}
-          <div className="mt-1 text-sm leading-relaxed whitespace-pre-wrap text-neutral-900">
-            {hook.content}
-          </div>
+          <div className="mt-1 text-sm leading-relaxed whitespace-pre-wrap text-neutral-900">{hook.content}</div>
 
           {/* Meta Info */}
           {hook.wordCount && (
@@ -371,5 +350,5 @@ export function HooksView({ hooks, onCopy }: HooksViewProps) {
         </div>
       ))}
     </div>
-  )
+  );
 }

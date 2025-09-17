@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { token } from '@atlaskit/tokens';
@@ -14,21 +14,12 @@ import ScissorsIcon from '@atlaskit/icon/glyph/shortcut';
 import VolumeIcon from '@atlaskit/icon/glyph/audio';
 import ShuffleIcon from '@atlaskit/icon/glyph/app-switcher';
 import TimerIcon from '@atlaskit/icon/glyph/stopwatch';
-import SettingsIcon from '@atlaskit/icon/glyph/settings';
 import { Button } from './Button';
 import { ShinyButton } from '@/components/ui/ShinyButton';
 import type { BrandPersona } from '@/types';
-
-export interface WritingStats {
-  words: number;
-  characters: number;
-  readingTime: number;
-  lastSaved?: Date;
-}
+import { DEFAULT_BRAND_VOICE_NAME } from '@/constants/brand-voices';
 
 export interface FloatingToolbarProps {
-  /** Writing statistics to display */
-  stats: WritingStats;
   /** Whether undo is available */
   canUndo?: boolean;
   /** Whether redo is available */
@@ -53,8 +44,6 @@ export interface FloatingToolbarProps {
   selectedBrandVoiceId?: string;
   /** Change handler for brand voice selection */
   onBrandVoiceChange?: (id: string) => void;
-  /** Brand voice id that was used for the last script generation */
-  activeBrandVoiceId?: string | null;
   /** Whether a generation/regeneration is in progress */
   isGenerating?: boolean;
   /** Whether the toolbar should be hidden */
@@ -91,34 +80,25 @@ const ToolbarContainer = styled.div<{ hidden: boolean }>`
   }
 `;
 
-const StatsDisplay = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 0 ${token('space.200')};
-
-  @media (max-width: 768px) {
-    padding: 0 ${token('space.100')};
-  }
-`;
-
-const BrandVoiceBadge = styled.span`
+const BrandVoiceBadge = styled.div`
   display: inline-flex;
   align-items: center;
   gap: ${token('space.075')};
-  padding: ${token('space.050')} ${token('space.150')};
+  padding: ${token('space.075')} ${token('space.150')};
   background: rgba(11, 92, 255, 0.12);
-  border: 1px solid rgba(11, 92, 255, 0.2);
   border-radius: ${token('border.radius.200')};
   font-size: ${token('font.size.075')};
+  color: var(--color-primary-700);
   font-weight: ${token('font.weight.medium')};
-  color: var(--color-primary-700, ${token('color.text', '#0747a6')});
-  white-space: nowrap;
 
-  .badge-prefix {
-    opacity: 0.8;
+  .badge-label {
+    text-transform: uppercase;
+    font-size: ${token('font.size.050')};
+    letter-spacing: 0.6px;
+    color: ${token('color.text.subtle')};
   }
 
-  .badge-text {
+  .badge-value {
     font-weight: ${token('font.weight.semibold')};
   }
 `;
@@ -259,7 +239,6 @@ const DropdownButton = styled.button`
 /* Removed LastSavedIndicator from toolbar; saved status moved to header */
 
 export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
-  stats,
   canUndo = false,
   canRedo = false,
   onUndo,
@@ -269,7 +248,6 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   onSave,
   onExport,
   onShare,
-  activeBrandVoiceId,
   brandVoices = [],
   selectedBrandVoiceId,
   onBrandVoiceChange,
@@ -283,33 +261,6 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   const [activeSection, setActiveSection] = useState<
     null | 'script' | 'quick' | 'style' | 'brand' | 'creative'
   >(null);
-
-  const statsSummary = useMemo(() => {
-    const minuteLabel = stats.readingTime <= 0
-      ? 'Less than 1 minute read'
-      : stats.readingTime === 1
-        ? '1 minute read'
-        : `${stats.readingTime} minutes read`;
-
-    return `${stats.words.toLocaleString()} words • ${stats.characters.toLocaleString()} characters • ${minuteLabel}`;
-  }, [stats.characters, stats.readingTime, stats.words]);
-
-  const brandVoiceName = useMemo(() => {
-    if (activeBrandVoiceId === undefined || activeBrandVoiceId === null) {
-      return null;
-    }
-
-    if (activeBrandVoiceId === '') {
-      return 'No brand voice';
-    }
-
-    const persona = brandVoices.find(voice => voice.id === activeBrandVoiceId);
-    if (persona) {
-      return persona.name || 'Custom voice';
-    }
-
-    return 'Custom voice';
-  }, [activeBrandVoiceId, brandVoices]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -360,26 +311,20 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
 
   // Formatting now handled in header; toolbar doesn’t render saved indicator
 
+  const currentBrandVoice = brandVoices?.find(v => v.id === selectedBrandVoiceId) || null;
+  const brandVoiceName = currentBrandVoice?.name?.trim()
+    || (selectedBrandVoiceId ? 'Custom voice' : (brandVoices && brandVoices.length > 0 ? DEFAULT_BRAND_VOICE_NAME : 'No brand voice'));
+
   return (
     <ToolbarContainer hidden={hidden} className={className}>
-      {brandVoiceName && (
-        <>
-          <StatsDisplay title={statsSummary} aria-label={statsSummary}>
-            <BrandVoiceBadge
-              role="status"
-              aria-live="polite"
-              title={`Brand voice used for last generation: ${brandVoiceName}`}
-            >
-              <UserIcon label="" size="small" />
-              <span className="badge-prefix">Brand voice:</span>
-              <span className="badge-text">{brandVoiceName}</span>
-            </BrandVoiceBadge>
-          </StatsDisplay>
+      <BrandVoiceBadge title={`Brand voice: ${brandVoiceName}`}>
+        <UserIcon label="" size="small" />
+        <span className="badge-label">Brand voice</span>
+        <span className="badge-value">{brandVoiceName}</span>
+      </BrandVoiceBadge>
 
-          <ToolbarDivider />
-        </>
-      )}
-
+      <ToolbarDivider />
+      
       {/* Undo/Redo Actions */}
       <Button
         variant="subtle"
@@ -403,10 +348,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       </Button>
       
       <ToolbarDivider />
-      
-      {/* Removed Save/Export/Share from toolbar per Perplexity polish */}
-      <ToolbarDivider />
-      
+
       {/* AI Actions Dropdown */}
       <AIActionsDropdown>
         <ShinyButton

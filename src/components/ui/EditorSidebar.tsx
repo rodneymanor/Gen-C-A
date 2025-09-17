@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { token } from '@atlaskit/tokens';
@@ -6,7 +6,6 @@ import { token } from '@atlaskit/tokens';
 import ChartIcon from '@atlaskit/icon/glyph/graph-line';
 import DocumentIcon from '@atlaskit/icon/glyph/document';
 import ChevronRightIcon from '@atlaskit/icon/glyph/chevron-right';
-import ChevronDownIcon from '@atlaskit/icon/glyph/chevron-down';
 import WarningIcon from '@atlaskit/icon/glyph/warning';
 import TrendingIcon from '@atlaskit/icon/glyph/arrow-up';
 import ClockIcon from '@atlaskit/icon/glyph/recent';
@@ -14,7 +13,6 @@ import TypeIcon from '@atlaskit/icon/glyph/edit';
 import HashIcon from '@atlaskit/icon/glyph/emoji/symbols';
 import FileIcon from '@atlaskit/icon/glyph/document';
 import PeopleIcon from '@atlaskit/icon/glyph/people';
-import { Button } from './Button';
 import { AnimatedCircularProgress } from './AnimatedCircularProgress';
 
 export interface ReadabilityMetrics {
@@ -152,86 +150,6 @@ const SidebarContent = styled.div`
   }
 `;
 
-const ReadabilityStatsSection = styled.div`
-  background: var(--color-background-subtle, ${token('color.background.neutral.subtle', '#f4f5f7')});
-  border: 1px solid var(--color-border-subtle, ${token('color.border', '#e4e6ea')});
-  border-radius: ${token('border.radius.200')};
-  padding: ${token('space.200')} ${token('space.250')};
-  margin-bottom: ${token('space.300')};
-
-  .primary-stat {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: ${token('space.100')};
-    font-weight: ${token('font.weight.semibold')};
-    color: var(--color-text, ${token('color.text', '#172b4d')});
-
-    .label {
-      font-size: ${token('font.size.100')};
-    }
-
-    .value {
-      font-size: ${token('font.size.200')};
-    }
-  }
-`;
-
-const StatsToggleButton = styled.button<{ expanded: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: ${token('space.075')};
-  margin-top: ${token('space.150')};
-  padding: 0;
-  background: none;
-  border: none;
-  color: var(--color-primary-600, #0B5CFF);
-  font-size: ${token('font.size.075')};
-  font-weight: ${token('font.weight.medium')};
-  cursor: pointer;
-  text-decoration: underline;
-
-  svg {
-    transition: transform ${token('motion.duration.fast')} ${token('motion.easing.standard')};
-    transform: rotate(${props => props.expanded ? '180deg' : '0deg'});
-  }
-
-  &:hover {
-    color: var(--color-primary-700, #0747A6);
-  }
-`;
-
-const AdditionalStatsGrid = styled.div`
-  margin-top: ${token('space.200')};
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: ${token('space.150')};
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const AdditionalStat = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${token('space.050')};
-  font-size: ${token('font.size.075')};
-  color: var(--color-text-secondary, ${token('color.text.subtle', '#6b778c')});
-
-  .stat-label {
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    font-weight: ${token('font.weight.semibold')};
-  }
-
-  .stat-value {
-    font-size: ${token('font.size.100')};
-    color: var(--color-text, ${token('color.text', '#172b4d')});
-    font-weight: ${token('font.weight.medium')};
-  }
-`;
-
 const ReadabilityScore = styled.div<{ score: number }>`
   text-align: center;
   margin-bottom: ${token('space.400')};
@@ -316,6 +234,92 @@ const StatsGrid = styled.div`
   margin-bottom: ${token('space.400')};
 `;
 
+const ReadabilityStatsSection = styled.div`
+  margin-bottom: ${token('space.400')};
+  padding: ${token('space.250')} ${token('space.300')};
+  background: var(--color-surface, #ffffff);
+  border-radius: var(--radius-large);
+  color: var(--color-text, ${token('color.text', '#172b4d')});
+`;
+
+const StatsSummaryHeader = styled.div`
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: ${token('space.150')};
+  font-weight: ${token('font.weight.semibold')};
+  font-size: ${token('font.size.100')};
+
+  .summary-label {
+    font-size: ${token('font.size.075')};
+    color: ${token('color.text.subtle')};
+  }
+
+  .summary-value {
+    font-size: ${token('font.size.250')};
+    font-weight: ${token('font.weight.semibold')};
+    color: var(--color-text, ${token('color.text', '#172b4d')});
+  }
+`;
+
+const StatsToggleButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: ${token('space.075')};
+  margin-top: ${token('space.150')};
+  padding: ${token('space.050')} 0;
+  background: none;
+  border: none;
+  color: var(--color-text, ${token('color.text', '#172b4d')});
+  font-size: ${token('font.size.075')};
+  font-weight: ${token('font.weight.medium')};
+  cursor: pointer;
+
+  &:hover {
+    color: var(--color-text, ${token('color.text', '#172b4d')});
+    opacity: 0.75;
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+  }
+
+  .toggle-icon {
+    transition: transform ${token('motion.duration.fast')} ${token('motion.easing.standard')};
+  }
+`;
+
+const StatsDetailsGrid = styled.div`
+  margin-top: ${token('space.200')};
+  display: flex;
+  flex-direction: column;
+  gap: ${token('space.050')};
+`;
+
+const StatsDetail = styled.div`
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: ${token('space.100')};
+  font-size: ${token('font.size.075')};
+  color: var(--color-text, ${token('color.text', '#172b4d')});
+  line-height: 1.4;
+
+  .detail-label {
+    font-weight: ${token('font.weight.medium')};
+    color: ${token('color.text.subtle')};
+  }
+
+  .detail-value {
+    font-weight: ${token('font.weight.semibold')};
+  }
+`;
+
 const StatCard = styled.div`
   text-align: center;
   padding: ${token('space.300')};
@@ -382,14 +386,30 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
   writingStats,
   className,
 }) => {
-  const hasReadabilityIssues = Object.values(readabilityMetrics.issues).some(count => count > 0);
   const [showMoreStats, setShowMoreStats] = useState(false);
 
-  const readingTimeLabel = writingStats.readingTime <= 0
-    ? 'Less than 1 minute'
-    : writingStats.readingTime === 1
-      ? '1 minute'
-      : `${writingStats.readingTime} minutes`;
+  const readingMinutes = Math.max(0, writingStats.readingTime);
+  const readingTimeLabel = readingMinutes <= 0
+    ? 'Less than a minute'
+    : `${readingMinutes} ${readingMinutes === 1 ? 'minute' : 'minutes'}`;
+
+  const wordsPerSecond = 200 / 60; // Matches editor reading speed baseline
+  const estimatedSeconds = Math.max(0, Math.ceil(writingStats.words / wordsPerSecond));
+  const formattedTime = estimatedSeconds <= 0
+    ? '0s'
+    : estimatedSeconds < 60
+      ? `${estimatedSeconds}s`
+      : `${Math.floor(estimatedSeconds / 60)}m ${String(estimatedSeconds % 60).padStart(2, '0')}s`;
+
+  const statsDetails = useMemo(() => ([
+    { key: 'letters', label: 'Letters', value: writingStats.charactersNoSpaces.toLocaleString() },
+    { key: 'characters', label: 'Characters', value: writingStats.characters.toLocaleString() },
+    { key: 'words', label: 'Words', value: writingStats.words.toLocaleString() },
+    { key: 'sentences', label: 'Sentences', value: writingStats.sentences.toLocaleString() },
+    { key: 'paragraphs', label: 'Paragraphs', value: writingStats.paragraphs.toLocaleString() },
+    { key: 'reading', label: 'Reading time', value: readingTimeLabel },
+    { key: 'time', label: 'Time', value: formattedTime },
+  ]), [writingStats, readingTimeLabel, formattedTime]);
 
   return (
     <SidebarContainer collapsed={collapsed} className={className}>
@@ -439,52 +459,36 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
             </ReadabilityScore>
 
             <ReadabilityStatsSection>
-              <div className="primary-stat">
-                <span className="label">Words</span>
-                <span className="value">{writingStats.words.toLocaleString()}</span>
-              </div>
-
+              <StatsSummaryHeader>
+                <span className="summary-label">Words</span>
+                <span className="summary-value">{writingStats.words.toLocaleString()}</span>
+              </StatsSummaryHeader>
               <StatsToggleButton
                 type="button"
-                expanded={showMoreStats}
                 onClick={() => setShowMoreStats(prev => !prev)}
                 aria-expanded={showMoreStats}
-                aria-controls="readability-additional-stats"
+                aria-controls="readability-stats-details"
               >
+                <ChevronRightIcon
+                  label=""
+                  size="small"
+                  className="toggle-icon"
+                  style={{ transform: showMoreStats ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                />
                 {showMoreStats ? 'Hide stats' : 'Show more stats'}
-                <ChevronDownIcon label="" size="small" />
               </StatsToggleButton>
-
               {showMoreStats && (
-                <AdditionalStatsGrid id="readability-additional-stats">
-                  <AdditionalStat>
-                    <span className="stat-label">Letters</span>
-                    <span className="stat-value">{writingStats.charactersNoSpaces.toLocaleString()}</span>
-                  </AdditionalStat>
-                  <AdditionalStat>
-                    <span className="stat-label">Characters</span>
-                    <span className="stat-value">{writingStats.characters.toLocaleString()}</span>
-                  </AdditionalStat>
-                  <AdditionalStat>
-                    <span className="stat-label">Words</span>
-                    <span className="stat-value">{writingStats.words.toLocaleString()}</span>
-                  </AdditionalStat>
-                  <AdditionalStat>
-                    <span className="stat-label">Sentences</span>
-                    <span className="stat-value">{writingStats.sentences.toLocaleString()}</span>
-                  </AdditionalStat>
-                  <AdditionalStat>
-                    <span className="stat-label">Paragraphs</span>
-                    <span className="stat-value">{writingStats.paragraphs.toLocaleString()}</span>
-                  </AdditionalStat>
-                  <AdditionalStat>
-                    <span className="stat-label">Reading Time</span>
-                    <span className="stat-value">{readingTimeLabel}</span>
-                  </AdditionalStat>
-                </AdditionalStatsGrid>
+                <StatsDetailsGrid id="readability-stats-details">
+                  {statsDetails.map(({ key, label, value }) => (
+                    <StatsDetail key={key}>
+                      <span className="detail-label">{label}</span>
+                      <span className="detail-value">{value}</span>
+                    </StatsDetail>
+                  ))}
+                </StatsDetailsGrid>
               )}
             </ReadabilityStatsSection>
-
+            
             <IssuesList>
               <div className="issue-category">
                 <div className="issue-header">

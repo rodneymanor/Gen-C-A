@@ -86,7 +86,7 @@ src/
   - Password reset and email verification
 
 #### 2. **Script Generation (AI-Powered)**
-- **Files**: `/src/pages/Write.tsx`, `/src/features/write/components/ScriptGenerator.tsx`, `/src/hooks/use-script-generation.ts`
+- **Files**: `/src/pages/Write.tsx`, `/src/components/script/ScriptGenerator.tsx`, `/src/hooks/use-script-generation.ts`
 - **Status**: ✅ Fully Functional
 - **Implementation**:
   - Real AI integration using Gemini API (with OpenAI/Claude fallbacks)
