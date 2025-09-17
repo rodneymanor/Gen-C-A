@@ -152,11 +152,12 @@ const contentTableStyles = css`
   }
 `;
 
-const contentItemStyles = (isSelected: boolean) => css`
+const contentItemStyles = (isSelected: boolean, isChecked: boolean) => css`
   display: flex;
   align-items: flex-start;
   gap: var(--space-4);
   padding: var(--space-4);
+  padding-left: calc(var(--space-4) + 32px);
   border-radius: var(--radius-medium);
   border: 1px solid var(--color-neutral-200);
   cursor: pointer;
@@ -200,8 +201,31 @@ const contentItemStyles = (isSelected: boolean) => css`
     opacity: 1;
   }
 
+  .checkbox-wrapper {
+    position: absolute;
+    top: 50%;
+    left: var(--space-4);
+    transform: translateY(-50%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  &:hover .checkbox-wrapper,
+  &:focus-within .checkbox-wrapper,
+  .checkbox-wrapper:focus-within {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  ${isChecked && css`
+    .checkbox-wrapper {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  `}
+
   .content-checkbox {
-    margin-top: var(--space-1);
     width: 16px;
     height: 16px;
     flex-shrink: 0;
@@ -374,22 +398,24 @@ const ContentItem: React.FC<{
 }> = ({ item, isSelected, onSelect, onCheckboxChange, isChecked }) => {
   return (
     <div
-      css={contentItemStyles(isSelected)}
+      css={contentItemStyles(isSelected, isChecked)}
       onClick={() => onSelect(item)}
       role="button"
       tabIndex={0}
     >
-      <input
-        type="checkbox"
-        className="content-checkbox"
-        checked={isChecked}
-        onChange={(e) => {
-          e.stopPropagation();
-          onCheckboxChange(item, e.target.checked);
-        }}
-        onClick={(e) => e.stopPropagation()}
-      />
-      
+      <div className="checkbox-wrapper">
+        <input
+          type="checkbox"
+          className="content-checkbox"
+          checked={isChecked}
+          onChange={(e) => {
+            e.stopPropagation();
+            onCheckboxChange(item, e.target.checked);
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+
       <div className="content-info">
         <h3 className="content-title">{item.title}</h3>
         <p className="content-meta">
