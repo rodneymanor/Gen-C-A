@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         `What actually works is combining these three elements:\n✓ Proper foundation\n✓ Consistent execution\n✓ Strategic optimization`
       ];
 
-      // WTA - call to action
+      // WTA - why to act
       const wtas = [
         `Try this approach for the next 7 days and let me know your results in the comments! 👇 Follow for more tips like this! 🔔`,
         `Which part resonated with you most? Drop a comment below! 💬 And don't forget to save this for later! 📌`,

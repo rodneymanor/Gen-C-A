@@ -268,23 +268,26 @@ export class SubAgentService {
 
     try {
       switch (ext) {
-        case '.pdf':
+        case '.pdf': {
           const pdfBuffer = fs.readFileSync(filePath);
           const pdfData = await pdfParse(pdfBuffer);
           content = pdfData.text;
           break;
-        
-        case '.docx':
+        }
+
+        case '.docx': {
           const docxBuffer = fs.readFileSync(filePath);
           const docxResult = await mammoth.extractRawText({ buffer: docxBuffer });
           content = docxResult.value;
           break;
-        
+        }
+
         case '.md':
-        case '.txt':
+        case '.txt': {
           content = fs.readFileSync(filePath, 'utf-8');
           break;
-        
+        }
+
         default:
           throw new Error(`Unsupported file format: ${ext}`);
       }
@@ -453,25 +456,29 @@ export class SubAgentService {
     const generatedFiles: string[] = [];
     
     switch (requirement.type) {
-      case 'page':
+      case 'page': {
         const pageFile = await this.generatePageComponent(requirement);
         generatedFiles.push(pageFile);
         break;
-        
-      case 'component':
+      }
+
+      case 'component': {
         const componentFile = await this.generateComponent(requirement);
         generatedFiles.push(componentFile);
         break;
-        
-      case 'service':
+      }
+
+      case 'service': {
         const serviceFile = await this.generateService(requirement);
         generatedFiles.push(serviceFile);
         break;
-        
-      case 'route':
+      }
+
+      case 'route': {
         const routeFile = await this.generateRouteConfiguration(requirement);
         generatedFiles.push(routeFile);
         break;
+      }
     }
     
     return generatedFiles;

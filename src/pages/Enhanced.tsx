@@ -89,6 +89,18 @@ const toggleStyles = css`
     width: 44px;
     height: 24px;
     
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     input {
       opacity: 0;
       width: 0;
@@ -240,6 +252,7 @@ export const Enhanced: React.FC = () => {
         <div css={toggleStyles}>
           <span className="toggle-label">Use Enhanced Version</span>
           <label className="toggle-switch">
+            <span className="visually-hidden">Toggle enhanced library component</span>
             <input
               type="checkbox"
               checked={useEnhanced.library}
@@ -278,6 +291,7 @@ export const Enhanced: React.FC = () => {
         <div css={toggleStyles}>
           <span className="toggle-label">Use Enhanced Version</span>
           <label className="toggle-switch">
+            <span className="visually-hidden">Toggle enhanced script generator</span>
             <input
               type="checkbox"
               checked={useEnhanced.scriptGenerator}
@@ -321,6 +335,7 @@ export const Enhanced: React.FC = () => {
         <div css={toggleStyles}>
           <span className="toggle-label">Use Enhanced Version</span>
           <label className="toggle-switch">
+            <span className="visually-hidden">Toggle enhanced video grid</span>
             <input
               type="checkbox"
               checked={useEnhanced.videoGrid}

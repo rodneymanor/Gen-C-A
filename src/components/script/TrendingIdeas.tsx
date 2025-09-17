@@ -261,7 +261,7 @@ export const TrendingIdeas: React.FC<TrendingIdeasProps> = ({
               }
             }}
             tabIndex={0}
-            role="listitem button"
+            role="button"
             aria-label={`Use trending idea: ${idea.title}`}
           >
             <span className="trending-emoji" aria-hidden="true">

@@ -417,7 +417,7 @@ const ScriptInputInterface = ({
                 <Checkbox
                   isChecked={configuration.includeCTA}
                   onChange={(includeCTA) => onConfigurationChange({ ...configuration, includeCTA })}
-                  label="Include call-to-action"
+                  label="Include why to act"
                 />
                 <Checkbox
                   isChecked={configuration.addHashtags}

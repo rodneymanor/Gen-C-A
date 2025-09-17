@@ -118,7 +118,7 @@ function createVideoObject(
       hook: "Auto-generated hook",
       bridge: "Auto-generated bridge",
       nugget: "Auto-generated nugget",
-      wta: "Auto-generated CTA",
+      wta: "Auto-generated why to act",
     },
     contentMetadata: {
       hashtags: extractHashtagsFromTitle(title),

@@ -204,7 +204,7 @@ function getSectionType(title: string): ScriptSection['type'] {
   if (lowerTitle.includes('nugget') || lowerTitle.includes('value') || lowerTitle.includes('insight')) {
     return 'nugget';
   }
-  if (lowerTitle.includes('cta') || lowerTitle.includes('call to action') || lowerTitle.includes('action')) {
+  if (lowerTitle.includes('cta') || lowerTitle.includes('call to action') || lowerTitle.includes('why to act') || lowerTitle.includes('action')) {
     return 'cta';
   }
 

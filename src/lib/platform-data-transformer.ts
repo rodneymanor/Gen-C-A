@@ -684,18 +684,18 @@ export class PlatformDataTransformer {
 
   private extractCallsToAction(text: string): string[] {
     if (!text) return [];
-    
-    const ctaPatterns = [
+
+    const whyToActPatterns = [
       /^(click|tap|swipe|visit|go to|check out)/i,
       /^(subscribe|follow|like|share|comment)/i,
       /^(download|get|try|start|join)/i,
       /^(buy|purchase|order|shop)/i
     ];
-    
+
     return text.split(/[.!?]+/)
       .map(sentence => sentence.trim())
-      .filter(sentence => ctaPatterns.some(pattern => pattern.test(sentence)))
-      .slice(0, 2); // Limit to first 2 CTAs
+      .filter(sentence => whyToActPatterns.some(pattern => pattern.test(sentence)))
+      .slice(0, 2); // Limit to first 2 whys to act
   }
 
   private extractQuestions(text: string): string[] {

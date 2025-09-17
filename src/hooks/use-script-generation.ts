@@ -83,15 +83,47 @@ export function useScriptGeneration() {
           const styleHints = [
             style?.tone ? `Tone: ${style.tone}` : '',
             style?.powerWords?.length ? `Power words to prefer: ${style.powerWords.slice(0, 10).join(', ')}` : '',
-            style?.transitionPhrases?.length ? `Use transitions like: ${style.transitionPhrases.slice(0, 8).join(', ')}` : '',
+            style?.transitionPhrases?.length
+              ? `Use transitions like: ${style.transitionPhrases.slice(0, 8).join(', ')}`
+              : '',
             style?.avgWordsPerSentence ? `Average sentence length: ${style.avgWordsPerSentence}` : '',
-          ].filter(Boolean).join('\n');
+          ]
+            .filter(Boolean)
+            .join('\n');
 
-          voiceBlock = `\nBRAND VOICE TEMPLATES (use these as strict patterns, replacing [VARIABLES] from the idea):\n- Hook pattern: ${hook || 'n/a'}\n- Bridge pattern: ${bridge || 'n/a'}\n- Golden Nugget pattern: ${nugget || 'n/a'}\n- CTA pattern: ${cta || 'n/a'}\n${styleHints ? `\nSTYLE SIGNATURE:\n${styleHints}\n` : ''}`;
+          const parts = [
+            '',
+            'BRAND VOICE TEMPLATES (use these as strict patterns, replacing [VARIABLES] from the idea):',
+            `- Hook pattern: ${hook || 'n/a'}`,
+            `- Bridge pattern: ${bridge || 'n/a'}`,
+            `- Golden Nugget pattern: ${nugget || 'n/a'}`,
+            `- Why to Act pattern: ${cta || 'n/a'}`,
+          ];
+
+          if (styleHints) {
+            parts.push('', 'STYLE SIGNATURE:', styleHints, '');
+          }
+
+          voiceBlock = parts.join('\n');
         }
 
         // Create a strict JSON prompt for Gemini
-        const scriptPrompt = `Return ONLY valid JSON with this exact schema and no extra text.\n\n{\n  \"hook\": \"string\",\n  \"bridge\": \"string\",\n  \"nugget\": \"string\",\n  \"wta\": \"string\"\n}\n\nTask: Generate a ${length}-second short-form video script for the idea: \"${idea}\"\nUse concise sentences and platform-native tone. Follow the brand voice patterns if provided, replacing [VARIABLES] from the idea/context.\n${voiceBlock}`.trim();
+        const jsonSchemaLines = [
+          '{',
+          '  "hook": "string",',
+          '  "bridge": "string",',
+          '  "nugget": "string",',
+          '  "wta": "string"',
+          '}',
+        ];
+
+        const scriptPrompt = `Return ONLY valid JSON with this exact schema and no extra text.
+
+${jsonSchemaLines.join('\n')}
+
+Task: Generate a ${length}-second short-form video script for the idea: "${idea}"
+Use concise sentences and platform-native tone. Follow the brand voice patterns if provided, replacing [VARIABLES] from the idea/context.
+${voiceBlock}`.trim();
         
         console.log("📝 [useScriptGeneration] Sending to server API (Gemini)...");
         console.log("📊 [useScriptGeneration] Prompt length:", scriptPrompt.length, "characters");

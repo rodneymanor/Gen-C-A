@@ -822,7 +822,7 @@ const ScriptWriter = () => {
 │ │ Chrome Extension                                        │ │
 │ │ Capture content from any website instantly             │ │
 │ │                                                         │ │
-│ │ [Download Extension] - Primary CTA                      │ │
+│ │ [Download Extension] - Primary Why to Act               │ │
 │ │ [View Setup Guide] - Secondary                          │ │
 │ └─────────────────────────────────────────────────────────┘ │
 ├─────────────────────────────────────────────────────────────┤

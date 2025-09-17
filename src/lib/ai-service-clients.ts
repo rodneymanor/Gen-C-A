@@ -396,7 +396,7 @@ export class OpenAIServiceClient implements AIServiceClient {
         hook: "OpenAI-generated attention grabber",
         bridge: "OpenAI-crafted transition",
         goldenNugget: "OpenAI-identified core value",
-        wta: "OpenAI-optimized call to action"
+        wta: "OpenAI-optimized why to act"
       });
     }
     

@@ -457,7 +457,7 @@ Gen.C Alpha is a sophisticated Next.js content creation platform requiring migra
 @atlaskit/textarea - Multi-line text inputs
 
 // Interaction Components
-@atlaskit/button - Actions and CTAs
+@atlaskit/button - Actions and Why to Act prompts
 @atlaskit/dropdown-menu - Context menus
 @atlaskit/pragma tic-drag-and-drop - Drag operations
 

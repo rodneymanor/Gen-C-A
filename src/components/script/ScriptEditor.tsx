@@ -418,8 +418,8 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
                 Present your solution or main content
               </div>
               <div className="guide-section">
-                <span className="section-tag">[CTA]</span>
-                End with a clear call-to-action
+                <span className="section-tag">[WHY TO ACT]</span>
+                End with a clear why to act prompt
               </div>
             </div>
           </div>

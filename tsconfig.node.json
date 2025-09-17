@@ -19,7 +19,7 @@
   "include": [
     "vite.config.ts",
     "src/cli/**/*",
-    "src/services/SubAgentService.ts",
-    "src/config/sub-agent.config.ts"
+    "src/config/**/*.ts",
+    "src/services/**/*.ts"
   ]
 }

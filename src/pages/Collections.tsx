@@ -886,8 +886,9 @@ export const Collections: React.FC = () => {
       >
         <div css={modalBodyStyles}>
           <div className="form-row">
-            <label className="form-label">Title</label>
+            <label className="form-label" htmlFor="create-collection-title">Title</label>
             <Input
+              id="create-collection-title"
               placeholder="Collection title"
               value={createTitle}
               onChange={(e) => setCreateTitle(e.target.value)}
@@ -897,8 +898,9 @@ export const Collections: React.FC = () => {
             />
           </div>
           <div className="form-row">
-            <label className="form-label">Description</label>
+            <label className="form-label" htmlFor="create-collection-description">Description</label>
             <Input
+              id="create-collection-description"
               placeholder="Optional description"
               value={createDescription}
               onChange={(e) => setCreateDescription(e.target.value)}
@@ -943,8 +945,9 @@ export const Collections: React.FC = () => {
             </select>
           </div>
           <div className="form-row">
-            <label className="form-label">Video URL</label>
+            <label className="form-label" htmlFor="add-video-url">Video URL</label>
             <Input
+              id="add-video-url"
               placeholder="https://..."
               value={addVideoUrl}
               onChange={(e) => setAddVideoUrl(e.target.value)}

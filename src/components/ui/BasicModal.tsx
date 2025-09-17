@@ -90,18 +90,33 @@ export const BasicModal: React.FC<BasicModalProps> = ({ open, title, onClose, ch
 
   if (!open) return null;
 
-  const handleOverlayClick = () => onClose();
-  const handleContentClick = (e: React.MouseEvent) => e.stopPropagation();
-
+  const handleOverlayClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+    onClose();
+  };
+  const handleOverlayKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClose();
+    }
+  };
   return createPortal(
-    <div css={overlayStyles} onClick={handleOverlayClick}>
+    <div
+      css={overlayStyles}
+      onClick={handleOverlayClick}
+      onKeyDown={handleOverlayKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label="Close modal"
+    >
       <div
         ref={modalRef}
         css={dialogStyles}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        onClick={handleContentClick}
       >
         <div css={headerStyles}>
           <h3 id={titleId}>{title}</h3>
@@ -116,4 +131,3 @@ export const BasicModal: React.FC<BasicModalProps> = ({ open, title, onClose, ch
 };
 
 export default BasicModal;
-

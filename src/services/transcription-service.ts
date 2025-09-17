@@ -289,7 +289,7 @@ class GeminiTranscriptionProvider implements TranscriptionProvider {
         hook: 'Mock hook',
         bridge: 'Mock bridge', 
         nugget: 'Mock nugget',
-        wta: 'Mock call to action'
+        wta: 'Mock why to act'
       },
       contentMetadata: {
         platform: 'mock',

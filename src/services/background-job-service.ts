@@ -506,7 +506,7 @@ class TranscriptionJobProcessor implements JobProcessor {
         hook: 'Mock attention-grabbing hook',
         bridge: 'Mock connecting bridge',
         nugget: 'Mock core value proposition',
-        wta: 'Mock call to action'
+        wta: 'Mock why to act'
       },
       contentMetadata: {
         platform: 'mock',

@@ -454,11 +454,6 @@ ${result.script.wta}`;
     return () => { isMounted = false; };
   }, []);
 
-  const handleVoiceInput = () => {
-    console.log('Voice input requested');
-    // In a real app, this would open the voice input modal
-  };
-
   const handleUseIdea = (idea: any) => {
     console.log('Using trending idea:', idea.title);
     // In a real app, this would populate the generation form
@@ -523,7 +518,6 @@ ${result.script.wta}`;
           <div css={contentStyles}>
             <ScriptGenerator
               onGenerate={handleGenerate}
-              onVoiceInput={handleVoiceInput}
               isLoading={isLoading}
               personas={personas}
               defaultPersonaId={defaultPersonaId}

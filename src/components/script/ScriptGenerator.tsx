@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { css } from '@emotion/react';
-import { Card, CardHeader, CardContent, CardFooter } from '../ui/Card';
+import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
 import { TextArea } from '../ui/TextArea';
 import type { AIGenerationRequest, BrandPersona } from '../../types';
 import { DEFAULT_BRAND_VOICE_ID } from '../../constants/brand-voices';
 
 export interface ScriptGeneratorProps {
   onGenerate?: (request: AIGenerationRequest) => void;
-  onVoiceInput?: () => void;
   isLoading?: boolean;
   personas?: BrandPersona[];
   defaultPersonaId?: string;
@@ -179,12 +177,6 @@ const actionsStyles = css`
   }
 `;
 
-const aiModelOptions = [
-  { value: 'creative', label: 'Creative (Recommended)' },
-  { value: 'balanced', label: 'Balanced' },
-  { value: 'precise', label: 'Precise' },
-];
-
 const lengthOptions = [
   { value: 'short', label: 'Short (15s)' },
   { value: 'medium', label: 'Medium (30s)' },
@@ -203,14 +195,12 @@ const promptSuggestions = [
 
 export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   onGenerate,
-  onVoiceInput,
   isLoading = false,
   personas = [],
   defaultPersonaId = DEFAULT_BRAND_VOICE_ID
 }) => {
   const [formData, setFormData] = useState({
     prompt: '',
-    aiModel: 'creative',
     length: 'medium',
     // Keep defaults for request payload, but no UI controls
     style: 'engaging',
@@ -245,7 +235,7 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
     
     const request: AIGenerationRequest = {
       prompt: formData.prompt,
-      aiModel: formData.aiModel,
+      aiModel: 'creative',
       length: formData.length as 'short' | 'medium' | 'long',
       style: formData.style,
       platform: formData.platform,
@@ -312,15 +302,6 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
             >
               Generate Script
             </Button>
-            <Button
-              variant="secondary"
-              size="large"
-              onClick={onVoiceInput}
-              isDisabled={isLoading}
-              iconBefore="🎤"
-            >
-              Use Voice Input
-            </Button>
           </div>
         </div>
 
@@ -334,38 +315,6 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
             </div>
             
             <div className="form-fields">
-              <div>
-                <label htmlFor="ai-model" style={{ 
-                  display: 'block', 
-                  marginBottom: 'var(--space-2)', 
-                  fontSize: 'var(--font-size-body-small)', 
-                  fontWeight: 'var(--font-weight-medium)',
-                  color: 'var(--color-neutral-700)'
-                }}>
-                  AI Model
-                </label>
-                <select
-                  id="ai-model"
-                  value={formData.aiModel}
-                  onChange={(e) => handleInputChange('aiModel', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: 'var(--space-3) var(--space-4)',
-                    border: '1px solid var(--color-neutral-300)',
-                    borderRadius: 'var(--radius-medium)',
-                    fontSize: 'var(--font-size-body)',
-                    background: 'var(--color-neutral-0)',
-                    minHeight: '40px'
-                  }}
-                >
-                  {aiModelOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div>
                 <label htmlFor="length" style={{ 
                   display: 'block', 

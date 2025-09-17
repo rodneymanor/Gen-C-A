@@ -5,6 +5,7 @@
  * Usage: npx ts-node scripts/update-test-user-email.ts
  */
 
+import { promises as fs } from 'fs';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -34,7 +35,9 @@ async function updateTestUserEmail() {
       console.log('🔍 Attempting to use service account file...');
       
       try {
-        const serviceAccount = require('../genc-a8f49-firebase-adminsdk-fbsvc-7b158a0d7d.json');
+        const serviceAccountUrl = new URL('../genc-a8f49-firebase-adminsdk-fbsvc-7b158a0d7d.json', import.meta.url);
+        const rawServiceAccount = await fs.readFile(serviceAccountUrl, 'utf-8');
+        const serviceAccount = JSON.parse(rawServiceAccount);
         
         if (getApps().length === 0) {
           initializeApp({

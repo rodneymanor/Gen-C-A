@@ -248,12 +248,12 @@ interface ErrorBoundaryState {
 }
 
 export class DebuggedErrorBoundary extends React.Component<
-  React.PropsWithChildren<{}>,
+  React.PropsWithChildren<Record<string, unknown>>,
   ErrorBoundaryState
 > {
   private debug: ReactDebugger;
 
-  constructor(props: React.PropsWithChildren<{}>) {
+  constructor(props: React.PropsWithChildren<Record<string, unknown>>) {
     super(props);
     this.debug = new ReactDebugger('ErrorBoundary');
     this.state = { hasError: false };

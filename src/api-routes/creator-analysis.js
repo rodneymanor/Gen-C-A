@@ -135,7 +135,10 @@ export async function handleSaveCreatorAnalysis(req, res) {
       const text = String(analysisText);
       hookTemplates = extractTemplates('HOOK TEMPLATES', text);
       bridgeTemplates = extractTemplates('BRIDGE TEMPLATES', text);
-      ctaTemplates = extractTemplates('CTA TEMPLATES', text);
+      ctaTemplates = extractTemplates('WHY TO ACT TEMPLATES', text);
+      if (!ctaTemplates.length) {
+        ctaTemplates = extractTemplates('CTA TEMPLATES', text);
+      }
       const nuggetBlockMatch = text.match(/##\s*GOLDEN\s*NUGGET\s*STRUCTURE\s*[\r\n]+([\s\S]*?)(?=\n##|$)/i);
       const nuggetBlock = nuggetBlockMatch ? nuggetBlockMatch[1].trim() : '';
       if (nuggetBlock) {

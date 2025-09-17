@@ -3,6 +3,8 @@
  * Complete examples for different application types
  */
 
+import express from "express";
+import { getFirestore } from "firebase-admin/firestore";
 import { AuthService } from "./AuthService";
 import { RBACService } from "./RBACService";
 import { ExpressAuthMiddleware, NextAuthMiddleware, SessionManager } from "./middleware";
@@ -114,7 +116,6 @@ export async function createAuthServices(config: AuthConfig, db: any) {
 // ===== Express.js Application Example =====
 
 export function setupExpressApp() {
-  const express = require('express');
   const app = express();
 
   // Example setup function
@@ -126,7 +127,6 @@ export function setupExpressApp() {
     };
 
     // Get Firebase Admin DB instance (you would get this from your Firebase setup)
-    const { getFirestore } = require('firebase-admin/firestore');
     const db = getFirestore();
 
     const { authService, rbacService } = await createAuthServices(config, db);

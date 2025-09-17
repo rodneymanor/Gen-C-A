@@ -158,9 +158,11 @@ export class GeminiService {
         console.log(`🤖 [Gemini] Response type: ${config.responseType}, Has JSON schema: ${!!config.jsonSchema}`);
 
         const model = this.getModel(config.model, config);
-        const result = await this.withTimeout(model.generateContent(request.prompt), config.timeout);
+        const result = await Promise.resolve(
+          this.withTimeout(model.generateContent(request.prompt), config.timeout),
+        );
 
-        const response = await result.response;
+        const response = result.response;
         const content = response.text();
         const responseTime = Date.now() - startTime;
 
@@ -228,8 +230,9 @@ export class GeminiService {
       console.log("🎤 [Gemini] Starting audio transcription...");
 
       const model = this.getModel(mergedConfig.model, mergedConfig);
-      const result = await this.withTimeout(
-        model.generateContent([
+      const result = await Promise.resolve(
+        this.withTimeout(
+          model.generateContent([
           {
             inlineData: {
               mimeType: audioData.mimeType,
@@ -239,11 +242,12 @@ export class GeminiService {
           {
             text: "Please transcribe this audio file. Return only the transcribed text without any additional commentary.",
           },
-        ]),
-        mergedConfig.timeout,
+          ]),
+          mergedConfig.timeout,
+        ),
       );
 
-      const response = await result.response;
+      const response = result.response;
       const transcription = response.text();
       const responseTime = Date.now() - startTime;
 

@@ -214,7 +214,7 @@ Return the response in this exact JSON format:
     "hook": "opening line that grabs attention",
     "bridge": "transition from hook to main content", 
     "nugget": "main value/content point",
-    "wta": "call to action at the end"
+    "wta": "why to act at the end"
   },
   "contentMetadata": {
     "author": "speaker name if identifiable",

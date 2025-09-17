@@ -78,9 +78,11 @@ export class GeminiService {
         safetySettings,
       });
 
-      const result = await GeminiService.withTimeout(model.generateContent(request.prompt), GeminiService.TIMEOUT_MS);
+      const result = await Promise.resolve(
+        GeminiService.withTimeout(model.generateContent(request.prompt), GeminiService.TIMEOUT_MS),
+      );
 
-      const response = await result.response;
+      const response = result.response;
       const content = response.text();
       const responseTime = Date.now() - startTime;
 
@@ -136,8 +138,9 @@ export class GeminiService {
         safetySettings,
       });
 
-      const result = await GeminiService.withTimeout(
-        model.generateContent([
+      const result = await Promise.resolve(
+        GeminiService.withTimeout(
+          model.generateContent([
           {
             inlineData: {
               mimeType: audioData.mimeType,
@@ -147,11 +150,12 @@ export class GeminiService {
           {
             text: "Please transcribe this audio file. Return only the transcribed text without any additional commentary.",
           },
-        ]),
-        GeminiService.TIMEOUT_MS,
+          ]),
+          GeminiService.TIMEOUT_MS,
+        ),
       );
 
-      const response = await result.response;
+      const response = result.response;
       const transcription = response.text();
 
       console.log("✅ [Gemini] Audio transcription successful");

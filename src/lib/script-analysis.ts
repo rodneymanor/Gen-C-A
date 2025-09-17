@@ -55,7 +55,7 @@ export interface ScriptElements {
 
 /**
  * Parse script elements from content with inline labels
- * Handles formats like "(Hook)", "(Bridge)", "(Golden Nugget)", "(CTA)" and "[HOOK - ...]", "[BRIDGE - ...]"
+ * Handles formats like "(Hook)", "(Bridge)", "(Golden Nugget)", "(Why to Act)" and "[HOOK - ...]", "[BRIDGE - ...]"
  */
 export function parseInlineLabels(content: string): ScriptElements {
   const result: ScriptElements = {
@@ -100,7 +100,7 @@ export function parseInlineLabels(content: string): ScriptElements {
         } else if (label.startsWith('golden nugget')) {
           result.goldenNugget = contentText;
           console.log(`💎 [parseInlineLabels] Found GOLDEN NUGGET: "${contentText.substring(0, 50)}..."`);
-        } else if (label.startsWith('wta') || label.startsWith('call to action')) {
+        } else if (label.startsWith('wta') || label.startsWith('call to action') || label.startsWith('why to act')) {
           result.wta = contentText;
           console.log(`🎯 [parseInlineLabels] Found WTA: "${contentText.substring(0, 50)}..."`);
         }
@@ -116,17 +116,17 @@ export function parseInlineLabels(content: string): ScriptElements {
   }
 
   // Fallback: try to split by inline labels that appear within the text
-  // Example: "Want unlimited income? (Hook) It's now possible... (Bridge) Content... (Golden Nugget) Share this! (CTA)"
+  // Example: "Want unlimited income? (Hook) It's now possible... (Bridge) Content... (Golden Nugget) Share this! (Why to Act)"
   if (
     content.includes("(Hook)") ||
     content.includes("(Bridge)") ||
     content.includes("(Golden Nugget)") ||
-    content.includes("(CTA)")
+    content.includes("(CTA)") || content.includes("(Why to Act)")
   ) {
     console.log(`🔍 [parseInlineLabels] Parsing mid-text inline labels`);
 
     // Split the content by the labels and extract components
-    const parts = content.split(/\s*\((Hook|Bridge|Golden Nugget|CTA|WTA)\)\s*/i);
+    const parts = content.split(/\s*\((Hook|Bridge|Golden Nugget|CTA|WTA|Why to Act)\)\s*/i);
 
     if (parts.length >= 2) {
       // parts[0] is before first label, parts[1] is first label, parts[2] is between first and second label, etc.
@@ -171,7 +171,7 @@ export function parseInlineLabels(content: string): ScriptElements {
 
   // Try to parse labels at the end of lines (V2 format)
   // Example: "Is AI about to take over your job? (Hook)"
-  const endLabelPattern = /^(.+?)\s*\((Hook|Bridge|Golden Nugget|CTA|WTA)\)\s*$/i;
+  const endLabelPattern = /^(.+?)\s*\((Hook|Bridge|Golden Nugget|CTA|WTA|Why to Act)\)\s*$/i;
   const lines = content
     .split("\n")
     .map((line) => line.trim())
@@ -208,7 +208,7 @@ export function parseInlineLabels(content: string): ScriptElements {
     { key: "hook", pattern: /\(Hook\)\s*/i },
     { key: "bridge", pattern: /\(Bridge\)\s*/i },
     { key: "goldenNugget", pattern: /\(Golden Nugget\)\s*/i },
-    { key: "wta", pattern: /\(CTA\)\s*/i },
+    { key: "wta", pattern: /\((CTA|Why to Act)\)\s*/i },
   ];
 
   // Split content by paragraphs and process each section
@@ -505,9 +505,9 @@ export const generateContextualActions = (element: ScriptElement): ContextualAct
       actions.push({
         id: "enhance_wta",
         type: "enhance_wta",
-        label: "Enhance CTA",
+        label: "Enhance Why to Act",
         icon: "🎯",
-        description: "Make this call-to-action more compelling",
+        description: "Make this why to act more compelling",
       });
       break;
   }

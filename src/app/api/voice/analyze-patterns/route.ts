@@ -172,7 +172,7 @@ Extract argumentation patterns that work for any topic:
 - Problem agitation: "Most people [COMMON_MISTAKE] which leads to [BAD_OUTCOME]"
 - Solution reveal: "The answer is actually [SIMPLER/DIFFERENT] than you think"
 - Objection handling: "You might be thinking [OBJECTION] but [COUNTER]"
-- CTA progression: Universal action prompts (try, test, implement, start)
+- Why to Act progression: Universal action prompts (try, test, implement, start)
 
 ### 6. MICRO-PATTERNS
 Capture distinctive speech quirks:
@@ -206,7 +206,7 @@ Templates that work regardless of subject matter:
 ### 10. CLOSING PATTERNS
 How they end videos:
 - Summary structures
-- CTA language variations
+- Why to Act language variations
 - Follow/engagement requests
 - Value restatement patterns
 
@@ -229,7 +229,7 @@ The formula MUST be inside "scriptGenerationRules" → "detailedScriptFormula" a
   "step10": "[00:35-00:40] Comparison. Say 'Most people [WRONG_WAY], but you should [RIGHT_WAY]'",
   "step11": "[00:40-00:45] Summary. Say 'Remember: [POINT1], [POINT2], [POINT3]'",
   "step12": "[00:45-00:50] Urgency. Say 'Only [NUMBER] spots' or 'Limited time'",
-  "step13": "[00:50-00:55] CTA. Say 'Comment [WORD]' or 'Link in bio'",
+  "step13": "[00:50-00:55] Why to Act. Say 'Comment [WORD]' or 'Link in bio'",
   "step14": "[00:55-00:60] Final hook. Say 'Next video, I'll show you [TEASER]'"
 }
 
@@ -359,7 +359,7 @@ IMPORTANT: Use proper JSON formatting - numbers without quotes, strings in quote
     "optimalStructure": {
       "hookSection": "0-10 seconds: [energy level, pace, promise]",
       "bodySection": "10-40 seconds: [teaching style, example pattern, progression]",
-      "closeSection": "40-60 seconds: [summary style, CTA approach, energy]"
+      "closeSection": "40-60 seconds: [summary style, why to act approach, energy]"
     },
     "detailedScriptFormula": {
       "step1": "[00:00-00:03] Open with [HOOK_TYPE] hook using HIGH energy. Say 'If you're [PROBLEM], I'll show you [SOLUTION]'",
@@ -374,7 +374,7 @@ IMPORTANT: Use proper JSON formatting - numbers without quotes, strings in quote
       "step10": "[00:35-00:40] Create comparison. Say 'Most people [WRONG_WAY], but you should [RIGHT_WAY]'",
       "step11": "[00:40-00:45] Summarize key points. Say 'Remember: [POINT1], [POINT2], [POINT3]'",
       "step12": "[00:45-00:50] Create urgency. Say 'Only [NUMBER] spots' or 'Limited time'",
-      "step13": "[00:50-00:55] Strong CTA. Say 'Comment [WORD] below' or 'Link in bio'",
+      "step13": "[00:50-00:55] Strong Why to Act. Say 'Comment [WORD] below' or 'Link in bio'",
       "step14": "[00:55-00:60] Final hook/tease. Say 'In my next video, I'll show you [NEXT_VALUE]'"
     },
     "universalApplicationExample": "To apply to ANY topic: Replace [PROBLEM] with your audience's pain point, [SOLUTION] with your method, [PROOF_TYPE] with your credibility (story/stats/results), [STRUCTURE_TYPE] with list/comparison/journey, etc."

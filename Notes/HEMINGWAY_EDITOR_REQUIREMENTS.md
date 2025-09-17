@@ -57,7 +57,7 @@ The Hemingway Editor is a comprehensive writing and analysis system that provide
 - **Configuration**: Customizable analysis parameters
 
 #### 2. **Script Analysis Service** (`lib/script-analysis.ts`)
-- **Element Detection**: Automatic identification of hooks, bridges, golden nuggets, CTAs
+- **Element Detection**: Automatic identification of hooks, bridges, golden nuggets, whys to act
 - **Highlight Configuration**: Customizable highlighting system
 - **Pattern Matching**: Regex-based content analysis
 - **Analysis Results**: Structured output for UI display

@@ -407,7 +407,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
           result.bridge = contentText;
         } else if (label.startsWith('golden nugget')) {
           result.goldenNugget = contentText;
-        } else if (label.startsWith('wta') || label.startsWith('call to action')) {
+        } else if (label.startsWith('wta') || label.startsWith('call to action') || label.startsWith('why to act')) {
           result.wta = contentText;
         }
       }

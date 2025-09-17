@@ -118,18 +118,18 @@ const ACTION_PROMPTS: Record<string, string> = {
   ].join('\n\n'),
 
   add_urgency: [
-    'Add one ethical urgency sentence to the end of the CTA.',
+    'Add one ethical urgency sentence to the end of the why to act.',
     'Avoid false scarcity or fake deadlines. Focus on momentum and opportunity cost.',
     'Return the full text with the urgency sentence appended.',
-    'Source CTA:\n{\n{text}\n}',
+    'Source why to act:\n{\n{text}\n}',
     'Section guidelines: {sectionGuidelines}'
   ].join('\n\n'),
 
   make_specific: [
-    'Make the CTA specific and doable by adding concrete micro-actions.',
+    'Make the why to act specific and doable by adding concrete micro-actions.',
     'Return 3–5 short bullets starting with a strong verb; platform-agnostic; total under 60 words.',
-    'Replace any vague asks with clear next steps. Return the full CTA with bullets appended.',
-    'Source CTA:\n{\n{text}\n}',
+    'Replace any vague asks with clear next steps. Return the full why to act with bullets appended.',
+    'Source why to act:\n{\n{text}\n}',
     'Section guidelines: {sectionGuidelines}'
   ].join('\n\n'),
 

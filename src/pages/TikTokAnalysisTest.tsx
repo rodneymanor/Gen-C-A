@@ -533,7 +533,7 @@ const TemplateTester: React.FC<{ templates: any }> = ({ templates }) => {
         <select value={type} onChange={(e) => { setType(e.target.value as any); setIndex(0); }}>
           <option value="hooks">Hook</option>
           <option value="bridges">Bridge</option>
-          <option value="ctas">CTA</option>
+          <option value="ctas">Why to Act</option>
           <option value="nuggets">Golden Nugget</option>
         </select>
 
@@ -592,7 +592,7 @@ export const TikTokAnalysisTest: React.FC = () => {
     'Return concise JSON with keys tone, style, hooks, transitions based on the transcripts. Keep it brief.'
   );
   const [systemPrompt, setSystemPrompt] = useState<string>(
-    'You are an expert short-form video script analyst. Focus on hooks, bridges, golden nuggets, transitions, CTAs, and tone/style fingerprints. Be precise. When asked for JSON, return valid, minimal JSON only.'
+    'You are an expert short-form video script analyst. Focus on hooks, bridges, golden nuggets, transitions, why to act prompts, and tone/style fingerprints. Be precise. When asked for JSON, return valid, minimal JSON only.'
   );
   // Advanced controls for Step 3
   const [advOpen, setAdvOpen] = useState<boolean>(false);
@@ -761,10 +761,12 @@ export const TikTokAnalysisTest: React.FC = () => {
       let nextIndex = 0;
 
       const worker = async (workerId: number) => {
-        while (true) {
+        while (nextIndex < videos.length) {
           const i = nextIndex;
-          if (i >= videos.length) return;
-          nextIndex++;
+          nextIndex += 1;
+          if (i >= videos.length) {
+            return;
+          }
 
           const video = videos[i];
           console.log(`🎬 [W${workerId}] Transcribing video ${i + 1}/${videos.length}: ${video.id}`);
@@ -847,7 +849,7 @@ export const TikTokAnalysisTest: React.FC = () => {
 - Hook (first 3-5 seconds that grabs attention)
 - Bridge (transition that sets up the main content)
 - Golden Nugget (the main value/lesson/information)
-- CTA (call to action at the end)
+- Why to Act (the closing reason to take action)
 
 2. CREATE TEMPLATES from the hooks by replacing specific details with [VARIABLES]:
 Example: "I made $5000 in 2 days" → "I [achievement] in [timeframe]"
@@ -875,7 +877,7 @@ OUTPUT FORMAT:
 - How they present main points
 - Common frameworks used
 
-## CTA TEMPLATES
+## WHY TO ACT TEMPLATES
 1. [Template with variables]
 2. [Template with variables]
 
@@ -1499,23 +1501,38 @@ OUTPUT FORMAT:
               {advOpen && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: 6, color: 'var(--color-text-secondary)' }}>Model</label>
-                    <select value={analysisModel} onChange={(e) => setAnalysisModel(e.target.value)} style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 8 }}>
+                    <label htmlFor="analysis-model" style={{ display: 'block', fontSize: '0.85rem', marginBottom: 6, color: 'var(--color-text-secondary)' }}>Model</label>
+                    <select
+                      id="analysis-model"
+                      value={analysisModel}
+                      onChange={(e) => setAnalysisModel(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 8 }}
+                    >
                       <option value="gemini-1.5-flash">gemini-1.5-flash</option>
                       <option value="gemini-1.5-pro">gemini-1.5-pro</option>
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: 6, color: 'var(--color-text-secondary)' }}>Max tokens</label>
-                    <input type="number" min={1000} max={32000} step={100}
+                    <label htmlFor="analysis-max-tokens" style={{ display: 'block', fontSize: '0.85rem', marginBottom: 6, color: 'var(--color-text-secondary)' }}>Max tokens</label>
+                    <input
+                      id="analysis-max-tokens"
+                      type="number"
+                      min={1000}
+                      max={32000}
+                      step={100}
                       value={analysisMaxTokens}
                       onChange={(e) => setAnalysisMaxTokens(Number(e.target.value) || 6000)}
                       style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 8 }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: 6, color: 'var(--color-text-secondary)' }}>Temperature</label>
-                    <input type="number" min={0} max={1} step={0.1}
+                    <label htmlFor="analysis-temperature" style={{ display: 'block', fontSize: '0.85rem', marginBottom: 6, color: 'var(--color-text-secondary)' }}>Temperature</label>
+                    <input
+                      id="analysis-temperature"
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.1}
                       value={analysisTemperature}
                       onChange={(e) => setAnalysisTemperature(Math.min(1, Math.max(0, Number(e.target.value))))}
                       style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 8 }}
@@ -1623,7 +1640,7 @@ OUTPUT FORMAT:
               <div className="step-content">
                 ✅ Saved for @{stepSave.data.creator?.handle} (ID: {stepSave.data.creator?.id})
                 <div style={{ marginTop: 8 }}>
-                  Hooks: {stepSave.data.saved?.hooks || 0}, Bridges: {stepSave.data.saved?.bridges || 0}, CTAs: {stepSave.data.saved?.ctas || 0}, Nuggets: {stepSave.data.saved?.nuggets || 0}
+                  Hooks: {stepSave.data.saved?.hooks || 0}, Bridges: {stepSave.data.saved?.bridges || 0}, Why to Act prompts: {stepSave.data.saved?.ctas || 0}, Nuggets: {stepSave.data.saved?.nuggets || 0}
                 </div>
                 <div style={{ marginTop: 12 }}>
                   <a href="/write" target="_self">Go to Write → Brand Voice</a>

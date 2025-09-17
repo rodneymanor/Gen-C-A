@@ -99,7 +99,7 @@ START: User clicks "Generate Script" or navigates to Write page
     ↓
 [Script Review & Edit]
 ├─ Generated script in rich editor
-├─ Structure highlights (Hook, Problem, Solution, CTA)
+├─ Structure highlights (Hook, Problem, Solution, Why to Act)
 ├─ AI insights panel
 │  ├─ ✅ Strengths identified
 │  ├─ ⚠️ Potential improvements  
@@ -157,7 +157,7 @@ START: User accesses Collections page
 [Collections Overview]
 ├─ Grid of existing collections
 ├─ Favorites section (if any)
-├─ [+ Create Collection] prominent CTA
+├─ [+ Create Collection] prominent Why to Act
 ├─ Search and filter options
 ├─ Sort options (Recent, Name, Size)
     ↓

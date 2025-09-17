@@ -192,10 +192,11 @@ interface ComponentsViewProps {
 export function ComponentsView({ components, onCopy }: ComponentsViewProps) {
   const [copiedComponent, setCopiedComponent] = useState<string | null>(null);
 
-  const handleComponentCopy = async (content: string, componentId: string, componentType: string) => {
+  const handleComponentCopy = (content: string, componentId: string, componentType: string) => {
     setCopiedComponent(componentId);
-    await onCopy(content, componentType);
-    setTimeout(() => setCopiedComponent(null), 2000);
+    Promise.resolve(onCopy(content, componentType)).finally(() => {
+      setTimeout(() => setCopiedComponent(null), 2000);
+    });
   };
 
   return (
@@ -261,10 +262,11 @@ interface HooksViewProps {
 export function HooksView({ hooks, onCopy }: HooksViewProps) {
   const [copiedHook, setCopiedHook] = useState<string | null>(null);
 
-  const handleHookCopy = async (content: string, hookId: string, hookType: string) => {
+  const handleHookCopy = (content: string, hookId: string, hookType: string) => {
     setCopiedHook(hookId);
-    await onCopy(content, `hook-${hookType}`);
-    setTimeout(() => setCopiedHook(null), 2000);
+    Promise.resolve(onCopy(content, `hook-${hookType}`)).finally(() => {
+      setTimeout(() => setCopiedHook(null), 2000);
+    });
   };
 
   if (hooks.length === 0) {

@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 async function createBunnyStreamVideo(
   libraryId: string,
   apiKey: string,
@@ -199,7 +198,6 @@ async function performRetryLoop(
 export async function uploadToBunnyStream(
   buffer: Buffer,
   filename: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _mimeType: string,
 ): Promise<{ cdnUrl: string; filename: string } | null> {
   try {
@@ -260,7 +258,6 @@ export function testBunnyStreamConfig(): void {
 export async function streamToBunnyFromUrl(
   videoUrl: string,
   filename: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _mimeType: string = "video/mp4",
 ): Promise<{ iframeUrl: string; directUrl: string } | null> {
   try {

@@ -614,7 +614,7 @@ export class AuthHelper {
     const baseUrl = 'https://www.googleapis.com/youtube/v3';
     const urlParams = new URLSearchParams({ ...params, key: apiKey });
     
-    return `${baseUrl}${endpoint}?${urlParams}`;
+    return `${baseUrl}${endpoint}?${urlParams.toString()}`;
   }
 
   /**

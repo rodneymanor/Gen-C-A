@@ -333,11 +333,9 @@ describe('Dashboard Page', () => {
   });
 
   describe('Error Handling', () => {
-    it('should render even if format utilities fail', () => {
+    it('should render even if format utilities fail', async () => {
       // Mock format utilities to throw errors
-      const { formatRelativeTime } = vi.mocked(
-        require('../../utils/format')
-      );
+      const { formatRelativeTime } = vi.mocked(await import('../../utils/format'));
       formatRelativeTime.mockImplementation(() => {
         throw new Error('Format error');
       });

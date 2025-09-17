@@ -499,7 +499,7 @@ class OpenAIProvider implements AIProvider {
             hook: 'OpenAI-analyzed attention grabber',
             bridge: 'OpenAI-identified transition',
             nugget: 'OpenAI-extracted core value',
-            wta: 'OpenAI-determined call to action',
+            wta: 'OpenAI-determined why to act',
             sentiment: 'positive',
             topics: ['AI', 'analysis', 'content'],
             contentType: 'educational'

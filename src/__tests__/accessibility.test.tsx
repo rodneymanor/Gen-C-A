@@ -23,7 +23,7 @@ vi.mock('../utils/format', () => ({
   formatReadingTime: vi.fn((wordCount: number) => '1 min read'),
   formatSpeakingTime: vi.fn((wordCount: number) => '0:30'),
   generateRandomColor: vi.fn(() => 'var(--color-primary-400)'),
-  debounce: vi.fn((func: Function, wait: number) => func),
+  debounce: vi.fn((func: (...args: unknown[]) => unknown, wait: number) => func),
   isValidUrl: vi.fn((url: string) => true),
   extractDomain: vi.fn((url: string) => 'example.com'),
 }));

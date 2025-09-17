@@ -42,7 +42,7 @@ A comprehensive modal popup for viewing video content with detailed insights pan
 - **Navigation Strip**: Vertical navigation between videos with prev/next buttons
 - **Tabbed Insights Panel**:
   - **Video Tab**: Title, creator info, stats, full transcript
-  - **Script Tab**: Breakdown of hook, bridge, golden nugget, CTA components
+  - **Script Tab**: Breakdown of hook, bridge, golden nugget, why to act components
   - **Analytics Tab**: Performance metrics (readability, engagement, hook strength)
   - **More Tabs**: Extensible for additional features
 - **Copy Functionality**: Copy individual script components or all content
@@ -122,7 +122,7 @@ These components follow the established design patterns:
 ✅ **View Count Display**: Formatted view counts with abbreviated numbers  
 ✅ **Video Modal**: Desktop split-view and mobile stacked layouts  
 ✅ **Tabbed Insights Panel**: Video, Script, Hooks, Analytics, More tabs  
-✅ **Script Components**: Hook, Bridge, Golden Nugget, CTA breakdown  
+✅ **Script Components**: Hook, Bridge, Golden Nugget, Why to Act breakdown
 ✅ **Copy Functionality**: Copy individual components or all content  
 ✅ **Video Navigation**: Navigate between videos within modal  
 ✅ **Responsive Design**: 4-column desktop → 1-column mobile  
