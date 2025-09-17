@@ -15,6 +15,7 @@ import { ScriptComponentEditor } from './ScriptComponentEditor';
 import { InteractiveScript } from '../writing-analysis/interactive-script';
 import { useScriptGeneration } from '@/hooks/use-script-generation';
 import type { BrandPersona } from '@/types';
+import type { ScriptElements } from '@/lib/script-analysis';
 import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME, resolveDefaultBrandVoiceId } from '@/constants/brand-voices';
 
 // Re-export interfaces from child components for convenience
@@ -44,13 +45,6 @@ export interface HemingwayEditorProps {
   onScriptElementsChange?: (elements: ScriptElements) => void;
   /** Whether to enable AI-powered interactive script editing */
   enableAIActions?: boolean;
-}
-
-interface ScriptElements {
-  hook: string;
-  bridge: string;
-  goldenNugget: string;
-  wta: string;
 }
 
 // Styled Components
@@ -353,75 +347,11 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
     scheduleAutosave();
   }, [onTitleChange, scheduleAutosave]);
 
-  // Helper function to convert script elements to formatted text for InteractiveScript
-  const formatScriptElementsToText = useCallback((elements: ScriptElements): string => {
-    const sections = [];
-
-    if (elements.hook) {
-      sections.push(`[HOOK - First 3 seconds]\n${elements.hook}`);
-    }
-
-    if (elements.bridge) {
-      sections.push(`[BRIDGE - Transition]\n${elements.bridge}`);
-    }
-
-    if (elements.goldenNugget) {
-      sections.push(`[GOLDEN NUGGET - Main Value]\n${elements.goldenNugget}`);
-    }
-
-    if (elements.wta) {
-      sections.push(`[WTA - Call to Action]\n${elements.wta}`);
-    }
-
-    return sections.join('\n\n');
-  }, []);
-
-  // Helper function to parse formatted text back to script elements
-  const parseTextToScriptElements = useCallback((text: string): ScriptElements => {
-    const result: ScriptElements = {
-      hook: '',
-      bridge: '',
-      goldenNugget: '',
-      wta: ''
-    };
-
-    // Split by sections with square bracket headers
-    const sections = text.split(/\n\s*\n/).filter(section => section.trim());
-
-    for (const section of sections) {
-      const lines = section.split('\n').map(line => line.trim()).filter(line => line);
-      if (lines.length === 0) continue;
-
-      const headerLine = lines[0];
-      const contentLines = lines.slice(1);
-      const contentText = contentLines.join('\n').trim();
-
-      // Match square bracket headers
-      const squareBracketMatch = headerLine.match(/^\[([^\]]+)\]/i);
-      if (squareBracketMatch) {
-        const label = squareBracketMatch[1].toLowerCase();
-
-        if (label.startsWith('hook')) {
-          result.hook = contentText;
-        } else if (label.startsWith('bridge')) {
-          result.bridge = contentText;
-        } else if (label.startsWith('golden nugget')) {
-          result.goldenNugget = contentText;
-        } else if (label.startsWith('wta') || label.startsWith('call to action') || label.startsWith('why to act')) {
-          result.wta = contentText;
-        }
-      }
-    }
-
-    return result;
-  }, []);
-
   // Handle script updates from InteractiveScript
-  const handleInteractiveScriptUpdate = useCallback((updatedScript: string) => {
-    const updatedElements = parseTextToScriptElements(updatedScript);
+  const handleInteractiveScriptUpdate = useCallback((updatedElements: ScriptElements) => {
     onScriptElementsChange?.(updatedElements);
     scheduleAutosave();
-  }, [parseTextToScriptElements, onScriptElementsChange, scheduleAutosave]);
+  }, [onScriptElementsChange, scheduleAutosave]);
 
   const handleScriptElementsChangeInternal = useCallback((elements: ScriptElements) => {
     onScriptElementsChange?.(elements);
@@ -641,8 +571,8 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
           {isScriptMode && scriptElements ? (
             enableAIActions ? (
               <InteractiveScript
-                script={formatScriptElementsToText(scriptElements)}
-                onScriptUpdate={handleInteractiveScriptUpdate}
+                scriptElements={scriptElements}
+                onScriptElementsChange={handleInteractiveScriptUpdate}
               />
             ) : (
               <ScriptComponentEditor

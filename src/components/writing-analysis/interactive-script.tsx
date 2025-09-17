@@ -1,11 +1,16 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { token } from '@atlaskit/tokens';
 import { Sparkles } from 'lucide-react';
 import { AISuggestionPopup } from './ai-suggestion-popup';
+import { Button } from '../ui/Button';
+import type { ScriptElements } from '@/lib/script-analysis';
+
+type ScriptElementKey = keyof ScriptElements;
 
 interface ScriptSection {
+  key?: ScriptElementKey;
   type: "hook" | "micro-hook" | "bridge" | "nugget" | "cta";
   title: string;
   content: string;
@@ -20,8 +25,10 @@ interface ScriptComponent {
 }
 
 interface InteractiveScriptProps {
-  script: string;
-  onScriptUpdate: (updatedScript: string) => void;
+  script?: string;
+  onScriptUpdate?: (updatedScript: string) => void;
+  scriptElements?: ScriptElements | null;
+  onScriptElementsChange?: (updated: ScriptElements) => void;
   className?: string;
   scriptAnalysis?: {
     hasComponentAnalysis: boolean;
@@ -40,22 +47,50 @@ const ScriptContainer = styled.div`
   position: relative;
 `;
 
+const HighlightToggle = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: ${token('space.200')};
+`;
+
 type ComplexityLevel = 'ok' | 'warning' | 'high' | 'critical';
 
-const SectionContainer = styled.div<{ sectionType: ScriptSection['type']; isHovered: boolean; complexity: ComplexityLevel }>`
+const SectionContainer = styled.div<{
+  sectionType: ScriptSection['type'];
+  isHovered: boolean;
+  complexity: ComplexityLevel;
+  highlightEnabled: boolean;
+}>`
   position: relative;
   cursor: pointer;
   border-radius: 12px;
   padding: ${token('space.300')};
   margin-bottom: ${token('space.200')};
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  border: 2px solid transparent;
+  border: 2px solid
+    ${(props) =>
+      props.highlightEnabled
+        ? getHighlightStyles(props.sectionType).border
+        : 'transparent'};
+  background:
+    ${(props) =>
+      props.highlightEnabled
+        ? getHighlightStyles(props.sectionType).background
+        : 'transparent'};
 
   ${(props) => {
+    const highlight = getHighlightStyles(props.sectionType);
+    const hoverBackground = props.highlightEnabled
+      ? highlight.hoverBackground
+      : getHoverBackgroundByComplexity(props.complexity);
+    const hoverBorder = props.highlightEnabled
+      ? highlight.border
+      : getHoverBorderByComplexity(props.complexity);
+
     const baseStyles = css`
       &:hover {
-        background: ${getHoverBackgroundByComplexity(props.complexity)};
-        border-color: ${getHoverBorderByComplexity(props.complexity)};
+        background: ${hoverBackground};
+        border-color: ${hoverBorder};
         box-shadow: ${token('elevation.shadow.raised')};
       }
     `;
@@ -63,31 +98,14 @@ const SectionContainer = styled.div<{ sectionType: ScriptSection['type']; isHove
     if (props.isHovered) {
       return css`
         ${baseStyles}
-        background: ${getHoverBackgroundByComplexity(props.complexity)};
-        border-color: ${getHoverBorderByComplexity(props.complexity)};
+        background: ${hoverBackground};
+        border-color: ${hoverBorder};
         box-shadow: ${token('elevation.shadow.raised')};
       `;
     }
 
     return baseStyles;
   }}
-`;
-
-const SectionHeader = styled.div<{ sectionType: ScriptSection['type'] }>`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: ${token('space.200')};
-
-  h3 {
-    margin: 0;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: ${(props) => getSectionTextColor(props.sectionType)};
-    display: flex;
-    align-items: center;
-    gap: ${token('space.100')};
-  }
 `;
 
 const SectionContent = styled.div`
@@ -130,19 +148,39 @@ const HoverTooltip = styled.div<{ visible: boolean }>`
 `;
 
 // Helper functions for section styling
-function getSectionIcon(type: ScriptSection['type']): string {
+function getHighlightStyles(type: ScriptSection['type']) {
   switch (type) {
     case 'hook':
     case 'micro-hook':
-      return '🪝';
+      return {
+        background: 'rgba(255, 214, 102, 0.18)',
+        hoverBackground: 'rgba(255, 214, 102, 0.32)',
+        border: 'rgba(255, 214, 102, 0.45)',
+      };
     case 'bridge':
-      return '🌉';
+      return {
+        background: 'rgba(102, 178, 255, 0.18)',
+        hoverBackground: 'rgba(102, 178, 255, 0.32)',
+        border: 'rgba(102, 178, 255, 0.5)',
+      };
     case 'nugget':
-      return '💎';
+      return {
+        background: 'rgba(102, 221, 170, 0.18)',
+        hoverBackground: 'rgba(102, 221, 170, 0.32)',
+        border: 'rgba(102, 221, 170, 0.45)',
+      };
     case 'cta':
-      return '🎯';
+      return {
+        background: 'rgba(255, 153, 153, 0.18)',
+        hoverBackground: 'rgba(255, 153, 153, 0.32)',
+        border: 'rgba(255, 153, 153, 0.5)',
+      };
     default:
-      return '📝';
+      return {
+        background: 'rgba(116, 134, 168, 0.14)',
+        hoverBackground: 'rgba(116, 134, 168, 0.26)',
+        border: 'rgba(116, 134, 168, 0.35)',
+      };
   }
 }
 
@@ -176,22 +214,6 @@ function getHoverBackgroundByComplexity(level: ComplexityLevel): string {
   }
 }
 
-function getSectionTextColor(type: ScriptSection['type']): string {
-  switch (type) {
-    case 'hook':
-    case 'micro-hook':
-      return token('color.text.accent.yellow');
-    case 'bridge':
-      return token('color.text.accent.blue');
-    case 'nugget':
-      return token('color.text.accent.green');
-    case 'cta':
-      return token('color.text.accent.red');
-    default:
-      return token('color.text');
-  }
-}
-
 function getSectionType(title: string): ScriptSection['type'] {
   const lowerTitle = title.toLowerCase();
 
@@ -211,22 +233,51 @@ function getSectionType(title: string): ScriptSection['type'] {
   return 'hook'; // Default fallback
 }
 
+const HIGHLIGHT_STORAGE_KEY = 'hemingway-script-highlight-preference';
+
 export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
   script,
   onScriptUpdate,
+  scriptElements,
+  onScriptElementsChange,
   className,
   scriptAnalysis
 }) => {
   const [hoveredSection, setHoveredSection] = useState<number | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [selectedSection, setSelectedSection] = useState<ScriptSection | null>(null);
+  const [selectedSectionIndex, setSelectedSectionIndex] = useState<number | null>(null);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  const [highlightEnabled, setHighlightEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    const stored = window.localStorage.getItem(HIGHLIGHT_STORAGE_KEY);
+    if (stored === null) {
+      return true;
+    }
+    return stored === 'true';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(
+        HIGHLIGHT_STORAGE_KEY,
+        highlightEnabled ? 'true' : 'false'
+      );
+    }
+  }, [highlightEnabled]);
+
+  const toggleHighlight = useCallback(() => {
+    setHighlightEnabled(prev => !prev);
+  }, []);
+
   // Parse script sections from markdown format
-  const parseScriptSections = useCallback((script: string): ScriptSection[] => {
+  const parseScriptSections = useCallback((rawScript: string): ScriptSection[] => {
     const sections: ScriptSection[] = [];
-    const lines = script.split('\n');
+    const lines = rawScript.split('\n');
     let currentSection: ScriptSection | null = null;
 
     for (const line of lines) {
@@ -271,6 +322,7 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
 
   // Rebuild script from sections after modifications
   const buildScriptFromSections = useCallback((sections: ScriptSection[]): string => {
+    const baseScript = script ?? '';
     return sections.map(section => {
       // Use the original header format found in the script
       const headerFormats = [
@@ -281,9 +333,9 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
 
       // Try to preserve original format by checking what's in the original script
       let headerFormat = headerFormats[0]; // Default to square brackets
-      if (script.includes(`## ${section.title}`)) {
+      if (baseScript.includes(`## ${section.title}`)) {
         headerFormat = headerFormats[1];
-      } else if (script.includes(`**${section.title}:**`)) {
+      } else if (baseScript.includes(`**${section.title}:**`)) {
         headerFormat = headerFormats[2];
       }
 
@@ -291,8 +343,38 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
     }).join('\n\n');
   }, [script]);
 
+  const buildSectionsFromElements = useCallback((elements?: ScriptElements | null): ScriptSection[] => {
+    if (!elements) {
+      return [];
+    }
+
+    const mapping: { key: ScriptElementKey; type: ScriptSection['type']; title: string }[] = [
+      { key: 'hook', type: 'hook', title: 'Hook' },
+      { key: 'bridge', type: 'bridge', title: 'Bridge' },
+      { key: 'goldenNugget', type: 'nugget', title: 'Golden Nugget' },
+      { key: 'wta', type: 'cta', title: 'Call to Action' },
+    ];
+
+    return mapping
+      .map(({ key, type, title }) => ({
+        key,
+        type,
+        title,
+        content: elements[key] ?? '',
+      }))
+      .filter(section => section.content.trim().length > 0);
+  }, []);
+
   // Memoized sections to avoid re-parsing on every render
-  const sections = useMemo(() => parseScriptSections(script), [script, parseScriptSections]);
+  const sections = useMemo(() => {
+    if (scriptElements) {
+      return buildSectionsFromElements(scriptElements);
+    }
+    if (script) {
+      return parseScriptSections(script);
+    }
+    return [];
+  }, [scriptElements, script, parseScriptSections, buildSectionsFromElements]);
 
   // Basic complexity assessment: defaults to blue; escalates to yellow/orange/red
   const assessComplexity = useCallback((text: string): ComplexityLevel => {
@@ -304,6 +386,22 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
     if (avgWordsPerSentence >= 22 || words.length >= 120) return 'high';     // orange
     if (avgWordsPerSentence >= 16 || words.length >= 80) return 'warning';   // yellow
     return 'ok';                                                             // blue
+  }, []);
+
+  const formatContentForDisplay = useCallback((text: string): string => {
+    const normalized = text.replace(/\r/g, '').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    if (/\n\s*\n/.test(normalized)) {
+      return normalized;
+    }
+
+    const collapsed = normalized.replace(/\s+/g, ' ');
+    const spaced = collapsed.replace(/([.!?])\s+/g, '$1\n\n');
+
+    return spaced.trim();
   }, []);
 
   // Handle section clicks to open popup
@@ -334,28 +432,50 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
     }
 
     setSelectedSection(section);
+    setSelectedSectionIndex(index);
     setShowPopup(true);
   }, []);
 
   // Apply AI suggestions back to script
   const handleApplySuggestion = useCallback((newText: string) => {
-    if (!selectedSection) return;
+    if (selectedSectionIndex === null) {
+      return;
+    }
 
-    const updatedSections = sections.map(section =>
-      section === selectedSection
-        ? { ...section, content: newText }
-        : section
-    );
+    const targetSection = sections[selectedSectionIndex];
+    if (!targetSection) {
+      setShowPopup(false);
+      setSelectedSection(null);
+      setSelectedSectionIndex(null);
+      return;
+    }
 
-    const updatedScript = buildScriptFromSections(updatedSections);
-    onScriptUpdate(updatedScript);
+    if (scriptElements && onScriptElementsChange && targetSection.key) {
+      const updatedElements: ScriptElements = {
+        ...scriptElements,
+        [targetSection.key]: newText,
+      };
+      onScriptElementsChange(updatedElements);
+    } else if (script && onScriptUpdate) {
+      const updatedSections = sections.map((section, index) =>
+        index === selectedSectionIndex
+          ? { ...section, content: newText }
+          : section
+      );
+
+      const updatedScript = buildScriptFromSections(updatedSections);
+      onScriptUpdate(updatedScript);
+    }
+
     setShowPopup(false);
     setSelectedSection(null);
-  }, [selectedSection, sections, buildScriptFromSections, onScriptUpdate]);
+    setSelectedSectionIndex(null);
+  }, [selectedSectionIndex, sections, scriptElements, onScriptElementsChange, script, onScriptUpdate, buildScriptFromSections]);
 
   const handleClosePopup = useCallback(() => {
     setShowPopup(false);
     setSelectedSection(null);
+    setSelectedSectionIndex(null);
   }, []);
 
   if (sections.length === 0) {
@@ -366,7 +486,7 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
           color: token('color.text.subtle'),
           padding: token('space.400')
         }}>
-          No script sections detected. Add headers like [HOOK], [BRIDGE], etc. to create interactive sections.
+          No script sections detected. Provide hook, bridge, golden nugget, and call-to-action content to enable script highlights.
         </div>
       </ScriptContainer>
     );
@@ -374,8 +494,21 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
 
   return (
     <ScriptContainer className={className}>
+      <HighlightToggle>
+        <Button
+          variant="subtle"
+          size="small"
+          onClick={toggleHighlight}
+          aria-pressed={highlightEnabled}
+          aria-label={highlightEnabled ? 'Hide script highlights' : 'Show script highlights'}
+        >
+          {highlightEnabled ? 'Hide highlights' : 'Show highlights'}
+        </Button>
+      </HighlightToggle>
+
       {sections.map((section, index) => {
         const isHovered = hoveredSection === index;
+        const displayContent = formatContentForDisplay(section.content);
 
         return (
           <SectionContainer
@@ -384,19 +517,14 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
             sectionType={section.type}
             isHovered={isHovered}
             complexity={assessComplexity(section.content)}
+            highlightEnabled={highlightEnabled}
             onClick={(e) => handleSectionClick(section, index, e)}
             onMouseEnter={() => setHoveredSection(index)}
             onMouseLeave={() => setHoveredSection(null)}
+            aria-label={section.title}
           >
-            <SectionHeader sectionType={section.type}>
-              <h3>
-                <span>{getSectionIcon(section.type)}</span>
-                {section.title}
-              </h3>
-            </SectionHeader>
-
             <SectionContent>
-              {section.content}
+              {displayContent}
             </SectionContent>
 
             {/* AI Action Indicator */}

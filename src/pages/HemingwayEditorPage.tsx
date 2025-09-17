@@ -94,24 +94,21 @@ export default function HemingwayEditorPage() {
 
   // Helper function to format script elements back to content string
   const formatScriptElements = (elements: ScriptElements): string => {
-    const sections = [];
-    
-    if (elements.hook) {
-      sections.push(`[HOOK - First 3 seconds]\n${elements.hook}`);
-    }
-    
-    if (elements.bridge) {
-      sections.push(`[BRIDGE - Transition]\n${elements.bridge}`);
-    }
-    
-    if (elements.goldenNugget) {
-      sections.push(`[GOLDEN NUGGET - Main Value]\n${elements.goldenNugget}`);
-    }
-    
-    if (elements.wta) {
-      sections.push(`[WTA - Call to Action]\n${elements.wta}`);
-    }
-    
+    const doubleSpaceSentences = (text: string) =>
+      text
+        .replace(/\r?\n+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/([.!?])\s+/g, '$1\n\n')
+        .trim();
+
+    const sections = [
+      elements.hook ? doubleSpaceSentences(elements.hook) : '',
+      elements.bridge ? doubleSpaceSentences(elements.bridge) : '',
+      elements.goldenNugget ? doubleSpaceSentences(elements.goldenNugget) : '',
+      elements.wta ? doubleSpaceSentences(elements.wta) : '',
+    ].filter(Boolean);
+
     return sections.join('\n\n');
   };
 
