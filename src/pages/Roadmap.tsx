@@ -67,6 +67,15 @@ export const Roadmap: React.FC = () => {
               <li>Compat route for legacy collections API</li>
             </ul>
           </div>
+          <div className="card">
+            <h3>Auth &amp; RBAC Parity</h3>
+            <ul>
+              <li>Align `AuthService` contract with admin test harness</li>
+              <li>Restore RBAC helpers (`canPerformAction`, filters, queries)</li>
+              <li>Map typed results (`success`, `error`, `claims`) across APIs</li>
+              <li>Document migration path and testing strategy</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -128,4 +137,3 @@ export const Roadmap: React.FC = () => {
 };
 
 export default Roadmap;
-

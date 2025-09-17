@@ -9,6 +9,7 @@ This document tracks milestones, priorities, and implementation details. The in-
 - RBAC-aware access for collections/videos
 - Add-to-Collections modal (URL import)
 - Create Collection modal
+- Auth & RBAC service parity with contract-driven tests
 
 ## Next Up (1–2 weeks)
 
@@ -35,6 +36,9 @@ This document tracks milestones, priorities, and implementation details. The in-
 
 ## Technical Notes
 
+- **Auth & RBAC parity**: mirror the Vitest expectations by (1) exposing `success`/`error` response objects from the admin `AuthService`, (2) reinstating RBAC helpers such as `canPerformAction`, `filterUserCollections`, and `buildCollectionsQuery`, and (3) wiring both services to share a typed context (`RBACContext`, `CustomClaims`).
+- Add a compatibility layer in `src/services/auth/AuthService.ts` that adapts existing admin calls to the expected shape while retaining initialization guards. Extend unit coverage with fixtures that reflect both the legacy boolean responses and the richer result objects.
+- Rehydrate the extracted RBAC service with Firestore-aware query builders plus in-memory caching; lean on test utilities for permission strings (e.g., `read:collections`, `*:collections`). Document differences from the coach-access implementation in `docs/GEN_C_ALPHA_DOCUMENTATION.md` when the refactor lands.
 - Express routes: `src/api-routes/collections.js`
 - Client API: `src/core/auth/rbac-client.ts`
 - Collections UI: `src/pages/Collections.tsx`

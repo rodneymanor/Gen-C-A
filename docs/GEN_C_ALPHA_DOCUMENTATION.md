@@ -458,6 +458,18 @@ const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
    → ProtectedRoute component checks auth state
 ```
 
+#### Auth & RBAC Parity Roadmap Item
+- **Objective**: reconcile the extracted admin-facing services with the Vitest suites in `__tests__/unit/services/auth/` so contract-driven tests can run without bespoke shims.
+- **AuthService tasks**:
+  - Return structured results (`{ success, error, claims, user }`) instead of bare booleans for operations such as token validation, custom-claim management, and session lifecycle.
+  - Normalize Firebase Admin errors (`auth/id-token-expired`, `auth/id-token-revoked`, network/rate limits) into readable messages wired into the test assertions.
+  - Preserve initialization guards (`initialize()`, `isInitialized()`) while allowing the test harness to inject mocked admin clients.
+- **RBACService tasks**:
+  - Reintroduce helper methods (`canPerformAction`, `filterUserCollections`, `buildCollectionsQuery`, caching on `getRBACContext`) that operate on permission strings (e.g., `read:collections`, `*:collections`).
+  - Support organization-based filtering and wildcard matching expected by the suite while keeping coach-access checks from the collections migration.
+  - Document the dual-export strategy in `src/services/auth/index.ts` so downstream code can migrate incrementally.
+- **Rollout notes**: update this documentation and `docs/ROADMAP.md` as APIs evolve, and add integration notes near the affected exports once the refactor lands.
+
 ### 4. Custom Hooks for State Logic
 
 #### useScriptGeneration (`/src/hooks/use-script-generation.ts`)
