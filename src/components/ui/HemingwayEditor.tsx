@@ -198,6 +198,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   const [personas, setPersonas] = useState<BrandPersona[]>([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [lastGeneratedBrandVoiceId, setLastGeneratedBrandVoiceId] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date>(new Date());
   const [, forceRelativeRefresh] = useState(0);
   
@@ -427,11 +428,20 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
             };
           });
           setPersonas(mapped);
+          const resolvedDefaultId = resolveDefaultBrandVoiceId(mapped);
+          const hasDefault = resolvedDefaultId ? mapped.some(p => p.id === resolvedDefaultId) : false;
+
           setSelectedPersonaId(prev => {
             if (prev) return prev;
-            const resolvedDefaultId = resolveDefaultBrandVoiceId(mapped);
-            const hasDefault = mapped.some(p => p.id === resolvedDefaultId);
-            return hasDefault ? resolvedDefaultId : prev;
+            return hasDefault && resolvedDefaultId ? resolvedDefaultId : prev;
+          });
+
+          setLastGeneratedBrandVoiceId(prev => {
+            if (prev !== null) return prev;
+            if (hasDefault && resolvedDefaultId) {
+              return resolvedDefaultId;
+            }
+            return '';
           });
         }
       } catch (_) {
@@ -466,9 +476,9 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
       setIsRegenerating(true);
       const idea = deriveIdeaFromEditor();
       const length = decideLength();
-      const persona = selectedPersonaId || undefined;
+      const personaIdUsed = selectedPersonaId || resolveDefaultBrandVoiceId(personas) || '';
 
-      const result = await generateScript(idea, length, persona);
+      const result = await generateScript(idea, length, personaIdUsed || undefined);
       if (result.success && result.script) {
         onScriptElementsChange({
           hook: result.script.hook,
@@ -476,13 +486,14 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
           goldenNugget: result.script.goldenNugget,
           wta: result.script.wta,
         });
+        setLastGeneratedBrandVoiceId(personaIdUsed);
       } else {
         console.error('[HemingwayEditor] Regenerate failed:', result.error);
       }
     } finally {
       setIsRegenerating(false);
     }
-  }, [isScriptMode, onScriptElementsChange, deriveIdeaFromEditor, decideLength, selectedPersonaId, generateScript]);
+  }, [isScriptMode, onScriptElementsChange, deriveIdeaFromEditor, decideLength, selectedPersonaId, personas, generateScript]);
 
   // Keep the latest regenerate handler in a ref so persona effect doesn't retrigger when dependencies change
   useEffect(() => {
@@ -617,6 +628,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
         brandVoices={personas}
         selectedBrandVoiceId={selectedPersonaId}
         onBrandVoiceChange={setSelectedPersonaId}
+        activeBrandVoiceId={lastGeneratedBrandVoiceId ?? undefined}
         onSave={() => console.log('Save')}
         onExport={() => console.log('Export')}
         onShare={() => console.log('Share')}

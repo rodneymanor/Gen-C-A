@@ -1,9 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { token } from '@atlaskit/tokens';
 // Atlassian Design System Icons
-import ClockIcon from '@atlaskit/icon/glyph/recent';
 import UndoIcon from '@atlaskit/icon/glyph/undo';
 import RedoIcon from '@atlaskit/icon/glyph/redo';
 import SparklesIcon from '@atlaskit/icon/glyph/star';
@@ -14,8 +13,6 @@ import UserIcon from '@atlaskit/icon/glyph/person';
 import ScissorsIcon from '@atlaskit/icon/glyph/shortcut';
 import VolumeIcon from '@atlaskit/icon/glyph/audio';
 import ShuffleIcon from '@atlaskit/icon/glyph/app-switcher';
-import FileTextIcon from '@atlaskit/icon/glyph/document';
-import HashIcon from '@atlaskit/icon/glyph/emoji/symbols';
 import TimerIcon from '@atlaskit/icon/glyph/stopwatch';
 import SettingsIcon from '@atlaskit/icon/glyph/settings';
 import { Button } from './Button';
@@ -56,6 +53,8 @@ export interface FloatingToolbarProps {
   selectedBrandVoiceId?: string;
   /** Change handler for brand voice selection */
   onBrandVoiceChange?: (id: string) => void;
+  /** Brand voice id that was used for the last script generation */
+  activeBrandVoiceId?: string | null;
   /** Whether a generation/regeneration is in progress */
   isGenerating?: boolean;
   /** Whether the toolbar should be hidden */
@@ -95,35 +94,32 @@ const ToolbarContainer = styled.div<{ hidden: boolean }>`
 const StatsDisplay = styled.div`
   display: flex;
   align-items: center;
-  gap: ${token('space.200')};
   padding: 0 ${token('space.200')};
-  font-size: ${token('font.size.075')};
-  color: ${token('color.text.subtle')};
-  white-space: nowrap;
-  
-  .stat-item {
-    display: flex;
-    align-items: center;
-    gap: ${token('space.075')};
-    
-    .stat-icon {
-      color: ${token('color.icon.subtle')};
-    }
-    
-    .stat-value {
-      font-weight: ${token('font.weight.medium')};
-      color: ${token('color.text')};
-    }
-  }
-  
+
   @media (max-width: 768px) {
-    gap: ${token('space.150')};
     padding: 0 ${token('space.100')};
-    
-    .stat-item {
-      font-size: ${token('font.size.050')};
-      gap: ${token('space.050')};
-    }
+  }
+`;
+
+const BrandVoiceBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: ${token('space.075')};
+  padding: ${token('space.050')} ${token('space.150')};
+  background: rgba(11, 92, 255, 0.12);
+  border: 1px solid rgba(11, 92, 255, 0.2);
+  border-radius: ${token('border.radius.200')};
+  font-size: ${token('font.size.075')};
+  font-weight: ${token('font.weight.medium')};
+  color: var(--color-primary-700, ${token('color.text', '#0747a6')});
+  white-space: nowrap;
+
+  .badge-prefix {
+    opacity: 0.8;
+  }
+
+  .badge-text {
+    font-weight: ${token('font.weight.semibold')};
   }
 `;
 
@@ -273,6 +269,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   onSave,
   onExport,
   onShare,
+  activeBrandVoiceId,
   brandVoices = [],
   selectedBrandVoiceId,
   onBrandVoiceChange,
@@ -286,6 +283,33 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   const [activeSection, setActiveSection] = useState<
     null | 'script' | 'quick' | 'style' | 'brand' | 'creative'
   >(null);
+
+  const statsSummary = useMemo(() => {
+    const minuteLabel = stats.readingTime <= 0
+      ? 'Less than 1 minute read'
+      : stats.readingTime === 1
+        ? '1 minute read'
+        : `${stats.readingTime} minutes read`;
+
+    return `${stats.words.toLocaleString()} words • ${stats.characters.toLocaleString()} characters • ${minuteLabel}`;
+  }, [stats.characters, stats.readingTime, stats.words]);
+
+  const brandVoiceName = useMemo(() => {
+    if (activeBrandVoiceId === undefined || activeBrandVoiceId === null) {
+      return null;
+    }
+
+    if (activeBrandVoiceId === '') {
+      return 'No brand voice';
+    }
+
+    const persona = brandVoices.find(voice => voice.id === activeBrandVoiceId);
+    if (persona) {
+      return persona.name || 'Custom voice';
+    }
+
+    return 'Custom voice';
+  }, [activeBrandVoiceId, brandVoices]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -338,27 +362,24 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
 
   return (
     <ToolbarContainer hidden={hidden} className={className}>
-      {/* Statistics Display */}
-      <StatsDisplay>
-        <div className="stat-item">
-          <FileTextIcon label="" size="small" />
-          <span className="stat-value">{stats.words.toLocaleString()}</span>
-          <span>words</span>
-        </div>
-        <div className="stat-item">
-          <HashIcon label="" size="small" />
-          <span className="stat-value">{stats.characters.toLocaleString()}</span>
-          <span>chars</span>
-        </div>
-        <div className="stat-item">
-          <ClockIcon label="" size="small" />
-          <span className="stat-value">{stats.readingTime}</span>
-          <span>min read</span>
-        </div>
-      </StatsDisplay>
+      {brandVoiceName && (
+        <>
+          <StatsDisplay title={statsSummary} aria-label={statsSummary}>
+            <BrandVoiceBadge
+              role="status"
+              aria-live="polite"
+              title={`Brand voice used for last generation: ${brandVoiceName}`}
+            >
+              <UserIcon label="" size="small" />
+              <span className="badge-prefix">Brand voice:</span>
+              <span className="badge-text">{brandVoiceName}</span>
+            </BrandVoiceBadge>
+          </StatsDisplay>
 
-      <ToolbarDivider />
-      
+          <ToolbarDivider />
+        </>
+      )}
+
       {/* Undo/Redo Actions */}
       <Button
         variant="subtle"

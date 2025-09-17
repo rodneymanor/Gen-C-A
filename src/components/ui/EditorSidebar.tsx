@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { token } from '@atlaskit/tokens';
@@ -6,6 +6,7 @@ import { token } from '@atlaskit/tokens';
 import ChartIcon from '@atlaskit/icon/glyph/graph-line';
 import DocumentIcon from '@atlaskit/icon/glyph/document';
 import ChevronRightIcon from '@atlaskit/icon/glyph/chevron-right';
+import ChevronDownIcon from '@atlaskit/icon/glyph/chevron-down';
 import WarningIcon from '@atlaskit/icon/glyph/warning';
 import TrendingIcon from '@atlaskit/icon/glyph/arrow-up';
 import ClockIcon from '@atlaskit/icon/glyph/recent';
@@ -148,6 +149,86 @@ const SidebarContent = styled.div`
     &:hover {
       background: var(--color-border-strong, ${token('color.background.neutral.bolder', '#5e6c84')});
     }
+  }
+`;
+
+const ReadabilityStatsSection = styled.div`
+  background: var(--color-background-subtle, ${token('color.background.neutral.subtle', '#f4f5f7')});
+  border: 1px solid var(--color-border-subtle, ${token('color.border', '#e4e6ea')});
+  border-radius: ${token('border.radius.200')};
+  padding: ${token('space.200')} ${token('space.250')};
+  margin-bottom: ${token('space.300')};
+
+  .primary-stat {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: ${token('space.100')};
+    font-weight: ${token('font.weight.semibold')};
+    color: var(--color-text, ${token('color.text', '#172b4d')});
+
+    .label {
+      font-size: ${token('font.size.100')};
+    }
+
+    .value {
+      font-size: ${token('font.size.200')};
+    }
+  }
+`;
+
+const StatsToggleButton = styled.button<{ expanded: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: ${token('space.075')};
+  margin-top: ${token('space.150')};
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-primary-600, #0B5CFF);
+  font-size: ${token('font.size.075')};
+  font-weight: ${token('font.weight.medium')};
+  cursor: pointer;
+  text-decoration: underline;
+
+  svg {
+    transition: transform ${token('motion.duration.fast')} ${token('motion.easing.standard')};
+    transform: rotate(${props => props.expanded ? '180deg' : '0deg'});
+  }
+
+  &:hover {
+    color: var(--color-primary-700, #0747A6);
+  }
+`;
+
+const AdditionalStatsGrid = styled.div`
+  margin-top: ${token('space.200')};
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: ${token('space.150')};
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const AdditionalStat = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${token('space.050')};
+  font-size: ${token('font.size.075')};
+  color: var(--color-text-secondary, ${token('color.text.subtle', '#6b778c')});
+
+  .stat-label {
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: ${token('font.weight.semibold')};
+  }
+
+  .stat-value {
+    font-size: ${token('font.size.100')};
+    color: var(--color-text, ${token('color.text', '#172b4d')});
+    font-weight: ${token('font.weight.medium')};
   }
 `;
 
@@ -302,6 +383,13 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
   className,
 }) => {
   const hasReadabilityIssues = Object.values(readabilityMetrics.issues).some(count => count > 0);
+  const [showMoreStats, setShowMoreStats] = useState(false);
+
+  const readingTimeLabel = writingStats.readingTime <= 0
+    ? 'Less than 1 minute'
+    : writingStats.readingTime === 1
+      ? '1 minute'
+      : `${writingStats.readingTime} minutes`;
 
   return (
     <SidebarContainer collapsed={collapsed} className={className}>
@@ -349,7 +437,54 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
               />
               <div className="grade">{readabilityMetrics.grade}</div>
             </ReadabilityScore>
-            
+
+            <ReadabilityStatsSection>
+              <div className="primary-stat">
+                <span className="label">Words</span>
+                <span className="value">{writingStats.words.toLocaleString()}</span>
+              </div>
+
+              <StatsToggleButton
+                type="button"
+                expanded={showMoreStats}
+                onClick={() => setShowMoreStats(prev => !prev)}
+                aria-expanded={showMoreStats}
+                aria-controls="readability-additional-stats"
+              >
+                {showMoreStats ? 'Hide stats' : 'Show more stats'}
+                <ChevronDownIcon label="" size="small" />
+              </StatsToggleButton>
+
+              {showMoreStats && (
+                <AdditionalStatsGrid id="readability-additional-stats">
+                  <AdditionalStat>
+                    <span className="stat-label">Letters</span>
+                    <span className="stat-value">{writingStats.charactersNoSpaces.toLocaleString()}</span>
+                  </AdditionalStat>
+                  <AdditionalStat>
+                    <span className="stat-label">Characters</span>
+                    <span className="stat-value">{writingStats.characters.toLocaleString()}</span>
+                  </AdditionalStat>
+                  <AdditionalStat>
+                    <span className="stat-label">Words</span>
+                    <span className="stat-value">{writingStats.words.toLocaleString()}</span>
+                  </AdditionalStat>
+                  <AdditionalStat>
+                    <span className="stat-label">Sentences</span>
+                    <span className="stat-value">{writingStats.sentences.toLocaleString()}</span>
+                  </AdditionalStat>
+                  <AdditionalStat>
+                    <span className="stat-label">Paragraphs</span>
+                    <span className="stat-value">{writingStats.paragraphs.toLocaleString()}</span>
+                  </AdditionalStat>
+                  <AdditionalStat>
+                    <span className="stat-label">Reading Time</span>
+                    <span className="stat-value">{readingTimeLabel}</span>
+                  </AdditionalStat>
+                </AdditionalStatsGrid>
+              )}
+            </ReadabilityStatsSection>
+
             <IssuesList>
               <div className="issue-category">
                 <div className="issue-header">
