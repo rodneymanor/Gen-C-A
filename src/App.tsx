@@ -19,10 +19,10 @@ import HemingwayEditorPage from './pages/HemingwayEditorPage';
 import LoginPage from './pages/Login';
 import RegisterPage from './pages/Register';
 import { Roadmap } from './pages/Roadmap';
+import BrandHub from './pages/BrandHub';
 import './styles/globals.css';
 
 // Placeholder components for missing routes
-const BrandHub = () => <div>Brand Hub - Coming Soon</div>;
 const Extensions = () => <div>Extensions - Coming Soon</div>;
 const Mobile = () => <div>Mobile - Coming Soon</div>;
 
