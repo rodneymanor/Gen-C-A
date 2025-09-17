@@ -65,7 +65,7 @@ const SectionContainer = styled.div<{
   cursor: pointer;
   border-radius: 12px;
   padding: ${token('space.300')};
-  margin-bottom: ${token('space.200')};
+  margin-bottom: 0;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
   border: 2px solid
     ${(props) =>
@@ -340,7 +340,7 @@ export const InteractiveScript: React.FC<InteractiveScriptProps> = ({
       }
 
       return `${headerFormat}\n${section.content}`;
-    }).join('\n\n');
+    }).join('\n');
   }, [script]);
 
   const buildSectionsFromElements = useCallback((elements?: ScriptElements | null): ScriptSection[] => {
