@@ -15,6 +15,16 @@ The result was surprising. The sentences became clearer. The story began to take
 
 As the afternoon wore on, Sarah found herself completely absorbed in her work. The outside world faded away, leaving only her characters and their journey. This was what she had been searching for all along - that perfect state of flow where writing becomes effortless.`
 
+const removeGeneratedScriptPhrase = (rawTitle: string) => {
+  const cleanedTitle = rawTitle.replace(/generated script[:\s-]*/gi, '').trim()
+
+  if (cleanedTitle) {
+    return cleanedTitle
+  }
+
+  return 'Untitled Script'
+}
+
 export default function HemingwayEditorPage() {
   const [searchParams] = useSearchParams()
   const {
@@ -44,8 +54,9 @@ export default function HemingwayEditorPage() {
 
     if (paramTitle) {
       const decodedTitle = decodeURIComponent(paramTitle)
-      console.log('📑 [HemingwayEditorPage] Setting title:', decodedTitle)
-      setTitle(decodedTitle)
+      const sanitizedTitle = removeGeneratedScriptPhrase(decodedTitle)
+      console.log('📑 [HemingwayEditorPage] Setting title:', sanitizedTitle)
+      setTitle(sanitizedTitle)
     }
   }, [searchParams, applyStructuredContent, setTitle])
 
