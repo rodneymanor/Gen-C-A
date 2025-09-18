@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { css } from '@emotion/react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
@@ -9,6 +9,7 @@ import type { ContentItem } from '../types';
 import { getLibraryContent } from './library-data';
 import { useDebugger, DEBUG_LEVELS } from '../utils/debugger';
 import { usePageLoad } from '../contexts/PageLoadContext';
+import { useAuth } from '../contexts/AuthContext';
 import DropdownMenu, { DropdownItem, DropdownItemGroup } from '@atlaskit/dropdown-menu';
 import { auth } from '../lib/firebase';
 
@@ -21,6 +22,7 @@ import VideoIcon from '@atlaskit/icon/glyph/vid-play';
 import ViewIcon from '@atlaskit/icon/glyph/watch';
 import CrossIcon from '@atlaskit/icon/glyph/cross';
 import MoreIcon from '@atlaskit/icon/glyph/more';
+import WarningIcon from '@atlaskit/icon/glyph/warning';
 
 // Brand color: Bloom Blue (tokens)
 const AGENT_PRIMARY = 'var(--color-primary-500)';
@@ -271,6 +273,38 @@ const contentItemStyles = (isSelected: boolean, isChecked: boolean) => css`
   }
 `;
 
+const errorBannerStyles = css`
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-medium);
+  border: 1px solid var(--color-danger-200, #f97066);
+  background: var(--color-danger-50, #fee4e2);
+  color: var(--color-danger-700, #b42318);
+  margin-bottom: var(--space-5);
+
+  svg {
+    flex-shrink: 0;
+    color: inherit;
+  }
+
+  .error-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+
+    .error-title {
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .error-message {
+      font-size: var(--font-size-body);
+      line-height: var(--line-height-relaxed);
+    }
+  }
+`;
+
 const previewPanelStyles = css`
   position: sticky;
   top: var(--space-4);
@@ -499,6 +533,7 @@ const ContentItem: React.FC<{
 export const Library: React.FC = () => {
   const navigate = useNavigate();
   const debug = useDebugger('LibraryPage', { level: DEBUG_LEVELS.DEBUG });
+  const { firebaseUser, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<ContentType>('all');
   const [content, setContent] = useState<ContentItem[]>([]);
@@ -506,24 +541,78 @@ export const Library: React.FC = () => {
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const { beginPageLoad, endPageLoad } = usePageLoad();
+  const pageLoadRef = useRef({ begin: beginPageLoad, end: endPageLoad });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    pageLoadRef.current = { begin: beginPageLoad, end: endPageLoad };
+  }, [beginPageLoad, endPageLoad]);
 
   useEffect(() => {
     let isMounted = true;
-    debug.info('Fetching library content (mount)');
-    (async () => {
-      beginPageLoad();
-      const items = await getLibraryContent();
-      if (isMounted) {
+
+    if (authLoading) {
+      debug.debug('Auth still loading; deferring library fetch');
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    if (!firebaseUser) {
+      debug.warn('No authenticated user; skipping library fetch');
+      setContent([]);
+      setSelectedItem(null);
+      setCheckedItems([]);
+      setErrorMessage('Sign in to view your library content.');
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const fetchContent = async () => {
+      debug.info('Fetching library content', { hasFirebaseUser: !!firebaseUser });
+      setErrorMessage(null);
+      pageLoadRef.current.begin();
+      try {
+        const items = await getLibraryContent();
+        if (!isMounted) {
+          return;
+        }
+
         setContent(items);
-        setSelectedItem(items[0] ?? null);
+        setSelectedItem(prev => {
+          if (!prev) {
+            return items[0] ?? null;
+          }
+          const existingSelection = items.find(item => item.id === prev.id);
+          return existingSelection ?? (items[0] ?? null);
+        });
+        setCheckedItems(prev => prev.filter(id => items.some(item => item.id === id)));
         debug.info('Library content loaded', { count: items.length });
+        setErrorMessage(null);
+      } catch (error: any) {
+        if (!isMounted) {
+          return;
+        }
+        const message = error?.message ?? 'Failed to load library content.';
+        debug.error('Failed to load library content', {
+          message
+        });
+        setContent([]);
+        setSelectedItem(null);
+        setCheckedItems([]);
+        setErrorMessage(message);
+      } finally {
+        pageLoadRef.current.end();
       }
-      endPageLoad();
-    })();
+    };
+
+    fetchContent();
+
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [authLoading, firebaseUser, debug]);
 
   const filters: { key: ContentType; label: string; icon: React.ReactNode }[] = [
     { key: 'all', label: 'All', icon: <DocumentIcon label="" /> },
@@ -660,6 +749,16 @@ export const Library: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {errorMessage && (
+        <div css={errorBannerStyles} role="alert">
+          <WarningIcon label="" />
+          <div className="error-content">
+            <span className="error-title">Unable to load your library</span>
+            <span className="error-message">{errorMessage}</span>
+          </div>
+        </div>
+      )}
 
       <div css={filtersStyles}>
         <div className="search-container">

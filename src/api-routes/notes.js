@@ -108,22 +108,36 @@ export async function handleGetNotes(req, res) {
       xClient: req.headers['x-client'] || req.headers['X-Client'],
     });
   } catch {}
-  // If authenticated and Firestore available, read user notes from Firestore
-  try {
-    const auth = await verifyBearer(req);
-    const db = getDb();
-    if (auth && db) {
-      console.log('[notes] Using Firestore with auth uid:', auth.uid);
-      const notes = await fetchUserNotes(db, auth.uid);
-      return res.json({ success: true, notes });
-    }
-  } catch (e) {
-    console.warn('[notes] Firestore GET failed, falling back to JSON:', e?.message);
+  const authResult = await verifyBearer(req);
+
+  if (!authResult) {
+    console.warn('[notes] Missing or invalid auth token for library fetch');
+    return res.status(401).json({
+      success: false,
+      error: 'Authentication required to load notes.'
+    });
   }
 
-  console.log('[notes] Using JSON store fallback');
-  const notes = readNotes();
-  res.json({ success: true, notes });
+  const db = getDb();
+  if (!db) {
+    console.error('[notes] Firestore unavailable while fetching notes');
+    return res.status(503).json({
+      success: false,
+      error: 'Content service is unavailable. Please try again later.'
+    });
+  }
+
+  try {
+    console.log('[notes] Using Firestore with auth uid:', authResult.uid);
+    const notes = await fetchUserNotes(db, authResult.uid);
+    return res.json({ success: true, notes });
+  } catch (e) {
+    console.error('[notes] Failed to fetch notes from Firestore:', e?.message);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to load notes from Firestore.'
+    });
+  }
 }
 
 export async function handleCreateNote(req, res) {

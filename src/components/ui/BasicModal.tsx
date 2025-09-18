@@ -2,12 +2,15 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { css } from '@emotion/react';
 
+type BasicModalSize = 'default' | 'large';
+
 interface BasicModalProps {
   open: boolean;
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  size?: BasicModalSize;
 }
 
 const overlayStyles = css`
@@ -20,15 +23,19 @@ const overlayStyles = css`
   z-index: 1000;
 `;
 
-const dialogStyles = css`
+const dialogStyles = (size: BasicModalSize) => css`
   background: var(--color-neutral-0, #fff);
   color: var(--color-text-primary, #172b4d);
   border-radius: var(--radius-medium, 8px);
   border: 1px solid var(--color-neutral-200, #e4e6ea);
   box-shadow: 0 4px 24px rgba(0,0,0,0.12);
   min-width: 320px;
-  max-width: 640px;
-  width: 92%;
+  max-width: ${size === 'large' ? '960px' : '640px'};
+  width: ${size === 'large' ? '96%' : '92%'};
+  max-height: ${size === 'large' ? '92vh' : 'auto'};
+  min-height: ${size === 'large' ? '560px' : 'auto'};
+  display: flex;
+  flex-direction: column;
 `;
 
 const headerStyles = css`
@@ -41,8 +48,10 @@ const headerStyles = css`
   button { background: none; border: none; cursor: pointer; font-size: 18px; }
 `;
 
-const bodyStyles = css`
-  padding: var(--space-5, 20px);
+const bodyStyles = (size: BasicModalSize) => css`
+  padding: ${size === 'large' ? 'var(--space-6, 24px)' : 'var(--space-5, 20px)'};
+  flex: 1 1 auto;
+  overflow-y: auto;
 `;
 
 const footerStyles = css`
@@ -53,7 +62,14 @@ const footerStyles = css`
   border-top: 1px solid var(--color-neutral-200, #e4e6ea);
 `;
 
-export const BasicModal: React.FC<BasicModalProps> = ({ open, title, onClose, children, footer }) => {
+export const BasicModal: React.FC<BasicModalProps> = ({
+  open,
+  title,
+  onClose,
+  children,
+  footer,
+  size = 'default'
+}) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const titleId = useRef(`modal-title-${Math.random().toString(36).slice(2)}`).current;
 
@@ -113,7 +129,7 @@ export const BasicModal: React.FC<BasicModalProps> = ({ open, title, onClose, ch
     >
       <div
         ref={modalRef}
-        css={dialogStyles}
+        css={dialogStyles(size)}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -122,7 +138,7 @@ export const BasicModal: React.FC<BasicModalProps> = ({ open, title, onClose, ch
           <h3 id={titleId}>{title}</h3>
           <button aria-label="Close" onClick={onClose}>×</button>
         </div>
-        <div css={bodyStyles}>{children}</div>
+        <div css={bodyStyles(size)}>{children}</div>
         {footer && <div css={footerStyles}>{footer}</div>}
       </div>
     </div>,

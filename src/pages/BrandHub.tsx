@@ -13,7 +13,8 @@ import VidPlayIcon from '@atlaskit/icon/glyph/vid-play'
 import CheckCircleIcon from '@atlaskit/icon/glyph/check-circle'
 import GraphLineIcon from '@atlaskit/icon/glyph/graph-line'
 import ArrowRightIcon from '@atlaskit/icon/glyph/arrow-right'
-import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left'
+import ArrowUpIcon from '@atlaskit/icon/glyph/arrow-up'
+import ArrowDownIcon from '@atlaskit/icon/glyph/arrow-down'
 import StopwatchIcon from '@atlaskit/icon/glyph/stopwatch'
 
 declare global {
@@ -264,66 +265,164 @@ const workflowCardStyles = css`
   }
 `
 
-const onboardingExperienceStyles = css`
+const onboardingIntroCardStyles = css`
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-4);
+  justify-items: center;
+  text-align: center;
+  padding: var(--space-6);
+  border-radius: var(--radius-large);
+  border: 1px dashed var(--color-neutral-300);
+  background: var(--color-neutral-0);
 
-  .question-header {
+  .intro-eyebrow {
+    font-size: var(--font-size-caption);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-neutral-500);
+  }
+
+  h2 {
+    margin: 0;
+    font-size: var(--font-size-h4);
+    color: var(--color-neutral-900);
+  }
+
+  p {
+    margin: 0;
+    color: var(--color-neutral-600);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-relaxed, 1.6);
+  }
+
+  .progress-hint {
+    font-size: var(--font-size-caption);
+    color: var(--color-neutral-500);
+  }
+
+  .intro-actions {
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-between;
     gap: var(--space-3);
-    align-items: center;
+    justify-content: center;
   }
+`
 
-  .progress-meta {
+const onboardingCompletedCardStyles = css`
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border-radius: var(--radius-large);
+  border: 1px solid var(--color-neutral-200);
+  background: var(--color-neutral-0);
+
+  .completed-header {
     display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--font-size-body-small);
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .completed-header h2 {
+    margin: 0;
+    font-size: var(--font-size-h4);
+    color: var(--color-neutral-900);
+  }
+
+  .completed-header p {
+    margin: var(--space-1) 0 0;
     color: var(--color-neutral-600);
+    font-size: var(--font-size-body);
+    max-width: 520px;
   }
 
-  .progress-bar {
-    position: relative;
-    width: 100%;
-    height: 6px;
-    border-radius: var(--radius-pill, 999px);
-    background: var(--color-neutral-200);
-    overflow: hidden;
+  .intro-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
   }
 
-  .progress-fill {
-    height: 100%;
-    background: var(--color-primary-500);
-    transition: width 240ms ease;
-  }
-
-  .question-card {
+  .intent-picker {
     display: grid;
-    gap: var(--space-4);
-    padding: var(--space-5);
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-medium);
+    background: var(--color-neutral-0);
+  }
+
+  .intent-picker h3 {
+    margin: 0;
+    font-size: var(--font-size-body-large);
+    color: var(--color-neutral-800);
+  }
+
+  .intent-picker span,
+  .intent-picker p {
+    color: var(--color-neutral-500);
+    font-size: var(--font-size-caption);
+    margin: 0;
+  }
+
+  .intent-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+`
+
+const onboardingModalStyles = css`
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 560px;
+
+  .modal-layout {
+    display: flex;
+    justify-content: center;
+    min-height: 100%;
+    width: 100%;
+  }
+
+  .question-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding: var(--space-7);
     border-radius: var(--radius-large);
     border: 1px solid var(--color-neutral-200);
     background: var(--color-neutral-0);
-    box-shadow: 0 16px 40px rgba(9, 30, 66, 0.08);
+    box-shadow: 0 32px 60px rgba(15, 23, 42, 0.08);
+    width: min(960px, 100%);
+    min-height: 560px;
   }
 
-  .question-meta {
+  .panel-header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: var(--space-2);
-    color: var(--color-neutral-500);
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .question-prefix {
     font-size: var(--font-size-caption);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
+    color: var(--color-neutral-500);
   }
 
   .prompt-text {
     margin: 0;
-    color: var(--color-neutral-800);
+    color: var(--color-neutral-900);
     font-size: var(--font-size-body-large);
     line-height: var(--line-height-relaxed, 1.6);
+  }
+
+  .question-copy {
+    display: grid;
+    gap: var(--space-3);
   }
 
   .helper-text {
@@ -341,7 +440,7 @@ const onboardingExperienceStyles = css`
     background: var(--color-neutral-900);
     color: white;
     font-size: var(--font-size-body-small);
-    width: fit-content;
+    white-space: nowrap;
   }
 
   .transcript-stream {
@@ -369,34 +468,11 @@ const onboardingExperienceStyles = css`
     white-space: pre-wrap;
   }
 
-  .controls {
+  .response-controls {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
     align-items: center;
-  }
-
-  .navigation {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-  }
-
-  .intent-picker {
-    display: grid;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    border: 1px solid var(--color-neutral-200);
-    border-radius: var(--radius-medium);
-    background: var(--color-neutral-0);
-  }
-
-  .intent-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
   }
 
   .error-banner {
@@ -406,6 +482,116 @@ const onboardingExperienceStyles = css`
     padding: var(--space-3);
     color: var(--color-danger-600);
     font-size: var(--font-size-body-small);
+  }
+
+  .panel-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .progress-meta {
+    font-size: var(--font-size-caption);
+    color: var(--color-neutral-500);
+  }
+
+  .nav-cluster {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .arrow-stack {
+    display: inline-flex;
+    flex-direction: row;
+    gap: var(--space-2);
+    color: var(--color-primary-500);
+  }
+
+  .nav-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--color-neutral-300);
+    background: var(--color-neutral-0);
+    color: var(--color-neutral-700);
+    transition: var(--transition-all);
+    cursor: pointer;
+  }
+
+  .nav-button:hover:not(:disabled) {
+    border-color: var(--color-primary-300);
+    color: var(--color-primary-600);
+  }
+
+  .nav-button.primary {
+    background: var(--color-primary-50);
+    border-color: var(--color-primary-300);
+    color: var(--color-primary-600);
+  }
+
+  .nav-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    background: var(--color-neutral-100);
+    color: var(--color-neutral-400);
+  }
+
+  .powered {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-neutral-600);
+  }
+
+  .keyboard-hint {
+    text-align: center;
+    font-size: var(--font-size-caption);
+    color: var(--color-neutral-500);
+    margin-top: var(--space-2);
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (max-width: 720px) {
+    .modal-layout {
+      padding: 0 var(--space-2);
+    }
+
+    .question-panel {
+      max-width: none;
+    }
+
+    .panel-footer {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .nav-cluster {
+      align-self: flex-end;
+      justify-content: flex-start;
+    }
   }
 `
 
@@ -827,6 +1013,7 @@ export const BrandHub: React.FC = () => {
   const [liveTranscript, setLiveTranscript] = useState('')
   const [recordingError, setRecordingError] = useState<string | null>(null)
   const [hasOnboardingCompleted, setHasOnboardingCompleted] = useState(false)
+  const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false)
 
   const fetchTimerRef = useRef<number | null>(null)
   const analyzeTimerRef = useRef<number | null>(null)
@@ -923,6 +1110,20 @@ export const BrandHub: React.FC = () => {
     setSelectedIntents((prev) =>
       prev.includes(intent) ? prev.filter((item) => item !== intent) : [...prev, intent]
     )
+  }
+
+  const handleOpenOnboardingModal = () => {
+    const firstIncompleteIndex = onboardingPrompts.findIndex(
+      (prompt) => (questionResponses[prompt.id] ?? '').trim().length === 0
+    )
+
+    if (firstIncompleteIndex >= 0) {
+      setActiveQuestionIndex(firstIncompleteIndex)
+    } else if (activeQuestionIndex !== 0) {
+      setActiveQuestionIndex(0)
+    }
+
+    setIsOnboardingModalOpen(true)
   }
 
   const startRecording = useCallback(async () => {
@@ -1041,6 +1242,11 @@ export const BrandHub: React.FC = () => {
     setQuestionResponses((prev) => ({ ...prev, [currentQuestion.id]: liveTranscript.trim() }))
   }, [currentQuestion.id, liveTranscript])
 
+  const handleCloseOnboardingModal = () => {
+    stopRecording()
+    setIsOnboardingModalOpen(false)
+  }
+
   const handleTranscriptChange = (value: string) => {
     setLiveTranscript(value)
     setQuestionResponses((prev) => ({ ...prev, [currentQuestion.id]: value }))
@@ -1052,6 +1258,7 @@ export const BrandHub: React.FC = () => {
 
     if (isLastQuestion) {
       setHasOnboardingCompleted(true)
+      setIsOnboardingModalOpen(false)
       setActiveTab('blueprint')
       return
     }
@@ -1165,10 +1372,6 @@ export const BrandHub: React.FC = () => {
     },
     { id: 'blueprint', label: 'Content blueprint', hint: 'Translate answers into pillars' }
   ]
-
-  const progressPercent = onboardingPrompts.length
-    ? Math.round((completedCount / onboardingPrompts.length) * 100)
-    : 0
 
   const canAdvance = (questionResponses[currentQuestion.id] ?? '').trim().length > 0
   const isLastQuestion = activeQuestionIndex === onboardingPrompts.length - 1
@@ -1374,175 +1577,179 @@ export const BrandHub: React.FC = () => {
       )}
 
       {activeTab === 'onboarding' && (
-        <Card css={onboardingExperienceStyles} appearance="raised">
-          <CardHeader>
-            <div className="question-header">
-              <div>
-                <h2
+        <>
+          {!hasOnboardingCompleted ? (
+            <Card css={onboardingIntroCardStyles} appearance="raised" spacing="comfortable">
+              <span className="intro-eyebrow">Interactive onboarding</span>
+              <h2>Capture your voice in minutes</h2>
+              <p>
+                Launch a guided interview that feels like Typeform. Speak through each question,
+                watch the transcript appear instantly, and build your onboarding in one flow.
+              </p>
+              <div className="intro-actions">
+                <Button variant="primary" onClick={handleOpenOnboardingModal}>
+                  Start interactive onboarding
+                </Button>
+              </div>
+              <p className="progress-hint">
+                {completedCount}/{onboardingPrompts.length} questions answered so far
+              </p>
+            </Card>
+          ) : (
+            <Card css={onboardingCompletedCardStyles} appearance="raised" spacing="comfortable">
+              <div className="completed-header">
+                <div>
+                  <h2>Onboarding captured</h2>
+                  <p>
+                    Review your interview responses or refine your content intents before generating
+                    new blueprints.
+                  </p>
+                </div>
+                <Badge variant="success" size="small">
+                  Complete
+                </Badge>
+              </div>
+              <div className="intro-actions">
+                <Button variant="primary" onClick={handleOpenOnboardingModal}>
+                  Review answers
+                </Button>
+                <Button variant="secondary" onClick={() => setActiveTab('blueprint')}>
+                  View content blueprint
+                </Button>
+              </div>
+              <div className="intent-picker">
+                <div
                   style={{
-                    margin: 0,
-                    fontSize: 'var(--font-size-h4)',
-                    color: 'var(--color-neutral-800)'
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline',
+                    flexWrap: 'wrap',
+                    gap: 'var(--space-3)'
                   }}
                 >
-                  Voice onboarding interview
-                </h2>
-                <p
-                  style={{
-                    margin: 'var(--space-1) 0 0',
-                    color: 'var(--color-neutral-600)',
-                    fontSize: 'var(--font-size-body-small)'
-                  }}
-                >
-                  Answer each prompt out loud and watch the transcript build live. You can always
-                  refine the text before moving on.
+                  <h3>Content intent focus</h3>
+                  <span>Choose the outcomes you want each clip to drive.</span>
+                </div>
+                <div className="intent-options">
+                  {intentOptions.map((intent) => {
+                    const isActive = selectedIntents.includes(intent)
+                    return (
+                      <button
+                        key={intent}
+                        type="button"
+                        css={intentChipStyles(isActive)}
+                        onClick={() => handleIntentToggle(intent)}
+                      >
+                        {intent}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p>
+                  We recommend selecting two to three intents so your blueprint balances education,
+                  inspiration, and conversion moments.
                 </p>
               </div>
-              <div className="progress-meta" aria-live="polite">
-                <Badge variant="neutral" size="small">
-                  {completedCount}/{onboardingPrompts.length} answered
-                </Badge>
-                <span>·</span>
-                <span>{progressPercent}% complete</span>
-              </div>
-            </div>
-            <div
-              className="progress-bar"
-              role="progressbar"
-              aria-valuenow={progressPercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
-              <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="question-card">
-              <div className="question-meta">
-                <Badge variant="primary" size="small">
-                  Question {activeQuestionIndex + 1} of {onboardingPrompts.length}
-                </Badge>
-              </div>
-              <h3 className="prompt-text">{currentQuestion.prompt}</h3>
-              {currentQuestion.helper && <p className="helper-text">{currentQuestion.helper}</p>}
+            </Card>
+          )}
 
-              <div className="timer-pill">
-                <StopwatchIcon label="Timer" /> {formatTime(elapsedSeconds)}
-                {isRecording ? ' · Recording' : ' · Ready'}
-              </div>
-
-              <div className="transcript-stream">
-                <span className="stream-label">Live transcript</span>
-                <div className="stream-output">
-                  {liveTranscript || 'Your words will appear here as you speak.'}
+          <BasicModal
+            open={isOnboardingModalOpen}
+            title="Interactive onboarding interview"
+            onClose={handleCloseOnboardingModal}
+            size="large"
+          >
+            <div css={onboardingModalStyles}>
+              <div className="modal-layout">
+                <div className="question-panel">
+                  <div className="panel-header">
+                    <Badge variant="primary" size="small">
+                      Question {activeQuestionIndex + 1} of {onboardingPrompts.length}
+                    </Badge>
+                    <div className="timer-pill">
+                      <StopwatchIcon label="Timer" /> {formatTime(elapsedSeconds)}
+                      {isRecording ? ' · Recording' : ' · Ready'}
+                    </div>
+                  </div>
+                  <div className="question-copy">
+                    <span className="question-prefix">Voice interview</span>
+                    <h3 className="prompt-text">{currentQuestion.prompt}</h3>
+                    {currentQuestion.helper && (
+                      <p className="helper-text">{currentQuestion.helper}</p>
+                    )}
+                  </div>
+                  <div className="transcript-stream">
+                    <span className="stream-label">Live transcript</span>
+                    <div className="stream-output">
+                      {liveTranscript || 'Your words will appear here as you speak.'}
+                    </div>
+                  </div>
+                  <TextArea
+                    label="Refine or add notes"
+                    placeholder="Type to expand on your spoken answer."
+                    value={questionResponses[currentQuestion.id] ?? ''}
+                    onChange={(event) => handleTranscriptChange(event.target.value)}
+                    size="small"
+                  />
+                  {recordingError && <div className="error-banner">{recordingError}</div>}
+                  <div className="response-controls">
+                    <Button
+                      variant={isRecording ? 'secondary' : 'primary'}
+                      iconBefore={
+                        <VidPlayIcon label={isRecording ? 'Stop recording' : 'Start recording'} />
+                      }
+                      onClick={isRecording ? stopRecording : startRecording}
+                    >
+                      {isRecording ? 'Stop recording' : 'Start recording'}
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      onClick={() => handleTranscriptChange('')}
+                      isDisabled={isRecording}
+                    >
+                      Clear response
+                    </Button>
+                  </div>
+                  <div className="panel-footer">
+                    <div className="progress-meta">
+                      {completedCount}/{onboardingPrompts.length} answered
+                    </div>
+                    <div className="nav-cluster">
+                      <div className="arrow-stack">
+                        <button
+                          type="button"
+                          className="nav-button"
+                          onClick={handlePreviousQuestion}
+                          disabled={activeQuestionIndex === 0}
+                          aria-label="Previous question"
+                        >
+                          <ArrowUpIcon label="" />
+                          <span className="visually-hidden">Previous</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`nav-button${canAdvance ? ' primary' : ''}`}
+                          onClick={handleNextQuestion}
+                          disabled={!canAdvance}
+                          aria-label={isLastQuestion ? 'Finish onboarding' : 'Next question'}
+                        >
+                          <ArrowDownIcon label="" />
+                          <span className="visually-hidden">
+                            {isLastQuestion ? 'Finish onboarding' : 'Next question'}
+                          </span>
+                        </button>
+                      </div>
+                      <span className="powered">Powered by Gen.C</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              <TextArea
-                label="Refine or add notes"
-                placeholder="Type to expand on your spoken answer."
-                value={questionResponses[currentQuestion.id] ?? ''}
-                onChange={(event) => handleTranscriptChange(event.target.value)}
-                size="small"
-              />
-
-              {recordingError && <div className="error-banner">{recordingError}</div>}
-
-              <div className="controls">
-                <Button
-                  variant={isRecording ? 'secondary' : 'primary'}
-                  iconBefore={
-                    <VidPlayIcon label={isRecording ? 'Stop recording' : 'Start recording'} />
-                  }
-                  onClick={isRecording ? stopRecording : startRecording}
-                >
-                  {isRecording ? 'Stop recording' : 'Start recording'}
-                </Button>
-                <Button
-                  variant="tertiary"
-                  onClick={() => handleTranscriptChange('')}
-                  isDisabled={isRecording}
-                >
-                  Clear response
-                </Button>
-              </div>
-
-              <div className="navigation">
-                <Button
-                  variant="secondary"
-                  iconBefore={<ArrowLeftIcon label="Previous" />}
-                  onClick={handlePreviousQuestion}
-                  isDisabled={activeQuestionIndex === 0}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="primary"
-                  iconAfter={<ArrowRightIcon label="Next" />}
-                  onClick={handleNextQuestion}
-                  isDisabled={!canAdvance}
-                >
-                  {isLastQuestion ? 'Generate blueprint' : 'Next question'}
-                </Button>
+              <div className="keyboard-hint">
+                Tip: Speak naturally — you can always refine the text before moving on.
               </div>
             </div>
-
-            <div className="intent-picker">
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'baseline',
-                  flexWrap: 'wrap',
-                  gap: 'var(--space-3)'
-                }}
-              >
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: 'var(--font-size-body-large)',
-                    color: 'var(--color-neutral-800)'
-                  }}
-                >
-                  Content intent focus
-                </h3>
-                <span
-                  style={{
-                    fontSize: 'var(--font-size-caption)',
-                    color: 'var(--color-neutral-500)'
-                  }}
-                >
-                  Choose the outcomes you want each clip to drive.
-                </span>
-              </div>
-              <div className="intent-options">
-                {intentOptions.map((intent) => {
-                  const isActive = selectedIntents.includes(intent)
-                  return (
-                    <button
-                      key={intent}
-                      type="button"
-                      css={intentChipStyles(isActive)}
-                      onClick={() => handleIntentToggle(intent)}
-                    >
-                      {intent}
-                    </button>
-                  )
-                })}
-              </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 'var(--font-size-caption)',
-                  color: 'var(--color-neutral-500)'
-                }}
-              >
-                We recommend selecting two to three intents so your blueprint balances education,
-                inspiration, and conversion moments.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+          </BasicModal>
+        </>
       )}
 
       {activeTab === 'blueprint' && (

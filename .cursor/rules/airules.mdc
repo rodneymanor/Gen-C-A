@@ -1,0 +1,47 @@
+# AI Codebase Rules
+
+## Tech + Scope
+- Stack: React (JS/TS). Do **not** add new dependencies unless explicitly asked.
+- Routing pages stay in `src/pages/**` (top-level composition & route wiring only).
+- Domain features live in `src/features/<feature>/**`.
+
+## Separation of Concerns
+- Pages: orchestrate features; minimal state; no business logic or data access.
+- Features: colocate UI, hooks, state, services, utils, types, and tests.
+  - `components/` — presentational/feature UI units
+  - `hooks/` — feature-specific hooks
+  - `services/` — IO: network, storage, feature gateways
+  - `state/` — reducers, atoms, stores (if used)
+  - `utils/` — pure helpers
+  - `types/` — TypeScript types/interfaces
+  - `__tests__/` — tests colocated
+- Shared, non-feature-specific utilities/components go in `src/shared/**` (optional).
+
+## File Size + Complexity
+- Hard limit: 500 lines per file (skip blanks/comments); target ≤400 lines.
+- Prefer extraction over inline complexity:
+  - Extract large components into smaller components.
+  - Extract logic to hooks (`useX`) or pure utils.
+- Keep functions ≤75 lines when reasonable. Avoid deep nesting (prefer early returns).
+
+## API + Stability
+- Preserve public exports and routes unless the prompt says otherwise.
+- Do not break props contracts without adapter notes.
+
+## Output Format (for the AI)
+When proposing changes, output in this order:
+1) **Quick Audit Table** (Problem → Why it matters → Fix)
+2) **Proposed File Moves/Creates** as a tree (only diffs)
+3) **Patch Set** as Git-style diffs or full file replacements with filenames
+4) **Follow‑Up Tasks** (checkbox list) to reach parity & tests
+
+## Safety Rails
+- No secrets in code or prompts. Redact keys.
+- No speculative performance work without measurement.
+
+
+---
+description:
+globs:
+alwaysApply: true
+---

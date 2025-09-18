@@ -115,22 +115,36 @@ export async function handleGetScripts(req, res) {
       xClient: req.headers['x-client'] || req.headers['X-Client'],
     });
   } catch {}
-  // If authenticated and Firestore available, read user scripts from Firestore
-  try {
-    const auth = await verifyBearer(req);
-    const db = getDb();
-    if (auth && db) {
-      console.log('[scripts] Using Firestore with auth uid:', auth.uid);
-      const scripts = await fetchUserScripts(db, auth.uid);
-      return res.json({ success: true, scripts });
-    }
-  } catch (e) {
-    console.warn('[scripts] Firestore GET failed, falling back to JSON:', e?.message);
+  const authResult = await verifyBearer(req);
+
+  if (!authResult) {
+    console.warn('[scripts] Missing or invalid auth token for library fetch');
+    return res.status(401).json({
+      success: false,
+      error: 'Authentication required to load scripts.'
+    });
   }
 
-  console.log('[scripts] Using JSON store fallback');
-  const scripts = readScripts();
-  res.json({ success: true, scripts });
+  const db = getDb();
+  if (!db) {
+    console.error('[scripts] Firestore unavailable while fetching scripts');
+    return res.status(503).json({
+      success: false,
+      error: 'Content service is unavailable. Please try again later.'
+    });
+  }
+
+  try {
+    console.log('[scripts] Using Firestore with auth uid:', authResult.uid);
+    const scripts = await fetchUserScripts(db, authResult.uid);
+    return res.json({ success: true, scripts });
+  } catch (e) {
+    console.error('[scripts] Failed to fetch scripts from Firestore:', e?.message);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to load scripts from Firestore.'
+    });
+  }
 }
 
 export async function handleCreateScript(req, res) {

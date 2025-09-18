@@ -104,6 +104,13 @@ function mapNoteToItem(n: any): ContentItem {
 
 export async function getLibraryContent(): Promise<ContentItem[]> {
   const debug = new ReactDebugger("LibraryData", { level: DEBUG_LEVELS.DEBUG });
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    debug.error("Attempted to fetch library content without an authenticated user");
+    throw new Error("You must be signed in to load your library.");
+  }
+
   let transcriptItems: ContentItem[] = [];
   if (USE_LOCAL_LIBRARY) {
     try {
@@ -120,42 +127,65 @@ export async function getLibraryContent(): Promise<ContentItem[]> {
   let scriptItems: ContentItem[] = [];
   let noteItems: ContentItem[] = [];
 
-  try {
-    const token = auth.currentUser ? await auth.currentUser.getIdToken(true) : null;
-    const headers: Record<string, string> = {
-      Accept: "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      "X-Client": "library",
-    };
-    debug.info("Fetching scripts from /api/scripts", { hasAuth: !!token });
-    const res = await fetch("/api/scripts", { cache: "no-store" as any, headers });
-    if (res.ok) {
-      const data = await res.json();
-      debug.debug("/api/scripts response", { status: res.status, count: Array.isArray(data?.scripts) ? data.scripts.length : 0 });
-      if (data && Array.isArray(data.scripts)) {
-        scriptItems = data.scripts.map(mapScriptToItem);
-      }
-    }
-  } catch {}
+  const token = await currentUser.getIdToken(true);
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+    "X-Client": "library",
+  };
 
   try {
-    const token = auth.currentUser ? await auth.currentUser.getIdToken(true) : null;
-    const headers: Record<string, string> = {
-      Accept: "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      "X-Client": "library",
-    };
-    debug.info("Fetching notes from /api/notes", { hasAuth: !!token });
-    const res = await fetch("/api/notes", { cache: "no-store" as any, headers });
-    if (res.ok) {
-      const data = await res.json();
-      debug.debug("/api/notes response", { status: res.status, count: Array.isArray(data?.notes) ? data.notes.length : 0 });
-      if (data && Array.isArray(data.notes)) {
-        noteItems = data.notes.map(mapNoteToItem);
+    debug.info("Fetching scripts from /api/scripts", { hasAuth: true });
+    const res = await fetch("/api/scripts", { cache: "no-store" as any, headers });
+    if (!res.ok) {
+      let message = `Failed to load scripts (status ${res.status})`;
+      try {
+        const errorPayload = await res.json();
+        message = errorPayload?.error || message;
+      } catch {
+        try {
+          const text = await res.text();
+          message = text || message;
+        } catch {}
       }
+      throw new Error(message);
     }
+    const data = await res.json();
+    debug.debug("/api/scripts response", { status: res.status, count: Array.isArray(data?.scripts) ? data.scripts.length : 0 });
+    if (!data || !Array.isArray(data.scripts)) {
+      throw new Error("Unexpected scripts payload received from the server.");
+    }
+    scriptItems = data.scripts.map(mapScriptToItem);
+  } catch (err: any) {
+    debug.error("Failed to fetch scripts", { message: err?.message });
+    throw new Error(err?.message || "Failed to load scripts.");
+  }
+
+  try {
+    debug.info("Fetching notes from /api/notes", { hasAuth: true });
+    const res = await fetch("/api/notes", { cache: "no-store" as any, headers });
+    if (!res.ok) {
+      let message = `Failed to load notes (status ${res.status})`;
+      try {
+        const errorPayload = await res.json();
+        message = errorPayload?.error || message;
+      } catch {
+        try {
+          const text = await res.text();
+          message = text || message;
+        } catch {}
+      }
+      throw new Error(message);
+    }
+    const data = await res.json();
+    debug.debug("/api/notes response", { status: res.status, count: Array.isArray(data?.notes) ? data.notes.length : 0 });
+    if (!data || !Array.isArray(data.notes)) {
+      throw new Error("Unexpected notes payload received from the server.");
+    }
+    noteItems = data.notes.map(mapNoteToItem);
   } catch (err: any) {
     debug.error("Failed to fetch notes", { message: err?.message });
+    throw new Error(err?.message || "Failed to load notes.");
   }
 
   const all = [...scriptItems, ...noteItems, ...transcriptItems].sort((a, b) => b.created.getTime() - a.created.getTime());
