@@ -431,6 +431,20 @@ const onboardingModalStyles = css`
     font-size: var(--font-size-caption);
   }
 
+  .milestone-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 10px 14px;
+    border-radius: var(--radius-medium);
+    border: 1px solid var(--color-success-200);
+    background: var(--color-success-50);
+    color: var(--color-success-700);
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-medium);
+    width: fit-content;
+  }
+
   .timer-pill {
     display: inline-flex;
     align-items: center;
@@ -845,12 +859,12 @@ type CreatorVideo = {
 }
 
 type OnboardingFormState = {
-  brandName: string
-  primaryTopic: string
-  audience: string
-  voicePersonality: string
-  promise: string
-  originStory: string
+  whoAndWhat: string
+  audienceProblem: string
+  quickWin: string
+  bigDream: string
+  voiceStyle: string
+  contentFocus: string
 }
 
 type TabKey = 'voices' | 'onboarding' | 'blueprint'
@@ -934,46 +948,40 @@ const mockVideos: CreatorVideo[] = [
 
 const onboardingPrompts: OnboardingPrompt[] = [
   {
-    id: 'brandName',
-    title: 'Brand or creator name',
-    prompt:
-      'State your brand or creator name and the kind of work you are best known for. Keep it conversational.',
-    helper:
-      'Example: “I’m Magnetic Maker — we build in public to help indie founders launch faster.”'
+    id: 'whoAndWhat',
+    title: 'Who & What',
+    prompt: 'What do you do and who do you help?',
+    helper: 'Example: “I’m a fitness coach who helps busy moms get strong.”'
   },
   {
-    id: 'primaryTopic',
-    title: 'Primary topic or niche',
-    prompt:
-      'Describe the main transformation, topic, or problem space you create content around every week.',
-    helper: 'Call out the frameworks, systems, or rituals you teach repeatedly.'
+    id: 'audienceProblem',
+    title: 'The Problem',
+    prompt: "What's the #1 problem your audience is struggling with right now?",
+    helper: 'Example: “They want to work out but can’t find time with kids around.”'
   },
   {
-    id: 'audience',
-    title: 'Audience snapshot',
-    prompt:
-      'Tell us about the people you want to reach. What do they care about, and what keeps them stuck?',
-    helper: 'Include their role, ambition, and the tension they feel right now.'
+    id: 'quickWin',
+    title: 'Quick Win',
+    prompt: "What's the first small win they're looking for?",
+    helper: 'Example: “Just 10 minutes a day where they feel like themselves again.”'
   },
   {
-    id: 'voicePersonality',
-    title: 'Voice personality',
-    prompt:
-      'Explain how you want your content to feel. Mention pacing, tone, and the emotions you want to leave them with.',
-    helper: 'Is your voice more like an encouraging coach, a hype curator, or a calm analyst?'
+    id: 'bigDream',
+    title: 'Big Dream',
+    prompt: 'If they could wave a magic wand, what would their life look like in 1 year?',
+    helper: 'Example: “They’d have energy to play with kids and feel confident in their body.”'
   },
   {
-    id: 'promise',
-    title: 'Core promise',
-    prompt: 'Share the promise you want every viewer to remember after watching your clips.',
-    helper: 'What do you help them do faster, braver, or with more clarity than anyone else?'
+    id: 'voiceStyle',
+    title: 'Your Style',
+    prompt: 'Are you the tough coach, the supportive friend, or the wise teacher?',
+    helper: 'Example: “I’m the supportive friend who’s been there and gets it.”'
   },
   {
-    id: 'originStory',
-    title: 'Signature origin story',
-    prompt:
-      'Briefly retell the story that explains why you started this work or why it matters to you.',
-    helper: 'Anchor it in a moment, a catalyst, or a lived experience that only you can claim.'
+    id: 'contentFocus',
+    title: 'Content Focus',
+    prompt: "What are the 3 main things you'll teach or share about?",
+    helper: 'Example: “Quick workouts, meal prep hacks, and mindset shifts for moms.”'
   }
 ]
 
@@ -1000,12 +1008,12 @@ export const BrandHub: React.FC = () => {
   const [analysisComplete, setAnalysisComplete] = useState(false)
   const [selectedIntents, setSelectedIntents] = useState<string[]>(['Educate', 'Inspire'])
   const [questionResponses, setQuestionResponses] = useState<OnboardingFormState>({
-    brandName: '',
-    primaryTopic: '',
-    audience: '',
-    voicePersonality: '',
-    promise: '',
-    originStory: ''
+    whoAndWhat: '',
+    audienceProblem: '',
+    quickWin: '',
+    bigDream: '',
+    voiceStyle: '',
+    contentFocus: ''
   })
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
@@ -1279,34 +1287,39 @@ export const BrandHub: React.FC = () => {
   )
 
   const isQuestionnaireComplete = completedCount === onboardingPrompts.length
+  const showHalfwayMessage = completedCount >= 3
 
-  const brandName = questionResponses.brandName || 'Your brand'
-  const primaryTopic = questionResponses.primaryTopic || 'your core topic'
-  const audience = questionResponses.audience || 'your audience'
+  const whoAndWhat = questionResponses.whoAndWhat || 'your role and who you serve'
+  const audienceProblem =
+    questionResponses.audienceProblem || 'the biggest challenge your audience is wrestling with'
+  const quickWin = questionResponses.quickWin || 'a quick win they crave'
+  const bigDream = questionResponses.bigDream || 'the vision they want to step into'
+  const voiceStyle = questionResponses.voiceStyle || 'your guiding style'
+  const contentFocus = questionResponses.contentFocus || 'your core content pillars'
 
   const contentPillars = [
     {
-      title: 'Flagship Teachings',
-      description: `Anchor episodes that walk ${audience} through the ${primaryTopic} playbook step-by-step.`
+      title: 'Momentum Builders',
+      description: `Deliver bite-sized guidance that gives people ${quickWin} even on the busiest days.`
     },
     {
-      title: 'Momentum Moments',
-      description: `Fast story snapshots celebrating experiments, lessons, or breakthroughs from ${brandName}.`
+      title: 'Problem Solvers',
+      description: `Bring your unique style (“${voiceStyle}”) into ${contentFocus} breakdowns that tackle ${audienceProblem} head-on.`
     },
     {
-      title: 'Community Signal Boost',
-      description: `Weekly spotlights that highlight questions, wins, and objections sourced directly from your people.`
+      title: 'Vision Casting',
+      description: `Show how today’s message moves them from ${audienceProblem} toward ${bigDream} with ${whoAndWhat} leading the way.`
     }
   ]
 
   const qaPrompts = [
     {
-      question: 'What belief are we evangelizing this week?',
-      answer: `Remind viewers why ${brandName} refuses the "quick fix" trap and doubles down on consistent, generous teaching.`
+      question: 'What belief are we reinforcing this week?',
+      answer: `Remind listeners that even when ${audienceProblem}, small steps toward ${quickWin} keep momentum alive.`
     },
     {
-      question: 'How do we lower the barrier to action?',
-      answer: `Break your ${primaryTopic} framework into a 15-minute momentum builder that someone can try today.`
+      question: 'How do we invite them into the bigger vision?',
+      answer: `Connect today’s takeaway to the ${bigDream} you’re championing and point them to next actions inside ${contentFocus}, delivered in that “${voiceStyle}” voice.`
     }
   ]
 
@@ -1676,6 +1689,9 @@ export const BrandHub: React.FC = () => {
                     <h3 className="prompt-text">{currentQuestion.prompt}</h3>
                     {currentQuestion.helper && (
                       <p className="helper-text">{currentQuestion.helper}</p>
+                    )}
+                    {showHalfwayMessage && (
+                      <div className="milestone-banner">Great! You're halfway done!</div>
                     )}
                   </div>
                   <div className="transcript-stream">

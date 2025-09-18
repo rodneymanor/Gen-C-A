@@ -1,77 +1,100 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 
-type Note = {
-  id: string;
-  title: string;
-  content: string;
-  type: string; // e.g., "text"
-  tags: string[];
-  starred: boolean;
-  createdAt: string;
-  updatedAt: string;
-  userId: string;
-};
+import { getDb } from "@/api-routes/utils/firebase-admin.js";
+import { verifyRequestAuth } from "@/app/api/scripts/utils";
+import type { NoteRecord } from "./utils";
+import { fetchUserNotes, persistNote } from "./utils";
 
-const NOTES_FILE = path.join(process.cwd(), "data", "notes.json");
-
-function ensureStore() {
-  const dir = path.dirname(NOTES_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(NOTES_FILE)) fs.writeFileSync(NOTES_FILE, JSON.stringify({ notes: [] }, null, 2));
+interface NotesResponse {
+  success: boolean;
+  notes?: NoteRecord[];
+  error?: string;
 }
 
-function readNotes(): Note[] {
-  ensureStore();
+interface NoteResponse {
+  success: boolean;
+  note?: NoteRecord;
+  error?: string;
+}
+
+export async function GET(request: NextRequest) {
   try {
-    const raw = fs.readFileSync(NOTES_FILE, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : Array.isArray(parsed.notes) ? parsed.notes : [];
-  } catch {
-    return [];
+    const auth = await verifyRequestAuth(request);
+    if (!auth) {
+      return NextResponse.json(
+        { success: false, error: "Authentication required to load notes." } satisfies NotesResponse,
+        { status: 401 },
+      );
+    }
+
+    const db = getDb();
+    if (!db) {
+      return NextResponse.json(
+        { success: false, error: "Content service is unavailable. Please try again later." } satisfies NotesResponse,
+        { status: 503 },
+      );
+    }
+
+    const notes = await fetchUserNotes(db, auth.uid);
+    return NextResponse.json(
+      { success: true, notes } satisfies NotesResponse,
+    );
+  } catch (error) {
+    console.error("[notes] Failed to fetch notes:", (error as Error)?.message);
+    return NextResponse.json(
+      { success: false, error: "Failed to load notes." } satisfies NotesResponse,
+      { status: 500 },
+    );
   }
-}
-
-function writeNotes(notes: Note[]) {
-  ensureStore();
-  fs.writeFileSync(NOTES_FILE, JSON.stringify({ notes }, null, 2));
-}
-
-function genId() {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-}
-
-export async function GET() {
-  const notes = readNotes();
-  return NextResponse.json({ success: true, notes });
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const now = new Date().toISOString();
-    const userId = "local"; // Optionally decode Authorization for real UID
+  let body: Record<string, unknown>;
 
-    const note: Note = {
-      id: genId(),
-      title: (body.title || "Untitled").toString(),
-      content: (body.content || "").toString(),
-      type: (body.type || "text").toString(),
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid request";
+    return NextResponse.json(
+      { success: false, error: message } satisfies NoteResponse,
+      { status: 400 },
+    );
+  }
+
+  try {
+    const auth = await verifyRequestAuth(request);
+    if (!auth) {
+      return NextResponse.json(
+        { success: false, error: "Authentication required to save notes." } satisfies NoteResponse,
+        { status: 401 },
+      );
+    }
+
+    const db = getDb();
+    if (!db) {
+      return NextResponse.json(
+        { success: false, error: "Content service is unavailable. Please try again later." } satisfies NoteResponse,
+        { status: 503 },
+      );
+    }
+
+    const notePayload: Record<string, unknown> = {
+      title: (body.title ?? "Untitled").toString(),
+      content: (body.content ?? "").toString(),
+      type: (body.type ?? "text").toString(),
       tags: Array.isArray(body.tags) ? body.tags.map(String) : [],
       starred: Boolean(body.starred),
-      createdAt: now,
-      updatedAt: now,
-      userId,
     };
 
-    const notes = readNotes();
-    notes.unshift(note);
-    writeNotes(notes);
-
-    return NextResponse.json({ success: true, note });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error?.message || "Invalid request" }, { status: 400 });
+    const saved = await persistNote(db, auth.uid, notePayload);
+    return NextResponse.json(
+      { success: true, note: saved } satisfies NoteResponse,
+    );
+  } catch (error) {
+    console.error("[notes] Failed to save note:", (error as Error)?.message);
+    return NextResponse.json(
+      { success: false, error: "Failed to save note to Firestore." } satisfies NoteResponse,
+      { status: 500 },
+    );
   }
 }
-

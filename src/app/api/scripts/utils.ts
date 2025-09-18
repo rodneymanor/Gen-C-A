@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import type { NextRequest } from "next/server";
 import type {
   CollectionReference,
@@ -11,38 +9,6 @@ import type {
 
 import type { Script } from "@/types/script";
 import { getCollectionRefByPath, verifyBearer } from "@/api-routes/utils/firebase-admin.js";
-
-const SCRIPTS_FILE = path.join(process.cwd(), "data", "scripts.json");
-
-function ensureStore() {
-  const dir = path.dirname(SCRIPTS_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(SCRIPTS_FILE)) {
-    fs.writeFileSync(SCRIPTS_FILE, JSON.stringify({ scripts: [] }, null, 2));
-  }
-}
-
-export function readScripts(): Script[] {
-  ensureStore();
-  try {
-    const raw = fs.readFileSync(SCRIPTS_FILE, "utf8");
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed as Script[];
-    if (Array.isArray(parsed?.scripts)) return parsed.scripts as Script[];
-    return [];
-  } catch {
-    return [];
-  }
-}
-
-export function writeScripts(scripts: Script[]) {
-  ensureStore();
-  fs.writeFileSync(SCRIPTS_FILE, JSON.stringify({ scripts }, null, 2));
-}
-
-export function genId() {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-}
 
 function tsToIso(value: unknown, fallbackIso?: string): string {
   try {
