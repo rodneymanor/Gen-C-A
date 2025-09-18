@@ -55,3 +55,6 @@ Thumbs.db
 .env*
 !.env.example
 .vercel
+
+*storybook.log
+storybook-static

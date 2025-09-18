@@ -24,6 +24,7 @@ module.exports = {
     'plugin:import/recommended',
     'plugin:import/typescript',
     'plugin:prettier/recommended',
+    'plugin:storybook/recommended',
   ],
   plugins: ['react-refresh', '@atlaskit/design-system'],
   ignorePatterns: ['dist', '.eslintrc.cjs'],

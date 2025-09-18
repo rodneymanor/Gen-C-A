@@ -1,18 +1,66 @@
-import React, { FormEvent, useEffect, useRef, useState } from 'react';
-import { css } from '@emotion/react';
-import { Button } from '../components/ui/Button';
-import { Card, CardContent, CardFooter, CardHeader } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { TextArea } from '../components/ui/TextArea';
-import { Badge } from '../components/ui/Badge';
-import BasicModal from '../components/ui/BasicModal';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { css } from '@emotion/react'
+import { Button } from '../components/ui/Button'
+import { Card, CardContent, CardFooter, CardHeader } from '../components/ui/Card'
+import { Input } from '../components/ui/Input'
+import { TextArea } from '../components/ui/TextArea'
+import { Badge } from '../components/ui/Badge'
+import BasicModal from '../components/ui/BasicModal'
 
-import AddIcon from '@atlaskit/icon/glyph/add';
-import DownloadIcon from '@atlaskit/icon/glyph/download';
-import VidPlayIcon from '@atlaskit/icon/glyph/vid-play';
-import CheckCircleIcon from '@atlaskit/icon/glyph/check-circle';
-import GraphLineIcon from '@atlaskit/icon/glyph/graph-line';
-import ArrowRightIcon from '@atlaskit/icon/glyph/arrow-right';
+import AddIcon from '@atlaskit/icon/glyph/add'
+import DownloadIcon from '@atlaskit/icon/glyph/download'
+import VidPlayIcon from '@atlaskit/icon/glyph/vid-play'
+import CheckCircleIcon from '@atlaskit/icon/glyph/check-circle'
+import GraphLineIcon from '@atlaskit/icon/glyph/graph-line'
+import ArrowRightIcon from '@atlaskit/icon/glyph/arrow-right'
+import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left'
+import StopwatchIcon from '@atlaskit/icon/glyph/stopwatch'
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor
+    webkitSpeechRecognition?: SpeechRecognitionConstructor
+  }
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
+
+interface SpeechRecognitionInstance {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+  abort?: () => void
+}
+
+interface SpeechRecognitionAlternativeLike {
+  transcript: string
+}
+
+interface SpeechRecognitionResultLike {
+  [index: number]: SpeechRecognitionAlternativeLike | undefined
+  length: number
+  isFinal: boolean
+}
+
+interface SpeechRecognitionResultListLike {
+  length: number
+  item: (index: number) => SpeechRecognitionResultLike
+  [index: number]: SpeechRecognitionResultLike
+}
+
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultListLike
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string
+  message?: string
+}
 
 const pageContainerStyles = css`
   max-width: 1200px;
@@ -21,7 +69,7 @@ const pageContainerStyles = css`
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-`;
+`
 
 const headerStyles = css`
   display: flex;
@@ -54,24 +102,62 @@ const headerStyles = css`
     gap: var(--space-3);
     align-items: center;
   }
-`;
+`
 
-const layoutStyles = css`
+const tabListStyles = css`
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-neutral-200);
+  padding-bottom: var(--space-2);
+  overflow-x: auto;
+`
+
+const tabTriggerStyles = (isActive: boolean) => css`
+  background: transparent;
+  border: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-medium) var(--radius-medium) 0 0;
+  cursor: pointer;
+  position: relative;
+  color: ${isActive ? 'var(--color-neutral-900)' : 'var(--color-neutral-600)'};
+  font-size: var(--font-size-body);
+  font-weight: ${isActive ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)'};
   display: grid;
-  grid-template-columns: 1.7fr 1fr;
+  gap: 4px;
+  transition: var(--transition-all);
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+  }
+
+  .tab-hint {
+    font-size: var(--font-size-caption);
+    color: ${isActive ? 'var(--color-neutral-600)' : 'var(--color-neutral-500)'};
+    white-space: nowrap;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -9px;
+    height: 3px;
+    width: 100%;
+    background: ${isActive ? 'var(--color-primary-500)' : 'transparent'};
+    border-radius: var(--radius-pill, 999px);
+    transition: var(--transition-all);
+  }
+`
+
+const voicesLayoutStyles = css`
+  display: grid;
   gap: var(--space-6);
 
-  @media (max-width: 1120px) {
-    grid-template-columns: 1fr;
+  @media (min-width: 1120px) {
+    grid-template-columns: 1.7fr 1fr;
   }
-
-  .voice-column,
-  .strategy-column {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-  }
-`;
+`
 
 const voiceLibraryStyles = css`
   display: flex;
@@ -83,7 +169,7 @@ const voiceLibraryStyles = css`
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: var(--space-4);
   }
-`;
+`
 
 const voiceCardStyles = css`
   display: flex;
@@ -131,7 +217,7 @@ const voiceCardStyles = css`
     color: var(--color-neutral-600);
     font-weight: var(--font-weight-medium);
   }
-`;
+`
 
 const workflowCardStyles = css`
   display: grid;
@@ -176,43 +262,152 @@ const workflowCardStyles = css`
       }
     }
   }
-`;
+`
 
-const onboardingCardStyles = css`
-  display: flex;
-  flex-direction: column;
+const onboardingExperienceStyles = css`
+  display: grid;
   gap: var(--space-5);
 
-  form {
-    display: grid;
-    gap: var(--space-4);
+  .question-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-3);
+    align-items: center;
   }
 
-  .form-grid {
-    display: grid;
-    gap: var(--space-4);
-
-    @media (min-width: 720px) {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+  .progress-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--font-size-body-small);
+    color: var(--color-neutral-600);
   }
 
-  .form-field {
+  .progress-bar {
+    position: relative;
+    width: 100%;
+    height: 6px;
+    border-radius: var(--radius-pill, 999px);
+    background: var(--color-neutral-200);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--color-primary-500);
+    transition: width 240ms ease;
+  }
+
+  .question-card {
     display: grid;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border-radius: var(--radius-large);
+    border: 1px solid var(--color-neutral-200);
+    background: var(--color-neutral-0);
+    box-shadow: 0 16px 40px rgba(9, 30, 66, 0.08);
+  }
+
+  .question-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-neutral-500);
+    font-size: var(--font-size-caption);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .prompt-text {
+    margin: 0;
+    color: var(--color-neutral-800);
+    font-size: var(--font-size-body-large);
+    line-height: var(--line-height-relaxed, 1.6);
+  }
+
+  .helper-text {
+    margin: 0;
+    color: var(--color-neutral-500);
+    font-size: var(--font-size-caption);
+  }
+
+  .timer-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px 12px;
+    border-radius: var(--radius-pill, 999px);
+    background: var(--color-neutral-900);
+    color: white;
+    font-size: var(--font-size-body-small);
+    width: fit-content;
+  }
+
+  .transcript-stream {
+    display: grid;
+    gap: var(--space-2);
+    background: var(--color-neutral-50);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-medium);
+    padding: var(--space-3);
+    min-height: 96px;
+  }
+
+  .stream-label {
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-neutral-600);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .stream-output {
+    font-size: var(--font-size-body);
+    color: var(--color-neutral-800);
+    line-height: var(--line-height-relaxed, 1.6);
+    white-space: pre-wrap;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .intent-picker {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-medium);
+    background: var(--color-neutral-0);
+  }
+
+  .intent-options {
+    display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
   }
 
-  .intent-section {
-    display: grid;
-    gap: var(--space-3);
-
-    .intent-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-    }
+  .error-banner {
+    background: var(--color-danger-50);
+    border: 1px solid var(--color-danger-200);
+    border-radius: var(--radius-medium);
+    padding: var(--space-3);
+    color: var(--color-danger-600);
+    font-size: var(--font-size-body-small);
   }
-`;
+`
 
 const intentChipStyles = (isActive: boolean) => css`
   padding: 6px 12px;
@@ -228,11 +423,16 @@ const intentChipStyles = (isActive: boolean) => css`
   &:hover {
     border-color: var(--color-primary-400);
   }
-`;
+`
 
 const blueprintCardStyles = css`
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
+
+  .section {
+    display: grid;
+    gap: var(--space-3);
+  }
 
   .empty-state {
     padding: var(--space-5);
@@ -245,7 +445,8 @@ const blueprintCardStyles = css`
 
   .pillars,
   .qa-list,
-  .intent-list {
+  .intent-list,
+  .transcript-list {
     display: grid;
     gap: var(--space-3);
   }
@@ -292,8 +493,7 @@ const blueprintCardStyles = css`
   }
 
   .intent-item {
-    display: flex;
-    flex-direction: column;
+    display: grid;
     gap: var(--space-2);
     padding: var(--space-3);
     border-radius: var(--radius-medium);
@@ -312,7 +512,7 @@ const blueprintCardStyles = css`
       line-height: var(--line-height-normal, 1.55);
     }
   }
-`;
+`
 
 const modalBodyStyles = css`
   display: grid;
@@ -436,52 +636,45 @@ const modalBodyStyles = css`
       line-height: var(--line-height-normal, 1.55);
     }
   }
-`;
-
-const platformChipStyles = (isActive: boolean) => css`
-  padding: 6px 14px;
-  border-radius: var(--radius-pill, 999px);
-  border: 1px solid ${isActive ? 'var(--color-primary-500)' : 'var(--color-neutral-200)'};
-  background: ${isActive ? 'var(--color-primary-50)' : 'var(--color-neutral-0)'};
-  color: ${isActive ? 'var(--color-primary-700)' : 'var(--color-neutral-600)'};
-  font-size: var(--font-size-body-small);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: var(--transition-all);
-
-  &:hover {
-    border-color: var(--color-primary-400);
-  }
-`;
+`
 
 type BrandVoice = {
-  id: string;
-  name: string;
-  status: 'Live' | 'Draft' | 'Exploring';
-  persona: string;
-  summary: string;
-  platform: string;
-  audience: string;
-  lastUpdated: string;
-  pillars: string[];
-};
+  id: string
+  name: string
+  status: 'Live' | 'Draft' | 'Exploring'
+  persona: string
+  summary: string
+  platform: string
+  audience: string
+  lastUpdated: string
+  pillars: string[]
+}
 
 type CreatorVideo = {
-  id: string;
-  title: string;
-  duration: string;
-  performance: string;
-  postedAt: string;
-};
+  id: string
+  title: string
+  duration: string
+  performance: string
+  postedAt: string
+}
 
 type OnboardingFormState = {
-  brandName: string;
-  primaryTopic: string;
-  audience: string;
-  voicePersonality: string;
-  promise: string;
-  originStory: string;
-};
+  brandName: string
+  primaryTopic: string
+  audience: string
+  voicePersonality: string
+  promise: string
+  originStory: string
+}
+
+type TabKey = 'voices' | 'onboarding' | 'blueprint'
+
+type OnboardingPrompt = {
+  id: keyof OnboardingFormState
+  title: string
+  prompt: string
+  helper?: string
+}
 
 const mockBrandVoices: BrandVoice[] = [
   {
@@ -489,7 +682,8 @@ const mockBrandVoices: BrandVoice[] = [
     name: 'Magnetic Maker',
     status: 'Live',
     persona: 'Avery — The Enthusiastic Builder',
-    summary: 'Launch-ready scripts that blend transparent behind-the-scenes storytelling with clear calls to action for maker launches.',
+    summary:
+      'Launch-ready scripts that blend transparent behind-the-scenes storytelling with clear calls to action for maker launches.',
     platform: 'Instagram Reels · TikTok',
     audience: 'Ambitious DIY and indie brand founders',
     lastUpdated: 'Updated 2 days ago',
@@ -500,7 +694,8 @@ const mockBrandVoices: BrandVoice[] = [
     name: 'Calm Authority',
     status: 'Draft',
     persona: 'Maya — The Mindful Strategist',
-    summary: 'Grounded, research-backed guidance that makes complex marketing strategies feel actionable and approachable.',
+    summary:
+      'Grounded, research-backed guidance that makes complex marketing strategies feel actionable and approachable.',
     platform: 'YouTube Shorts · LinkedIn video',
     audience: 'Marketing leads at consumer startups',
     lastUpdated: 'Updated 6 days ago',
@@ -511,169 +706,376 @@ const mockBrandVoices: BrandVoice[] = [
     name: 'Spark Notes',
     status: 'Exploring',
     persona: 'Jonah — The Hype Curator',
-    summary: 'Fast-paced swipe file inspiration that surfaces trending hooks and cultural cues for daily short-form output.',
+    summary:
+      'Fast-paced swipe file inspiration that surfaces trending hooks and cultural cues for daily short-form output.',
     platform: 'TikTok · Shorts',
     audience: 'Social media generalists and content teams',
     lastUpdated: 'Research in progress',
     pillars: ['Trend watch', 'Swipe file breakdowns', 'Hook remixes']
   }
-];
+]
 
 const mockVideos: CreatorVideo[] = [
   {
-    id: 'clip-1',
-    title: 'I tried launching in 48 hours — here is what happened',
-    duration: '0:59',
-    performance: '142K views · 8.1% watch through',
+    id: 'video-1',
+    title: 'How I storyboard a 60-second launch video',
+    duration: '1:12',
+    performance: '54K views · 7.2% watch through',
     postedAt: '3 days ago'
   },
   {
-    id: 'clip-2',
-    title: '3 storytelling beats that doubled our signups',
-    duration: '1:11',
-    performance: '98K views · 12% watch through',
+    id: 'video-2',
+    title: 'This hook consistently adds 15% more watch time',
+    duration: '0:48',
+    performance: '42K views · 6.4% watch through',
     postedAt: '5 days ago'
   },
   {
-    id: 'clip-3',
-    title: 'Turning audience objections into hooks (live teardown)',
-    duration: '1:02',
-    performance: '76K views · 9.5% watch through',
+    id: 'video-3',
+    title: 'What I look for in a creator partnership brief',
+    duration: '1:26',
+    performance: '37K views · 5.1% watch through',
     postedAt: '1 week ago'
   },
   {
-    id: 'clip-4',
-    title: 'This is how I map weekly content pillars',
-    duration: '0:47',
-    performance: '54K views · 7.8% watch through',
-    postedAt: '1 week ago'
-  },
-  {
-    id: 'clip-5',
-    title: 'Narrative template for sharing uncomfortable lessons',
-    duration: '1:04',
-    performance: '62K views · 10.4% watch through',
-    postedAt: '2 weeks ago'
-  },
-  {
-    id: 'clip-6',
+    id: 'video-4',
     title: 'The 15-minute voice warm up before I hit record',
     duration: '0:52',
     performance: '39K views · 6.9% watch through',
     postedAt: '2 weeks ago'
   }
-];
+]
 
-const platformOptions = ['TikTok', 'Instagram', 'YouTube Shorts'];
-const intentOptions = ['Educate', 'Inspire', 'Convert', 'Build community'];
+const onboardingPrompts: OnboardingPrompt[] = [
+  {
+    id: 'brandName',
+    title: 'Brand or creator name',
+    prompt:
+      'State your brand or creator name and the kind of work you are best known for. Keep it conversational.',
+    helper:
+      'Example: “I’m Magnetic Maker — we build in public to help indie founders launch faster.”'
+  },
+  {
+    id: 'primaryTopic',
+    title: 'Primary topic or niche',
+    prompt:
+      'Describe the main transformation, topic, or problem space you create content around every week.',
+    helper: 'Call out the frameworks, systems, or rituals you teach repeatedly.'
+  },
+  {
+    id: 'audience',
+    title: 'Audience snapshot',
+    prompt:
+      'Tell us about the people you want to reach. What do they care about, and what keeps them stuck?',
+    helper: 'Include their role, ambition, and the tension they feel right now.'
+  },
+  {
+    id: 'voicePersonality',
+    title: 'Voice personality',
+    prompt:
+      'Explain how you want your content to feel. Mention pacing, tone, and the emotions you want to leave them with.',
+    helper: 'Is your voice more like an encouraging coach, a hype curator, or a calm analyst?'
+  },
+  {
+    id: 'promise',
+    title: 'Core promise',
+    prompt: 'Share the promise you want every viewer to remember after watching your clips.',
+    helper: 'What do you help them do faster, braver, or with more clarity than anyone else?'
+  },
+  {
+    id: 'originStory',
+    title: 'Signature origin story',
+    prompt:
+      'Briefly retell the story that explains why you started this work or why it matters to you.',
+    helper: 'Anchor it in a moment, a catalyst, or a lived experience that only you can claim.'
+  }
+]
+
+const platformOptions = ['TikTok', 'Instagram', 'YouTube Shorts']
+const intentOptions = ['Educate', 'Inspire', 'Convert', 'Build community']
+
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, '0')
+  const secs = (seconds % 60).toString().padStart(2, '0')
+  return `${mins}:${secs}`
+}
 
 export const BrandHub: React.FC = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [creatorInput, setCreatorInput] = useState('');
-  const [selectedPlatform, setSelectedPlatform] = useState(platformOptions[0]);
-  const [selectedCreator, setSelectedCreator] = useState('');
-  const [hasFetchedVideos, setHasFetchedVideos] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisComplete, setAnalysisComplete] = useState(false);
-  const [selectedIntents, setSelectedIntents] = useState<string[]>(['Educate', 'Inspire']);
-  const [hasGeneratedStrategy, setHasGeneratedStrategy] = useState(false);
-  const [onboardingForm, setOnboardingForm] = useState<OnboardingFormState>({
+  const [activeTab, setActiveTab] = useState<TabKey>('voices')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [creatorInput, setCreatorInput] = useState('')
+  const [selectedPlatform, setSelectedPlatform] = useState(platformOptions[0])
+  const [selectedCreator, setSelectedCreator] = useState('')
+  const [hasFetchedVideos, setHasFetchedVideos] = useState(false)
+  const [isFetching, setIsFetching] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analysisComplete, setAnalysisComplete] = useState(false)
+  const [selectedIntents, setSelectedIntents] = useState<string[]>(['Educate', 'Inspire'])
+  const [questionResponses, setQuestionResponses] = useState<OnboardingFormState>({
     brandName: '',
     primaryTopic: '',
     audience: '',
     voicePersonality: '',
     promise: '',
     originStory: ''
-  });
+  })
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
+  const [isRecording, setIsRecording] = useState(false)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [liveTranscript, setLiveTranscript] = useState('')
+  const [recordingError, setRecordingError] = useState<string | null>(null)
+  const [hasOnboardingCompleted, setHasOnboardingCompleted] = useState(false)
 
-  const fetchTimerRef = useRef<number | null>(null);
-  const analyzeTimerRef = useRef<number | null>(null);
+  const fetchTimerRef = useRef<number | null>(null)
+  const analyzeTimerRef = useRef<number | null>(null)
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
+  const timerIntervalRef = useRef<number | null>(null)
+
+  const currentQuestion = onboardingPrompts[activeQuestionIndex]
 
   const clearTimers = () => {
     if (fetchTimerRef.current) {
-      window.clearTimeout(fetchTimerRef.current);
-      fetchTimerRef.current = null;
+      window.clearTimeout(fetchTimerRef.current)
+      fetchTimerRef.current = null
     }
     if (analyzeTimerRef.current) {
-      window.clearTimeout(analyzeTimerRef.current);
-      analyzeTimerRef.current = null;
+      window.clearTimeout(analyzeTimerRef.current)
+      analyzeTimerRef.current = null
     }
-  };
+  }
 
-  useEffect(() => () => clearTimers(), []);
+  useEffect(
+    () => () => {
+      clearTimers()
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+        recognitionRef.current = null
+      }
+      if (timerIntervalRef.current) {
+        window.clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+    },
+    []
+  )
+
+  useEffect(() => {
+    const existingResponse = questionResponses[currentQuestion.id] ?? ''
+    setLiveTranscript(existingResponse)
+    setElapsedSeconds(0)
+    setRecordingError(null)
+  }, [activeQuestionIndex, currentQuestion.id, questionResponses])
 
   const resetModalState = () => {
-    clearTimers();
-    setCreatorInput('');
-    setSelectedPlatform(platformOptions[0]);
-    setSelectedCreator('');
-    setHasFetchedVideos(false);
-    setIsFetching(false);
-    setIsAnalyzing(false);
-    setAnalysisComplete(false);
-  };
+    clearTimers()
+    setCreatorInput('')
+    setSelectedPlatform(platformOptions[0])
+    setSelectedCreator('')
+    setHasFetchedVideos(false)
+    setIsFetching(false)
+    setIsAnalyzing(false)
+    setAnalysisComplete(false)
+  }
 
   const handleOpenModal = () => {
-    resetModalState();
-    setIsModalOpen(true);
-  };
+    resetModalState()
+    setIsModalOpen(true)
+  }
 
   const handleCloseModal = () => {
-    setIsModalOpen(false);
-    resetModalState();
-  };
+    setIsModalOpen(false)
+    resetModalState()
+  }
 
   const handleFetchVideos = () => {
-    if (!creatorInput.trim()) return;
+    if (!creatorInput.trim()) return
     if (fetchTimerRef.current) {
-      window.clearTimeout(fetchTimerRef.current);
+      window.clearTimeout(fetchTimerRef.current)
     }
-    setIsFetching(true);
-    setSelectedCreator(creatorInput.trim());
-    setHasFetchedVideos(false);
-    setAnalysisComplete(false);
+    setIsFetching(true)
+    setSelectedCreator(creatorInput.trim())
+    setHasFetchedVideos(false)
+    setAnalysisComplete(false)
 
     fetchTimerRef.current = window.setTimeout(() => {
-      setIsFetching(false);
-      setHasFetchedVideos(true);
-    }, 700);
-  };
+      setIsFetching(false)
+      setHasFetchedVideos(true)
+    }, 700)
+  }
 
   const handleAnalyzeVideos = () => {
-    if (!hasFetchedVideos) return;
+    if (!hasFetchedVideos) return
     if (analyzeTimerRef.current) {
-      window.clearTimeout(analyzeTimerRef.current);
+      window.clearTimeout(analyzeTimerRef.current)
     }
-    setIsAnalyzing(true);
-    setAnalysisComplete(false);
+    setIsAnalyzing(true)
+    setAnalysisComplete(false)
 
     analyzeTimerRef.current = window.setTimeout(() => {
-      setIsAnalyzing(false);
-      setAnalysisComplete(true);
-    }, 900);
-  };
+      setIsAnalyzing(false)
+      setAnalysisComplete(true)
+    }, 900)
+  }
 
   const handleIntentToggle = (intent: string) => {
     setSelectedIntents((prev) =>
-      prev.includes(intent)
-        ? prev.filter((item) => item !== intent)
-        : [...prev, intent]
-    );
-  };
+      prev.includes(intent) ? prev.filter((item) => item !== intent) : [...prev, intent]
+    )
+  }
 
-  const handleFormChange = (field: keyof OnboardingFormState, value: string) => {
-    setOnboardingForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const startRecording = useCallback(async () => {
+    if (isRecording) {
+      return
+    }
+    if (typeof window === 'undefined') {
+      return
+    }
 
-  const handleOnboardingSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setHasGeneratedStrategy(true);
-  };
+    const speechRecognitionClass =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition ?? undefined
+    const questionId = currentQuestion.id
 
-  const brandName = onboardingForm.brandName || 'Your brand';
-  const primaryTopic = onboardingForm.primaryTopic || 'your core topic';
-  const audience = onboardingForm.audience || 'your audience';
+    setRecordingError(null)
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+        await navigator.mediaDevices.getUserMedia({ audio: true })
+      }
+    } catch (error) {
+      setRecordingError('Microphone permission is required to capture your answers.')
+      return
+    }
+
+    if (!speechRecognitionClass) {
+      setRecordingError(
+        'Live transcription is not supported in this browser. You can type your answer below.'
+      )
+      return
+    }
+
+    const recognition = new speechRecognitionClass()
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = 'en-US'
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0]?.transcript?.trim?.() ?? '')
+        .join(' ')
+        .trim()
+
+      setLiveTranscript(transcript)
+      setQuestionResponses((prev) => ({ ...prev, [questionId]: transcript }))
+    }
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (event.error === 'no-speech') {
+        setRecordingError('We could not detect audio. Try speaking closer to the microphone.')
+      } else if (event.error === 'not-allowed') {
+        setRecordingError(
+          'Microphone access is blocked. Update your browser permissions to record.'
+        )
+      } else {
+        setRecordingError(
+          event.message ??
+            'Something interrupted the recording. You can continue typing your response.'
+        )
+      }
+      setIsRecording(false)
+    }
+
+    recognition.onend = () => {
+      if (timerIntervalRef.current) {
+        window.clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+      recognitionRef.current = null
+      setIsRecording(false)
+    }
+
+    try {
+      recognition.start()
+      recognitionRef.current = recognition
+      setIsRecording(true)
+      setElapsedSeconds(0)
+      const existingResponse = questionResponses[questionId] ?? ''
+      if (existingResponse) {
+        setLiveTranscript(existingResponse)
+      }
+      if (timerIntervalRef.current) {
+        window.clearInterval(timerIntervalRef.current)
+      }
+      timerIntervalRef.current = window.setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1)
+      }, 1000)
+    } catch (error) {
+      setRecordingError(
+        'We were unable to start recording. Try refreshing the page or typing your response.'
+      )
+      recognitionRef.current = null
+      setIsRecording(false)
+    }
+  }, [currentQuestion.id, isRecording, questionResponses])
+
+  const stopRecording = useCallback(() => {
+    if (timerIntervalRef.current) {
+      window.clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
+    }
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onresult = null
+        recognitionRef.current.onerror = null
+        recognitionRef.current.onend = null
+        recognitionRef.current.stop()
+      } catch (error) {
+        // Stopping an inactive recognition instance can throw; ignore.
+      }
+      recognitionRef.current = null
+    }
+
+    setIsRecording(false)
+    setQuestionResponses((prev) => ({ ...prev, [currentQuestion.id]: liveTranscript.trim() }))
+  }, [currentQuestion.id, liveTranscript])
+
+  const handleTranscriptChange = (value: string) => {
+    setLiveTranscript(value)
+    setQuestionResponses((prev) => ({ ...prev, [currentQuestion.id]: value }))
+  }
+
+  const handleNextQuestion = () => {
+    stopRecording()
+    const isLastQuestion = activeQuestionIndex === onboardingPrompts.length - 1
+
+    if (isLastQuestion) {
+      setHasOnboardingCompleted(true)
+      setActiveTab('blueprint')
+      return
+    }
+
+    setActiveQuestionIndex((prev) => Math.min(prev + 1, onboardingPrompts.length - 1))
+  }
+
+  const handlePreviousQuestion = () => {
+    stopRecording()
+    setActiveQuestionIndex((prev) => Math.max(prev - 1, 0))
+  }
+
+  const completedCount = useMemo(
+    () =>
+      onboardingPrompts.filter((prompt) => (questionResponses[prompt.id] ?? '').trim().length > 0)
+        .length,
+    [questionResponses]
+  )
+
+  const isQuestionnaireComplete = completedCount === onboardingPrompts.length
+
+  const brandName = questionResponses.brandName || 'Your brand'
+  const primaryTopic = questionResponses.primaryTopic || 'your core topic'
+  const audience = questionResponses.audience || 'your audience'
 
   const contentPillars = [
     {
@@ -688,7 +1090,7 @@ export const BrandHub: React.FC = () => {
       title: 'Community Signal Boost',
       description: `Weekly spotlights that highlight questions, wins, and objections sourced directly from your people.`
     }
-  ];
+  ]
 
   const qaPrompts = [
     {
@@ -699,37 +1101,41 @@ export const BrandHub: React.FC = () => {
       question: 'How do we lower the barrier to action?',
       answer: `Break your ${primaryTopic} framework into a 15-minute momentum builder that someone can try today.`
     }
-  ];
+  ]
 
   const intentPlaybook = selectedIntents.map((intent) => {
     switch (intent) {
       case 'Educate':
         return {
           intent,
-          guidance: 'Show them the process. Use stepwise tutorials and annotated screen recordings to demystify your method.'
-        };
+          guidance:
+            'Show them the process. Use stepwise tutorials and annotated screen recordings to demystify your method.'
+        }
       case 'Inspire':
         return {
           intent,
-          guidance: 'Spotlight transformation stories and personal reflections that humanize the journey and spark ambition.'
-        };
+          guidance:
+            'Spotlight transformation stories and personal reflections that humanize the journey and spark ambition.'
+        }
       case 'Convert':
         return {
           intent,
-          guidance: 'Pair social proof with a clear next step. Close with "here is how to work with us" clarity every time.'
-        };
+          guidance:
+            'Pair social proof with a clear next step. Close with "here is how to work with us" clarity every time.'
+        }
       case 'Build community':
         return {
           intent,
-          guidance: 'Invite dialogue. Pose a thoughtful question and feature responses in next week’s recap clip.'
-        };
+          guidance:
+            'Invite dialogue. Pose a thoughtful question and feature responses in next week’s recap clip.'
+        }
       default:
         return {
           intent,
           guidance: 'Document the behind-the-scenes process and narrate why it matters right now.'
-        };
+        }
     }
-  });
+  })
 
   const modalFooter = (
     <>
@@ -744,15 +1150,28 @@ export const BrandHub: React.FC = () => {
       >
         {analysisComplete ? 'Re-run analysis' : 'Analyze videos'}
       </Button>
-      <Button
-        variant="creative"
-        onClick={handleCloseModal}
-        isDisabled={!analysisComplete}
-      >
+      <Button variant="creative" onClick={handleCloseModal} isDisabled={!analysisComplete}>
         Create voice draft
       </Button>
     </>
-  );
+  )
+
+  const tabConfig: Array<{ id: TabKey; label: string; hint: string }> = [
+    { id: 'voices', label: 'Voice library', hint: 'Manage active brand voices' },
+    {
+      id: 'onboarding',
+      label: 'Interactive onboarding',
+      hint: 'Capture strategic context with audio'
+    },
+    { id: 'blueprint', label: 'Content blueprint', hint: 'Translate answers into pillars' }
+  ]
+
+  const progressPercent = onboardingPrompts.length
+    ? Math.round((completedCount / onboardingPrompts.length) * 100)
+    : 0
+
+  const canAdvance = (questionResponses[currentQuestion.id] ?? '').trim().length > 0
+  const isLastQuestion = activeQuestionIndex === onboardingPrompts.length - 1
 
   return (
     <div css={pageContainerStyles}>
@@ -772,267 +1191,449 @@ export const BrandHub: React.FC = () => {
         </div>
       </header>
 
-      <div css={layoutStyles}>
-        <section className="voice-column">
-          <Card css={voiceLibraryStyles} appearance="raised">
-            <CardHeader>
-              <div className="section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: 'var(--font-size-h4)', color: 'var(--color-neutral-800)' }}>Brand voices</h2>
-                  <p style={{ margin: 'var(--space-1) 0 0', color: 'var(--color-neutral-600)', fontSize: 'var(--font-size-body-small)' }}>
-                    Activate the voice that matches today&apos;s campaign. Each workspace stores scripts, hooks, and tone notes.
-                  </p>
+      <nav css={tabListStyles} aria-label="Brand hub sections">
+        {tabConfig.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            css={tabTriggerStyles(activeTab === tab.id)}
+            onClick={() => {
+              if (tab.id === 'blueprint' && !isQuestionnaireComplete) {
+                setActiveTab('onboarding')
+                return
+              }
+              setActiveTab(tab.id)
+            }}
+          >
+            <span>{tab.label}</span>
+            <span className="tab-hint">{tab.hint}</span>
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === 'voices' && (
+        <div css={voicesLayoutStyles}>
+          <section>
+            <Card css={voiceLibraryStyles} appearance="raised">
+              <CardHeader>
+                <div
+                  className="section-heading"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 'var(--space-3)'
+                  }}
+                >
+                  <div>
+                    <h2
+                      style={{
+                        margin: 0,
+                        fontSize: 'var(--font-size-h4)',
+                        color: 'var(--color-neutral-800)'
+                      }}
+                    >
+                      Brand voices
+                    </h2>
+                    <p
+                      style={{
+                        margin: 'var(--space-1) 0 0',
+                        color: 'var(--color-neutral-600)',
+                        fontSize: 'var(--font-size-body-small)'
+                      }}
+                    >
+                      Activate the voice that matches today&apos;s campaign. Each workspace stores
+                      scripts, hooks, and tone notes.
+                    </p>
+                  </div>
+                  <Badge variant="primary">{mockBrandVoices.length} total</Badge>
                 </div>
-                <Badge variant="primary">{mockBrandVoices.length} total</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="voice-grid">
-                {mockBrandVoices.map((voice) => (
-                  <Card key={voice.id} css={voiceCardStyles} appearance="subtle" isHoverable>
-                    <div className="voice-header">
-                      <h3>{voice.name}</h3>
-                      <Badge
-                        variant={voice.status === 'Live' ? 'success' : voice.status === 'Draft' ? 'neutral' : 'warning'}
-                      >
-                        {voice.status}
-                      </Badge>
-                    </div>
-                    <p className="voice-summary">{voice.summary}</p>
-                    <p className="persona">{voice.persona}</p>
-                    <div className="pillars">
-                      {voice.pillars.map((pillar) => (
-                        <Badge key={pillar} variant="default" size="small">
-                          {pillar}
+              </CardHeader>
+              <CardContent>
+                <div className="voice-grid">
+                  {mockBrandVoices.map((voice) => (
+                    <Card key={voice.id} css={voiceCardStyles} appearance="subtle" isHoverable>
+                      <div className="voice-header">
+                        <h3>{voice.name}</h3>
+                        <Badge
+                          variant={
+                            voice.status === 'Live'
+                              ? 'success'
+                              : voice.status === 'Draft'
+                                ? 'neutral'
+                                : 'warning'
+                          }
+                        >
+                          {voice.status}
                         </Badge>
-                      ))}
-                    </div>
-                    <div className="voice-meta">
-                      <span>{voice.platform}</span>
-                      <span>·</span>
-                      <span>{voice.audience}</span>
-                      <span>·</span>
-                      <span>{voice.lastUpdated}</span>
-                    </div>
-                    <CardFooter style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                      <Button variant="secondary" size="small">
-                        Open voice workspace
-                      </Button>
-                      <Button variant="tertiary" size="small" iconAfter={<ArrowRightIcon label="Set active" />}>Set active</Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                      </div>
+                      <p className="voice-summary">{voice.summary}</p>
+                      <p className="persona">{voice.persona}</p>
+                      <div className="pillars">
+                        {voice.pillars.map((pillar) => (
+                          <Badge key={pillar} variant="default" size="small">
+                            {pillar}
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="voice-meta">
+                        <span>{voice.platform}</span>
+                        <span>·</span>
+                        <span>{voice.audience}</span>
+                        <span>·</span>
+                        <span>{voice.lastUpdated}</span>
+                      </div>
+                      <CardFooter
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 'var(--space-3)'
+                        }}
+                      >
+                        <Button variant="secondary" size="small">
+                          Open voice workspace
+                        </Button>
+                        <Button
+                          variant="tertiary"
+                          size="small"
+                          iconAfter={<ArrowRightIcon label="Set active" />}
+                        >
+                          Set active
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </section>
 
-          <Card css={workflowCardStyles} appearance="raised">
-            <CardHeader>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ margin: 0, fontSize: 'var(--font-size-h4)', color: 'var(--color-neutral-800)' }}>How voice creation works</h2>
-                <Badge variant="primary" size="small">Preview workflow</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="workflow-list">
-                <div className="workflow-item">
-                  <div className="icon" aria-hidden="true">
-                    <VidPlayIcon label="" />
+          <aside>
+            <Card css={workflowCardStyles} appearance="raised">
+              <CardHeader>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <h2
+                    style={{
+                      margin: 0,
+                      fontSize: 'var(--font-size-h4)',
+                      color: 'var(--color-neutral-800)'
+                    }}
+                  >
+                    How voice creation works
+                  </h2>
+                  <Badge variant="primary" size="small">
+                    Preview workflow
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="workflow-list">
+                  <div className="workflow-item">
+                    <div className="icon" aria-hidden="true">
+                      <VidPlayIcon label="" />
+                    </div>
+                    <div className="details">
+                      <h4>Pull creator library</h4>
+                      <p>
+                        Paste a handle and we&apos;ll fetch the latest clips, transcripts, and
+                        engagement metrics ready for review in the modal.
+                      </p>
+                    </div>
                   </div>
-                  <div className="details">
-                    <h4>Pull creator library</h4>
-                    <p>
-                      Paste a handle and we&apos;ll fetch the latest clips, transcripts, and engagement metrics ready for review in the modal.
-                    </p>
+                  <div className="workflow-item">
+                    <div className="icon" aria-hidden="true">
+                      <DownloadIcon label="" />
+                    </div>
+                    <div className="details">
+                      <h4>Cluster the voice DNA</h4>
+                      <p>
+                        We identify recurring hooks, narrative beats, and tonal cues before turning
+                        them into reusable brand voice ingredients.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="workflow-item">
+                    <div className="icon" aria-hidden="true">
+                      <GraphLineIcon label="" />
+                    </div>
+                    <div className="details">
+                      <h4>Publish your workspace</h4>
+                      <p>
+                        Approve the analysis, add onboarding inputs, and your writers immediately
+                        get playbooks, prompts, and tone sliders.
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="workflow-item">
-                  <div className="icon" aria-hidden="true">
-                    <DownloadIcon label="" />
-                  </div>
-                  <div className="details">
-                    <h4>Cluster the voice DNA</h4>
-                    <p>
-                      We identify recurring hooks, narrative beats, and tonal cues before turning them into reusable brand voice ingredients.
-                    </p>
-                  </div>
-                </div>
-                <div className="workflow-item">
-                  <div className="icon" aria-hidden="true">
-                    <GraphLineIcon label="" />
-                  </div>
-                  <div className="details">
-                    <h4>Publish your workspace</h4>
-                    <p>
-                      Approve the analysis, add onboarding inputs, and your writers immediately get playbooks, prompts, and tone sliders.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
+              </CardContent>
+            </Card>
+          </aside>
+        </div>
+      )}
 
-        <aside className="strategy-column">
-          <Card css={onboardingCardStyles} appearance="raised">
-            <CardHeader>
+      {activeTab === 'onboarding' && (
+        <Card css={onboardingExperienceStyles} appearance="raised">
+          <CardHeader>
+            <div className="question-header">
               <div>
-                <h2 style={{ margin: 0, fontSize: 'var(--font-size-h4)', color: 'var(--color-neutral-800)' }}>Onboarding questions</h2>
-                <p style={{ margin: 'var(--space-1) 0 0', color: 'var(--color-neutral-600)', fontSize: 'var(--font-size-body-small)' }}>
-                  Capture the strategic inputs once. Every writer, prompt, and campaign will use the same guardrails.
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: 'var(--font-size-h4)',
+                    color: 'var(--color-neutral-800)'
+                  }}
+                >
+                  Voice onboarding interview
+                </h2>
+                <p
+                  style={{
+                    margin: 'var(--space-1) 0 0',
+                    color: 'var(--color-neutral-600)',
+                    fontSize: 'var(--font-size-body-small)'
+                  }}
+                >
+                  Answer each prompt out loud and watch the transcript build live. You can always
+                  refine the text before moving on.
                 </p>
               </div>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleOnboardingSubmit}>
-                <div className="form-grid">
-                  <div className="form-field">
-                    <Input
-                      label="Brand or creator name"
-                      placeholder="Ex: Magnetic Maker"
-                      value={onboardingForm.brandName}
-                      onChange={(event) => handleFormChange('brandName', event.target.value)}
-                    />
-                  </div>
-                  <div className="form-field">
-                    <Input
-                      label="Primary topic or niche"
-                      placeholder="Launch storytelling, newsletter growth, etc."
-                      value={onboardingForm.primaryTopic}
-                      onChange={(event) => handleFormChange('primaryTopic', event.target.value)}
-                    />
-                  </div>
-                  <div className="form-field">
-                    <TextArea
-                      label="Who are you speaking to?"
-                      placeholder="Describe their role, motivation, and pain points."
-                      value={onboardingForm.audience}
-                      onChange={(event) => handleFormChange('audience', event.target.value)}
-                      size="small"
-                    />
-                  </div>
-                  <div className="form-field">
-                    <Input
-                      label="Signature promise"
-                      placeholder="What consistent outcome do you deliver?"
-                      value={onboardingForm.promise}
-                      onChange={(event) => handleFormChange('promise', event.target.value)}
-                    />
-                  </div>
-                  <div className="form-field">
-                    <TextArea
-                      label="Voice & personality cues"
-                      placeholder="List tone words, cadence notes, do/do not guidance."
-                      value={onboardingForm.voicePersonality}
-                      onChange={(event) => handleFormChange('voicePersonality', event.target.value)}
-                      size="small"
-                    />
-                  </div>
-                  <div className="form-field">
-                    <TextArea
-                      label="Founding story or why now"
-                      placeholder="Share the origin, differentiators, or mission moments we should reference."
-                      value={onboardingForm.originStory}
-                      onChange={(event) => handleFormChange('originStory', event.target.value)}
-                      size="small"
-                    />
-                  </div>
-                </div>
-
-                <div className="intent-section">
-                  <span className="field-label" style={{ fontWeight: 'var(--font-weight-medium)', color: 'var(--color-neutral-700)' }}>
-                    What&apos;s the intent behind most content?
-                  </span>
-                  <div className="intent-grid">
-                    {intentOptions.map((intent) => {
-                      const isActive = selectedIntents.includes(intent);
-                      return (
-                        <button
-                          key={intent}
-                          type="button"
-                          onClick={() => handleIntentToggle(intent)}
-                          css={intentChipStyles(isActive)}
-                        >
-                          {intent}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <CardFooter style={{ padding: 0, display: 'flex', justifyContent: 'flex-end' }}>
-                  <Button variant="primary" type="submit">
-                    Generate strategy preview
-                  </Button>
-                </CardFooter>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card css={blueprintCardStyles} appearance="raised">
-            <CardHeader>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: 'var(--font-size-h4)', color: 'var(--color-neutral-800)' }}>Content blueprint</h2>
-                  <p style={{ margin: 'var(--space-1) 0 0', color: 'var(--color-neutral-600)', fontSize: 'var(--font-size-body-small)' }}>
-                    Preview the pillars, conversation starters, and intent cues we&apos;ll generate once onboarding is saved.
-                  </p>
-                </div>
-                <Badge variant={hasGeneratedStrategy ? 'success' : 'neutral'} size="small">
-                  {hasGeneratedStrategy ? 'Ready to review' : 'Waiting for inputs'}
+              <div className="progress-meta" aria-live="polite">
+                <Badge variant="neutral" size="small">
+                  {completedCount}/{onboardingPrompts.length} answered
+                </Badge>
+                <span>·</span>
+                <span>{progressPercent}% complete</span>
+              </div>
+            </div>
+            <div
+              className="progress-bar"
+              role="progressbar"
+              aria-valuenow={progressPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="question-card">
+              <div className="question-meta">
+                <Badge variant="primary" size="small">
+                  Question {activeQuestionIndex + 1} of {onboardingPrompts.length}
                 </Badge>
               </div>
-            </CardHeader>
-            <CardContent>
-              {hasGeneratedStrategy ? (
-                <div className="blueprint-body" style={{ display: 'grid', gap: 'var(--space-4)' }}>
-                  <section className="pillars">
-                    <h3 style={{ margin: 0, fontSize: 'var(--font-size-h5)', color: 'var(--color-neutral-800)' }}>Content pillars</h3>
-                    {contentPillars.map((pillar) => (
-                      <div key={pillar.title} className="pillar-tag">
-                        <span>{pillar.title}</span>
-                        <p>{pillar.description}</p>
-                      </div>
-                    ))}
-                  </section>
+              <h3 className="prompt-text">{currentQuestion.prompt}</h3>
+              {currentQuestion.helper && <p className="helper-text">{currentQuestion.helper}</p>}
 
-                  <section className="qa-list">
-                    <h3 style={{ margin: 0, fontSize: 'var(--font-size-h5)', color: 'var(--color-neutral-800)' }}>Conversation starters</h3>
-                    {qaPrompts.map((prompt) => (
-                      <div key={prompt.question} className="qa-item">
-                        <h4>{prompt.question}</h4>
-                        <p>{prompt.answer}</p>
-                      </div>
-                    ))}
-                  </section>
+              <div className="timer-pill">
+                <StopwatchIcon label="Timer" /> {formatTime(elapsedSeconds)}
+                {isRecording ? ' · Recording' : ' · Ready'}
+              </div>
 
-                  <section className="intent-list">
-                    <h3 style={{ margin: 0, fontSize: 'var(--font-size-h5)', color: 'var(--color-neutral-800)' }}>Intent playbook</h3>
-                    {intentPlaybook.length === 0 ? (
-                      <p style={{ margin: 0, color: 'var(--color-neutral-500)', fontSize: 'var(--font-size-body-small)' }}>
-                        Select at least one intent to tailor the strategy guidance.
-                      </p>
-                    ) : (
-                      intentPlaybook.map((item) => (
-                        <div key={item.intent} className="intent-item">
-                          <h4>{item.intent}</h4>
-                          <p>{item.guidance}</p>
-                        </div>
-                      ))
-                    )}
-                  </section>
+              <div className="transcript-stream">
+                <span className="stream-label">Live transcript</span>
+                <div className="stream-output">
+                  {liveTranscript || 'Your words will appear here as you speak.'}
                 </div>
-              ) : (
-                <div className="empty-state">
-                  <p>
-                    Answer the onboarding prompts to preview content pillars, audience Q&A, and intent-specific guardrails.
-                  </p>
+              </div>
+
+              <TextArea
+                label="Refine or add notes"
+                placeholder="Type to expand on your spoken answer."
+                value={questionResponses[currentQuestion.id] ?? ''}
+                onChange={(event) => handleTranscriptChange(event.target.value)}
+                size="small"
+              />
+
+              {recordingError && <div className="error-banner">{recordingError}</div>}
+
+              <div className="controls">
+                <Button
+                  variant={isRecording ? 'secondary' : 'primary'}
+                  iconBefore={
+                    <VidPlayIcon label={isRecording ? 'Stop recording' : 'Start recording'} />
+                  }
+                  onClick={isRecording ? stopRecording : startRecording}
+                >
+                  {isRecording ? 'Stop recording' : 'Start recording'}
+                </Button>
+                <Button
+                  variant="tertiary"
+                  onClick={() => handleTranscriptChange('')}
+                  isDisabled={isRecording}
+                >
+                  Clear response
+                </Button>
+              </div>
+
+              <div className="navigation">
+                <Button
+                  variant="secondary"
+                  iconBefore={<ArrowLeftIcon label="Previous" />}
+                  onClick={handlePreviousQuestion}
+                  isDisabled={activeQuestionIndex === 0}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="primary"
+                  iconAfter={<ArrowRightIcon label="Next" />}
+                  onClick={handleNextQuestion}
+                  isDisabled={!canAdvance}
+                >
+                  {isLastQuestion ? 'Generate blueprint' : 'Next question'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="intent-picker">
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  flexWrap: 'wrap',
+                  gap: 'var(--space-3)'
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 'var(--font-size-body-large)',
+                    color: 'var(--color-neutral-800)'
+                  }}
+                >
+                  Content intent focus
+                </h3>
+                <span
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: 'var(--color-neutral-500)'
+                  }}
+                >
+                  Choose the outcomes you want each clip to drive.
+                </span>
+              </div>
+              <div className="intent-options">
+                {intentOptions.map((intent) => {
+                  const isActive = selectedIntents.includes(intent)
+                  return (
+                    <button
+                      key={intent}
+                      type="button"
+                      css={intentChipStyles(isActive)}
+                      onClick={() => handleIntentToggle(intent)}
+                    >
+                      {intent}
+                    </button>
+                  )
+                })}
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 'var(--font-size-caption)',
+                  color: 'var(--color-neutral-500)'
+                }}
+              >
+                We recommend selecting two to three intents so your blueprint balances education,
+                inspiration, and conversion moments.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'blueprint' && (
+        <Card css={blueprintCardStyles} appearance="raised">
+          <CardHeader>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 'var(--space-3)'
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: 'var(--font-size-h4)',
+                    color: 'var(--color-neutral-800)'
+                  }}
+                >
+                  Content blueprint
+                </h2>
+                <p
+                  style={{
+                    margin: 'var(--space-1) 0 0',
+                    color: 'var(--color-neutral-600)',
+                    fontSize: 'var(--font-size-body-small)'
+                  }}
+                >
+                  Your spoken answers and intent selections craft a strategy-ready outline for
+                  writers and creative partners.
+                </p>
+              </div>
+              {isQuestionnaireComplete && <Badge variant="success">Ready to deploy</Badge>}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!isQuestionnaireComplete ? (
+              <div className="empty-state">
+                <p>
+                  Complete the interactive onboarding to unlock tailored content pillars, tone
+                  guidance, and Q&amp;A prompts.
+                </p>
+                <Button variant="primary" onClick={() => setActiveTab('onboarding')}>
+                  Return to onboarding interview
+                </Button>
+              </div>
+            ) : (
+              <div className="section">
+                <div className="pillars">
+                  {contentPillars.map((pillar) => (
+                    <div key={pillar.title} className="pillar-tag">
+                      <span>{pillar.title}</span>
+                      <p>{pillar.description}</p>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </aside>
-      </div>
+
+                <div className="transcript-list">
+                  {onboardingPrompts.map((prompt) => (
+                    <div key={prompt.id} className="qa-item">
+                      <h4>{prompt.title}</h4>
+                      <p>{questionResponses[prompt.id]}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="qa-list">
+                  {qaPrompts.map((qa) => (
+                    <div key={qa.question} className="qa-item">
+                      <h4>{qa.question}</h4>
+                      <p>{qa.answer}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="intent-list">
+                  {intentPlaybook.map((item) => (
+                    <div key={item.intent} className="intent-item">
+                      <h4>{item.intent}</h4>
+                      <p>{item.guidance}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <BasicModal
         open={isModalOpen}
@@ -1048,31 +1649,36 @@ export const BrandHub: React.FC = () => {
               value={creatorInput}
               onChange={(event) => setCreatorInput(event.target.value)}
             />
-            <span className="helper">We&apos;ll grab the most recent 12 videos, transcripts, and top comments.</span>
+            <span className="helper">
+              We&apos;ll grab the most recent 12 videos, transcripts, and top comments.
+            </span>
           </div>
 
           <div className="field-group">
             <span className="field-label">Primary platform</span>
             <div className="platform-options">
               {platformOptions.map((platform) => {
-                const isActive = selectedPlatform === platform;
+                const isActive = selectedPlatform === platform
                 return (
                   <button
                     key={platform}
                     type="button"
                     onClick={() => setSelectedPlatform(platform)}
-                    css={platformChipStyles(isActive)}
+                    css={intentChipStyles(isActive)}
                   >
                     {platform}
                   </button>
-                );
+                )
               })}
             </div>
           </div>
 
           {!hasFetchedVideos && (
             <div className="empty-state">
-              <p>Paste a creator link or @handle, choose the platform, and load their latest videos for analysis.</p>
+              <p>
+                Paste a creator link or @handle, choose the platform, and load their latest videos
+                for analysis.
+              </p>
               <Button
                 variant="primary"
                 iconBefore={<DownloadIcon label="" />}
@@ -1087,10 +1693,24 @@ export const BrandHub: React.FC = () => {
 
           {hasFetchedVideos && (
             <>
-              <div className="field-group" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                className="field-group"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 'var(--space-3)'
+                }}
+              >
                 <div>
                   <span className="field-label">Loaded creator</span>
-                  <p style={{ margin: 'var(--space-1) 0 0', color: 'var(--color-neutral-600)', fontSize: 'var(--font-size-body-small)' }}>
+                  <p
+                    style={{
+                      margin: 'var(--space-1) 0 0',
+                      color: 'var(--color-neutral-600)',
+                      fontSize: 'var(--font-size-body-small)'
+                    }}
+                  >
                     @{selectedCreator} · {selectedPlatform}
                   </p>
                 </div>
@@ -1119,7 +1739,10 @@ export const BrandHub: React.FC = () => {
                         <span>·</span>
                         <span>{video.postedAt}</span>
                       </div>
-                      <p>We&apos;ll analyze the hook, pacing, call to action, and transcript sentiment.</p>
+                      <p>
+                        We&apos;ll analyze the hook, pacing, call to action, and transcript
+                        sentiment.
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -1133,7 +1756,9 @@ export const BrandHub: React.FC = () => {
                 <CheckCircleIcon label="Complete" /> Analysis ready
               </h4>
               <ul>
-                <li>Top hooks revolve around social proof and transparent build-in-public lessons.</li>
+                <li>
+                  Top hooks revolve around social proof and transparent build-in-public lessons.
+                </li>
                 <li>Tone scores balance optimistic coaching with tactical specificity.</li>
                 <li>Audience questions lean toward launch sequencing and content consistency.</li>
               </ul>
@@ -1142,7 +1767,7 @@ export const BrandHub: React.FC = () => {
         </div>
       </BasicModal>
     </div>
-  );
-};
+  )
+}
 
-export default BrandHub;
+export default BrandHub
