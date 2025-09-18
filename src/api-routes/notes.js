@@ -1,4 +1,4 @@
-import { getDb, verifyBearer, getCollectionRefByPath } from './utils/firebase-admin.js';
+import { getDb, verifyBearer } from './utils/firebase-admin.js';
 
 function tsToIso(v, fallbackIso) {
   try {
@@ -10,8 +10,8 @@ function tsToIso(v, fallbackIso) {
 
 function formatNoteDoc(d) {
   const data = d.data();
-  const createdFields = (process.env.CONTENT_CREATED_AT_FIELDS || 'createdAt,created,timestamp').split(',').map((s) => s.trim());
-  const updatedFields = (process.env.CONTENT_UPDATED_AT_FIELDS || 'updatedAt,updated,modifiedAt').split(',').map((s) => s.trim());
+  const createdFields = ['createdAt', 'created', 'timestamp'];
+  const updatedFields = ['updatedAt', 'updated', 'modifiedAt'];
   const createdRaw = createdFields.map((k) => data[k]).find((v) => v != null);
   const updatedRaw = updatedFields.map((k) => data[k]).find((v) => v != null);
   return {
@@ -23,28 +23,6 @@ function formatNoteDoc(d) {
 }
 
 async function fetchUserNotes(db, uid) {
-  // Prefer env-configured path if present
-  const configuredPath = process.env.CONTENT_NOTES_PATH; // e.g., "users/{uid}/notes" or "notes"
-  if (configuredPath) {
-    try {
-      const cref = getCollectionRefByPath(db, configuredPath, uid);
-      if (cref) {
-        console.log('[notes] Query via configured path:', configuredPath);
-        let q = cref;
-        if (!configuredPath.includes('{uid}')) {
-          const userField = process.env.CONTENT_USER_FIELD || 'userId';
-          console.log('[notes] Filtering on field:', userField);
-          q = q.where(userField, '==', uid);
-        }
-        try { q = q.orderBy('createdAt', 'desc'); } catch {}
-        const snap = await q.limit(200).get();
-        if (!snap.empty) return snap.docs.map((d) => formatNoteDoc(d));
-      }
-    } catch (e) {
-      console.warn('[notes] configured path query failed:', e?.message);
-    }
-  }
-
   try {
     const subSnap = await db
       .collection('users')
@@ -286,15 +264,6 @@ async function persistNote(db, uid, note) {
   const payload = { ...note, userId: uid, ...timestamps };
   delete payload.id;
 
-  const configuredPath = process.env.CONTENT_NOTES_PATH;
-  const configuredRef = configuredPath ? getCollectionRefByPath(db, configuredPath, uid) : null;
-
-  if (configuredRef) {
-    console.log('[notes] Write via configured path:', configuredPath);
-    const ref = await configuredRef.add(payload);
-    return { ...note, id: ref.id, userId: uid, createdAt: timestamps.createdAt.toISOString(), updatedAt: timestamps.updatedAt.toISOString() };
-  }
-
   try {
     const subRef = await db.collection('users').doc(uid).collection('notes').add(payload);
     return { ...note, id: subRef.id, userId: uid, createdAt: timestamps.createdAt.toISOString(), updatedAt: timestamps.updatedAt.toISOString() };
@@ -315,21 +284,6 @@ async function resolveNoteDocRef(db, uid, id) {
   snapshot = await docRef.get();
   if (snapshot.exists) {
     return docRef;
-  }
-
-  const configuredPath = process.env.CONTENT_NOTES_PATH;
-  if (configuredPath) {
-    const ref = getCollectionRefByPath(db, configuredPath, uid);
-    if (ref) {
-      try {
-        const found = await ref.doc(id).get();
-        if (found.exists) {
-          return ref.doc(id);
-        }
-      } catch (error) {
-        console.warn('[notes] resolveNoteDocRef configured path failed:', error?.message);
-      }
-    }
   }
 
   return null;

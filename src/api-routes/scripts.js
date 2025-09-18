@@ -1,4 +1,4 @@
-import { getDb, verifyBearer, getCollectionRefByPath } from './utils/firebase-admin.js';
+import { getDb, getCollectionRefByPath, verifyBearer } from './utils/firebase-admin.js';
 
 function stripUndefined(value) {
   if (Array.isArray(value)) {
@@ -27,8 +27,8 @@ function tsToIso(v, fallbackIso) {
 
 function formatScriptDoc(d) {
   const data = d.data();
-  const createdFields = (process.env.CONTENT_CREATED_AT_FIELDS || 'createdAt,created,timestamp').split(',').map((s) => s.trim());
-  const updatedFields = (process.env.CONTENT_UPDATED_AT_FIELDS || 'updatedAt,updated,modifiedAt').split(',').map((s) => s.trim());
+  const createdFields = ['createdAt', 'created', 'timestamp'];
+  const updatedFields = ['updatedAt', 'updated', 'modifiedAt'];
   const createdRaw = createdFields.map((k) => data[k]).find((v) => v != null);
   const updatedRaw = updatedFields.map((k) => data[k]).find((v) => v != null);
   return {
@@ -40,29 +40,6 @@ function formatScriptDoc(d) {
 }
 
 async function fetchUserScripts(db, uid) {
-  // Prefer env-configured path if present
-  const configuredPath = process.env.CONTENT_SCRIPTS_PATH; // e.g., "users/{uid}/scripts" or "scripts"
-  if (configuredPath) {
-    try {
-      const cref = getCollectionRefByPath(db, configuredPath, uid);
-      if (cref) {
-        console.log('[scripts] Query via configured path:', configuredPath);
-        let q = cref;
-        // If path doesn't include {uid}, filter by user field
-        if (!configuredPath.includes('{uid}')) {
-          const userField = process.env.CONTENT_USER_FIELD || 'userId';
-          console.log('[scripts] Filtering on field:', userField);
-          q = q.where(userField, '==', uid);
-        }
-        try { q = q.orderBy('createdAt', 'desc'); } catch {}
-        const snap = await q.limit(200).get();
-        if (!snap.empty) return snap.docs.map((d) => formatScriptDoc(d));
-      }
-    } catch (e) {
-      console.warn('[scripts] configured path query failed:', e?.message);
-    }
-  }
-
   // Try subcollection: users/{uid}/scripts
   try {
     const subSnap = await db
@@ -160,6 +137,11 @@ export async function handleCreateScript(req, res) {
     const trimmed = content.trim();
     const wordCount = trimmed ? trimmed.split(/\s+/).length : 0;
 
+    const normalizedVoice =
+      body.voice && typeof body.voice === 'object'
+        ? stripUndefined(body.voice)
+        : body.voice;
+
     const baseScript = {
       title: body.title || 'Untitled Script',
       content,
@@ -176,7 +158,7 @@ export async function handleCreateScript(req, res) {
       summary: body.summary || content.slice(0, 160),
       userId: auth.uid,
       approach: body.approach || 'educational',
-      voice: body.voice,
+      ...(normalizedVoice !== undefined ? { voice: normalizedVoice } : {}),
       originalIdea: body.originalIdea,
       targetLength: body.targetLength,
       source: body.source,
@@ -331,36 +313,35 @@ async function persistScript(db, uid, script) {
   const payload = stripUndefined({ ...script, userId: uid, ...timestamps });
   delete payload.id;
 
-  const configuredPath = process.env.CONTENT_SCRIPTS_PATH;
-  const configuredRef = configuredPath ? getCollectionRefByPath(db, configuredPath, uid) : null;
+  const normalizeResponse = (id) => ({
+    ...stripUndefined(script),
+    id,
+    userId: uid,
+    createdAt: timestamps.createdAt.toISOString(),
+    updatedAt: timestamps.updatedAt.toISOString(),
+  });
 
-  if (configuredRef) {
-    console.log('[scripts] Write via configured path:', configuredPath);
-    const ref = await configuredRef.add(payload);
-    return {
-      ...stripUndefined(script),
-      id: ref.id,
-      createdAt: timestamps.createdAt.toISOString(),
-      updatedAt: timestamps.updatedAt.toISOString(),
-    };
+  const configuredPath = process.env.CONTENT_SCRIPTS_PATH;
+  if (configuredPath) {
+    try {
+      const configuredRef = getCollectionRefByPath(db, configuredPath, uid);
+      if (configuredRef) {
+        const ref = await configuredRef.add(payload);
+        return normalizeResponse(ref.id);
+      }
+      console.warn('[scripts] CONTENT_SCRIPTS_PATH resolved to no collection ref:', configuredPath);
+    } catch (error) {
+      console.warn('[scripts] Failed to persist script to configured path:', configuredPath, error?.message);
+    }
   }
 
   try {
     const subRef = await db.collection('users').doc(uid).collection('scripts').add(payload);
-    return {
-      ...stripUndefined(script),
-      id: subRef.id,
-      createdAt: timestamps.createdAt.toISOString(),
-      updatedAt: timestamps.updatedAt.toISOString(),
-    };
-  } catch {
+    return normalizeResponse(subRef.id);
+  } catch (error) {
+    console.warn('[scripts] Fallback to root scripts collection:', error?.message);
     const ref = await db.collection('scripts').add(payload);
-    return {
-      ...stripUndefined(script),
-      id: ref.id,
-      createdAt: timestamps.createdAt.toISOString(),
-      updatedAt: timestamps.updatedAt.toISOString(),
-    };
+    return normalizeResponse(ref.id);
   }
 }
 
@@ -375,21 +356,6 @@ async function resolveScriptDocRef(db, uid, id) {
   snapshot = await docRef.get();
   if (snapshot.exists) {
     return docRef;
-  }
-
-  const configuredPath = process.env.CONTENT_SCRIPTS_PATH;
-  if (configuredPath) {
-    const ref = getCollectionRefByPath(db, configuredPath, uid);
-    if (ref) {
-      try {
-        const found = await ref.doc(id).get();
-        if (found.exists) {
-          return ref.doc(id);
-        }
-      } catch (error) {
-        console.warn('[scripts] resolveScriptDocRef configured path failed:', error?.message);
-      }
-    }
   }
 
   return null;
