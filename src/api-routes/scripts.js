@@ -1,6 +1,21 @@
-import fs from 'fs';
-import path from 'path';
 import { getDb, verifyBearer, getCollectionRefByPath } from './utils/firebase-admin.js';
+
+function stripUndefined(value) {
+  if (Array.isArray(value)) {
+    return value.map(stripUndefined);
+  }
+
+  if (value && typeof value === 'object' && Object.prototype.toString.call(value) === '[object Object]') {
+    return Object.entries(value).reduce((acc, [key, entryValue]) => {
+      if (entryValue !== undefined) {
+        acc[key] = stripUndefined(entryValue);
+      }
+      return acc;
+    }, {});
+  }
+
+  return value;
+}
 
 function tsToIso(v, fallbackIso) {
   try {
@@ -80,34 +95,6 @@ async function fetchUserScripts(db, uid) {
   return [];
 }
 
-const SCRIPTS_FILE = path.join(process.cwd(), 'data', 'scripts.json');
-
-function ensureStore() {
-  const dir = path.dirname(SCRIPTS_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(SCRIPTS_FILE)) fs.writeFileSync(SCRIPTS_FILE, JSON.stringify({ scripts: [] }, null, 2));
-}
-
-function readScripts() {
-  ensureStore();
-  try {
-    const raw = fs.readFileSync(SCRIPTS_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : Array.isArray(parsed.scripts) ? parsed.scripts : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeScripts(scripts) {
-  ensureStore();
-  fs.writeFileSync(SCRIPTS_FILE, JSON.stringify({ scripts }, null, 2));
-}
-
-function genId() {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-}
-
 export async function handleGetScripts(req, res) {
   try {
     console.log('[scripts] GET headers', {
@@ -155,25 +142,39 @@ export async function handleCreateScript(req, res) {
         xClient: req.headers['x-client'] || req.headers['X-Client'],
       });
     } catch {}
+
+    const auth = await verifyBearer(req);
+    if (!auth) {
+      return res.status(401).json({ success: false, error: 'Authentication required to save scripts.' });
+    }
+
+    const db = getDb();
+    if (!db) {
+      console.error('[scripts] Firestore unavailable while creating script');
+      return res.status(503).json({ success: false, error: 'Content service is unavailable. Please try again later.' });
+    }
+
     const body = req.body || {};
-    const now = new Date().toISOString();
-    const wordCount = (body.content || '').trim() ? body.content.trim().split(/\s+/).length : 0;
-    const script = {
-      id: genId(),
+    const now = new Date();
+    const content = (body.content || '').toString();
+    const trimmed = content.trim();
+    const wordCount = trimmed ? trimmed.split(/\s+/).length : 0;
+
+    const baseScript = {
       title: body.title || 'Untitled Script',
-      content: body.content || '',
+      content,
       authors: 'You',
       status: body.status || 'draft',
       performance: { views: 0, engagement: 0 },
       category: body.category || 'General',
-      createdAt: now,
-      updatedAt: now,
-      viewedAt: now,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      viewedAt: now.toISOString(),
       duration: '0:30',
       tags: Array.isArray(body.tags) ? body.tags : [],
       fileType: 'Script',
-      summary: body.summary || (body.content || '').slice(0, 160),
-      userId: 'local',
+      summary: body.summary || content.slice(0, 160),
+      userId: auth.uid,
       approach: body.approach || 'educational',
       voice: body.voice,
       originalIdea: body.originalIdea,
@@ -184,52 +185,18 @@ export async function handleCreateScript(req, res) {
       isThread: body.isThread,
       threadParts: body.threadParts,
       wordCount,
-      characterCount: (body.content || '').length,
+      characterCount: content.length,
     };
-    // Try to write to Firestore if authenticated
-    try {
-      const auth = await verifyBearer(req);
-      const db = getDb();
-      if (auth && db) {
-        const toSave = { ...script, id: undefined, userId: auth.uid };
-        // Use configured path if provided, else default to users/{uid}/scripts then root
-        const configuredPath = process.env.CONTENT_SCRIPTS_PATH;
-        const cref = configuredPath ? getCollectionRefByPath(db, configuredPath, auth.uid) : null;
-        if (cref) {
-          console.log('[scripts] Write via configured path:', process.env.CONTENT_SCRIPTS_PATH);
-          const ref = await cref.add({ ...toSave, createdAt: new Date(), updatedAt: new Date() });
-          const saved = { ...script, id: ref.id, userId: auth.uid };
-          return res.json({ success: true, script: saved });
-        } else {
-          try {
-            const subRef = await db
-              .collection('users')
-              .doc(auth.uid)
-              .collection('scripts')
-              .add({ ...toSave, createdAt: new Date(), updatedAt: new Date() });
-            const saved = { ...script, id: subRef.id, userId: auth.uid };
-            return res.json({ success: true, script: saved });
-          } catch (subErr) {
-            const ref = await db.collection('scripts').add({
-              ...toSave,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            });
-            const saved = { ...script, id: ref.id, userId: auth.uid };
-            return res.json({ success: true, script: saved });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[scripts] Firestore POST failed, using JSON store:', e?.message);
-    }
 
-    const scripts = readScripts();
-    scripts.unshift(script);
-    writeScripts(scripts);
-    res.json({ success: true, script });
+    try {
+      const saved = await persistScript(db, auth.uid, baseScript);
+      return res.json({ success: true, script: saved });
+    } catch (error) {
+      console.error('[scripts] Failed to save script to Firestore:', error?.message);
+      return res.status(500).json({ success: false, error: 'Failed to save script to Firestore.' });
+    }
   } catch (e) {
-    res.status(400).json({ success: false, error: e?.message || 'Invalid request' });
+    return res.status(400).json({ success: false, error: e?.message || 'Invalid request' });
   }
 }
 
@@ -238,61 +205,81 @@ export async function handleGetScriptById(req, res) {
   // Try Firestore first
   try {
     const auth = await verifyBearer(req);
-    const db = getDb();
-    if (auth && db) {
-      let doc = await db.collection('users').doc(auth.uid).collection('scripts').doc(id).get();
-      if (!doc.exists) {
-        doc = await db.collection('scripts').doc(id).get();
-      }
-      if (doc.exists) {
-        const script = formatScriptDoc(doc);
-        if (script.userId && script.userId !== auth.uid) return res.status(403).json({ success: false, error: 'Forbidden' });
-        return res.json({ success: true, script });
-      }
+    if (!auth) {
+      return res.status(401).json({ success: false, error: 'Authentication required to load scripts.' });
     }
-  } catch (e) {
-    console.warn('[scripts] Firestore GET by id failed, fallback:', e?.message);
-  }
 
-  const scripts = readScripts();
-  const script = scripts.find((s) => s.id === id);
-  if (!script) return res.status(404).json({ success: false, error: 'Not found' });
-  res.json({ success: true, script });
+    const db = getDb();
+    if (!db) {
+      console.error('[scripts] Firestore unavailable while fetching by id');
+      return res.status(503).json({ success: false, error: 'Content service is unavailable. Please try again later.' });
+    }
+
+    const script = await findScriptById(db, auth.uid, id);
+    if (!script) {
+      return res.status(404).json({ success: false, error: 'Not found' });
+    }
+    if (script.userId && script.userId !== auth.uid) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+
+    return res.json({ success: true, script });
+  } catch (e) {
+    console.error('[scripts] Failed to fetch script by id:', e?.message);
+    return res.status(500).json({ success: false, error: 'Failed to load script.' });
+  }
 }
 
 export async function handleUpdateScript(req, res) {
   try {
     const { id } = req.params;
     const updates = req.body || {};
-    // Try Firestore
-    try {
-      const auth = await verifyBearer(req);
-      const db = getDb();
-      if (auth && db) {
-        let doc = db.collection('users').doc(auth.uid).collection('scripts').doc(id);
-        let current = await doc.get();
-        if (!current.exists) {
-          doc = db.collection('scripts').doc(id);
-          current = await doc.get();
-        }
-        if (!current.exists) return res.status(404).json({ success: false, error: 'Not found' });
-        const data = current.data();
-        if (data.userId && data.userId !== auth.uid) return res.status(403).json({ success: false, error: 'Forbidden' });
-        await doc.set({ ...data, ...updates, updatedAt: new Date() }, { merge: true });
-        const updated = { id, ...data, ...updates, updatedAt: new Date().toISOString() };
-        return res.json({ success: true, script: updated });
-      }
-    } catch (e) {
-      console.warn('[scripts] Firestore PUT failed, fallback JSON:', e?.message);
+    const auth = await verifyBearer(req);
+    if (!auth) {
+      return res.status(401).json({ success: false, error: 'Authentication required to update scripts.' });
     }
 
-    const scripts = readScripts();
-    const idx = scripts.findIndex((s) => s.id === id);
-    if (idx === -1) return res.status(404).json({ success: false, error: 'Not found' });
-    const updated = { ...scripts[idx], ...updates, updatedAt: new Date().toISOString() };
-    scripts[idx] = updated;
-    writeScripts(scripts);
-    res.json({ success: true, script: updated });
+    const db = getDb();
+    if (!db) {
+      console.error('[scripts] Firestore unavailable while updating script');
+      return res.status(503).json({ success: false, error: 'Content service is unavailable. Please try again later.' });
+    }
+
+    try {
+      const docRef = await resolveScriptDocRef(db, auth.uid, id);
+      if (!docRef) {
+        return res.status(404).json({ success: false, error: 'Not found' });
+      }
+
+      const snapshot = await docRef.get();
+      if (!snapshot.exists) {
+        return res.status(404).json({ success: false, error: 'Not found' });
+      }
+      const data = snapshot.data() || {};
+      if (data.userId && data.userId !== auth.uid) {
+        return res.status(403).json({ success: false, error: 'Forbidden' });
+      }
+
+      const nextUpdatedAt = new Date();
+      const normalizedUpdates = { ...updates };
+      if (Array.isArray(updates.tags)) {
+        normalizedUpdates.tags = updates.tags.map(String);
+      }
+      if (typeof updates.starred === 'boolean' || updates.starred === null) {
+        normalizedUpdates.starred = updates.starred;
+      }
+      const sanitized = stripUndefined({ ...normalizedUpdates, updatedAt: nextUpdatedAt });
+      await docRef.set(sanitized, { merge: true });
+      const updated = {
+        id,
+        ...stripUndefined({ ...data, ...sanitized }),
+        updatedAt: nextUpdatedAt.toISOString(),
+      };
+      return res.json({ success: true, script: updated });
+    } catch (error) {
+      console.error('[scripts] Failed to update script in Firestore:', error?.message);
+      return res.status(500).json({ success: false, error: 'Failed to update script.' });
+    }
   } catch (e) {
     res.status(400).json({ success: false, error: e?.message || 'Invalid request' });
   }
@@ -300,31 +287,122 @@ export async function handleUpdateScript(req, res) {
 
 export async function handleDeleteScript(req, res) {
   const { id } = req.params;
-  // Try Firestore
   try {
     const auth = await verifyBearer(req);
+    if (!auth) {
+      return res.status(401).json({ success: false, error: 'Authentication required to delete scripts.' });
+    }
+
     const db = getDb();
-    if (auth && db) {
-      let doc = db.collection('users').doc(auth.uid).collection('scripts').doc(id);
-      let current = await doc.get();
-      if (!current.exists) {
-        doc = db.collection('scripts').doc(id);
-        current = await doc.get();
+    if (!db) {
+      console.error('[scripts] Firestore unavailable while deleting script');
+      return res.status(503).json({ success: false, error: 'Content service is unavailable. Please try again later.' });
+    }
+
+    try {
+      const docRef = await resolveScriptDocRef(db, auth.uid, id);
+      if (!docRef) {
+        return res.status(404).json({ success: false, error: 'Not found' });
       }
-      if (!current.exists) return res.status(404).json({ success: false, error: 'Not found' });
-      const data = current.data();
-      if (data.userId && data.userId !== auth.uid) return res.status(403).json({ success: false, error: 'Forbidden' });
-      await doc.delete();
+
+      const snapshot = await docRef.get();
+      if (!snapshot.exists) {
+        return res.status(404).json({ success: false, error: 'Not found' });
+      }
+
+      const data = snapshot.data() || {};
+      if (data.userId && data.userId !== auth.uid) {
+        return res.status(403).json({ success: false, error: 'Forbidden' });
+      }
+
+      await docRef.delete();
       return res.json({ success: true });
+    } catch (error) {
+      console.error('[scripts] Failed to delete script in Firestore:', error?.message);
+      return res.status(500).json({ success: false, error: 'Failed to delete script.' });
     }
   } catch (e) {
-    console.warn('[scripts] Firestore DELETE failed, fallback JSON:', e?.message);
+    res.status(400).json({ success: false, error: e?.message || 'Invalid request' });
+  }
+}
+
+async function persistScript(db, uid, script) {
+  const timestamps = { createdAt: new Date(), updatedAt: new Date() };
+  const payload = stripUndefined({ ...script, userId: uid, ...timestamps });
+  delete payload.id;
+
+  const configuredPath = process.env.CONTENT_SCRIPTS_PATH;
+  const configuredRef = configuredPath ? getCollectionRefByPath(db, configuredPath, uid) : null;
+
+  if (configuredRef) {
+    console.log('[scripts] Write via configured path:', configuredPath);
+    const ref = await configuredRef.add(payload);
+    return {
+      ...stripUndefined(script),
+      id: ref.id,
+      createdAt: timestamps.createdAt.toISOString(),
+      updatedAt: timestamps.updatedAt.toISOString(),
+    };
   }
 
-  const scripts = readScripts();
-  const idx = scripts.findIndex((s) => s.id === id);
-  if (idx === -1) return res.status(404).json({ success: false, error: 'Not found' });
-  scripts.splice(idx, 1);
-  writeScripts(scripts);
-  res.json({ success: true });
+  try {
+    const subRef = await db.collection('users').doc(uid).collection('scripts').add(payload);
+    return {
+      ...stripUndefined(script),
+      id: subRef.id,
+      createdAt: timestamps.createdAt.toISOString(),
+      updatedAt: timestamps.updatedAt.toISOString(),
+    };
+  } catch {
+    const ref = await db.collection('scripts').add(payload);
+    return {
+      ...stripUndefined(script),
+      id: ref.id,
+      createdAt: timestamps.createdAt.toISOString(),
+      updatedAt: timestamps.updatedAt.toISOString(),
+    };
+  }
+}
+
+async function resolveScriptDocRef(db, uid, id) {
+  let docRef = db.collection('users').doc(uid).collection('scripts').doc(id);
+  let snapshot = await docRef.get();
+  if (snapshot.exists) {
+    return docRef;
+  }
+
+  docRef = db.collection('scripts').doc(id);
+  snapshot = await docRef.get();
+  if (snapshot.exists) {
+    return docRef;
+  }
+
+  const configuredPath = process.env.CONTENT_SCRIPTS_PATH;
+  if (configuredPath) {
+    const ref = getCollectionRefByPath(db, configuredPath, uid);
+    if (ref) {
+      try {
+        const found = await ref.doc(id).get();
+        if (found.exists) {
+          return ref.doc(id);
+        }
+      } catch (error) {
+        console.warn('[scripts] resolveScriptDocRef configured path failed:', error?.message);
+      }
+    }
+  }
+
+  return null;
+}
+
+async function findScriptById(db, uid, id) {
+  const docRef = await resolveScriptDocRef(db, uid, id);
+  if (!docRef) {
+    return null;
+  }
+  const snapshot = await docRef.get();
+  if (!snapshot.exists) {
+    return null;
+  }
+  return formatScriptDoc(snapshot);
 }

@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { getDb, verifyBearer, getCollectionRefByPath } from './utils/firebase-admin.js';
 
 function tsToIso(v, fallbackIso) {
@@ -73,34 +71,6 @@ async function fetchUserNotes(db, uid) {
   return [];
 }
 
-const NOTES_FILE = path.join(process.cwd(), 'data', 'notes.json');
-
-function ensureStore() {
-  const dir = path.dirname(NOTES_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(NOTES_FILE)) fs.writeFileSync(NOTES_FILE, JSON.stringify({ notes: [] }, null, 2));
-}
-
-function readNotes() {
-  ensureStore();
-  try {
-    const raw = fs.readFileSync(NOTES_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : Array.isArray(parsed.notes) ? parsed.notes : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeNotes(notes) {
-  ensureStore();
-  fs.writeFileSync(NOTES_FILE, JSON.stringify({ notes }, null, 2));
-}
-
-function genId() {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-}
-
 export async function handleGetNotes(req, res) {
   try {
     console.log('[notes] GET headers', {
@@ -148,56 +118,38 @@ export async function handleCreateNote(req, res) {
         xClient: req.headers['x-client'] || req.headers['X-Client'],
       });
     } catch {}
+
+    const auth = await verifyBearer(req);
+    if (!auth) {
+      return res.status(401).json({ success: false, error: 'Authentication required to save notes.' });
+    }
+
+    const db = getDb();
+    if (!db) {
+      console.error('[notes] Firestore unavailable while creating note');
+      return res.status(503).json({ success: false, error: 'Content service is unavailable. Please try again later.' });
+    }
+
     const body = req.body || {};
-    const now = new Date().toISOString();
+    const now = new Date();
     const note = {
-      id: genId(),
       title: (body.title || 'Untitled').toString(),
       content: (body.content || '').toString(),
       type: (body.type || 'text').toString(),
       tags: Array.isArray(body.tags) ? body.tags.map(String) : [],
       starred: Boolean(body.starred),
-      createdAt: now,
-      updatedAt: now,
-      userId: 'local',
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      userId: auth.uid,
     };
-    // Try Firestore first
-    try {
-      const auth = await verifyBearer(req);
-      const db = getDb();
-      if (auth && db) {
-        const toSave = { ...note, id: undefined, userId: auth.uid };
-        const configuredPath = process.env.CONTENT_NOTES_PATH;
-        const cref = configuredPath ? getCollectionRefByPath(db, configuredPath, auth.uid) : null;
-        if (cref) {
-          console.log('[notes] Write via configured path:', process.env.CONTENT_NOTES_PATH);
-          const ref = await cref.add({ ...toSave, createdAt: new Date(), updatedAt: new Date() });
-          const saved = { ...note, id: ref.id, userId: auth.uid };
-          return res.json({ success: true, note: saved });
-        } else {
-          try {
-            const subRef = await db
-              .collection('users')
-              .doc(auth.uid)
-              .collection('notes')
-              .add({ ...toSave, createdAt: new Date(), updatedAt: new Date() });
-            const saved = { ...note, id: subRef.id, userId: auth.uid };
-            return res.json({ success: true, note: saved });
-          } catch (subErr) {
-            const ref = await db.collection('notes').add({ ...toSave, createdAt: new Date(), updatedAt: new Date() });
-            const saved = { ...note, id: ref.id, userId: auth.uid };
-            return res.json({ success: true, note: saved });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[notes] Firestore POST failed, using JSON store:', e?.message);
-    }
 
-    const notes = readNotes();
-    notes.unshift(note);
-    writeNotes(notes);
-    res.json({ success: true, note });
+    try {
+      const saved = await persistNote(db, auth.uid, note);
+      return res.json({ success: true, note: saved });
+    } catch (error) {
+      console.error('[notes] Failed to save note to Firestore:', error?.message);
+      return res.status(500).json({ success: false, error: 'Failed to save note to Firestore.' });
+    }
   } catch (e) {
     res.status(400).json({ success: false, error: e?.message || 'Invalid request' });
   }
@@ -205,77 +157,84 @@ export async function handleCreateNote(req, res) {
 
 export async function handleGetNoteById(req, res) {
   const { id } = req.params;
-  // Firestore first
   try {
     const auth = await verifyBearer(req);
-    const db = getDb();
-    if (auth && db) {
-      let doc = await db.collection('users').doc(auth.uid).collection('notes').doc(id).get();
-      if (!doc.exists) {
-        doc = await db.collection('notes').doc(id).get();
-      }
-      if (doc.exists) {
-        const note = formatNoteDoc(doc);
-        if (note.userId && note.userId !== auth.uid) return res.status(403).json({ success: false, error: 'Forbidden' });
-        return res.json({ success: true, note });
-      }
+    if (!auth) {
+      return res.status(401).json({ success: false, error: 'Authentication required to load notes.' });
     }
-  } catch (e) {
-    console.warn('[notes] Firestore GET by id failed, fallback:', e?.message);
-  }
 
-  const notes = readNotes();
-  const note = notes.find((n) => n.id === id);
-  if (!note) return res.status(404).json({ success: false, error: 'Not found' });
-  res.json({ success: true, note });
+    const db = getDb();
+    if (!db) {
+      console.error('[notes] Firestore unavailable while fetching note by id');
+      return res.status(503).json({ success: false, error: 'Content service is unavailable. Please try again later.' });
+    }
+
+    const note = await findNoteById(db, auth.uid, id);
+    if (!note) {
+      return res.status(404).json({ success: false, error: 'Not found' });
+    }
+    if (note.userId && note.userId !== auth.uid) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+
+    return res.json({ success: true, note });
+  } catch (e) {
+    console.error('[notes] Failed to fetch note by id:', e?.message);
+    return res.status(500).json({ success: false, error: 'Failed to load note.' });
+  }
 }
 
 export async function handleUpdateNote(req, res) {
   try {
     const { id } = req.params;
     const body = req.body || {};
-    // Firestore first
-    try {
-      const auth = await verifyBearer(req);
-      const db = getDb();
-      if (auth && db) {
-        let doc = db.collection('users').doc(auth.uid).collection('notes').doc(id);
-        let current = await doc.get();
-        if (!current.exists) {
-          doc = db.collection('notes').doc(id);
-          current = await doc.get();
-        }
-        if (!current.exists) return res.status(404).json({ success: false, error: 'Not found' });
-        const data = current.data();
-        if (data.userId && data.userId !== auth.uid) return res.status(403).json({ success: false, error: 'Forbidden' });
-        const merged = {
-          ...data,
-          ...body,
-          tags: Array.isArray(body.tags) ? body.tags.map(String) : data.tags,
-          starred: typeof body.starred === 'boolean' ? body.starred : data.starred,
-          updatedAt: new Date(),
-        };
-        await doc.set(merged, { merge: true });
-        const updated = { id, ...merged, updatedAt: merged.updatedAt.toISOString ? merged.updatedAt.toISOString() : new Date().toISOString() };
-        return res.json({ success: true, note: updated });
-      }
-    } catch (e) {
-      console.warn('[notes] Firestore PUT failed, fallback JSON:', e?.message);
+    const auth = await verifyBearer(req);
+    if (!auth) {
+      return res.status(401).json({ success: false, error: 'Authentication required to update notes.' });
     }
 
-    const notes = readNotes();
-    const idx = notes.findIndex((n) => n.id === id);
-    if (idx === -1) return res.status(404).json({ success: false, error: 'Not found' });
-    const updated = {
-      ...notes[idx],
-      ...body,
-      tags: Array.isArray(body.tags) ? body.tags.map(String) : notes[idx].tags,
-      starred: typeof body.starred === 'boolean' ? body.starred : notes[idx].starred,
-      updatedAt: new Date().toISOString(),
-    };
-    notes[idx] = updated;
-    writeNotes(notes);
-    res.json({ success: true, note: updated });
+    const db = getDb();
+    if (!db) {
+      console.error('[notes] Firestore unavailable while updating note');
+      return res.status(503).json({ success: false, error: 'Content service is unavailable. Please try again later.' });
+    }
+
+    try {
+      const docRef = await resolveNoteDocRef(db, auth.uid, id);
+      if (!docRef) {
+        return res.status(404).json({ success: false, error: 'Not found' });
+      }
+
+      const snapshot = await docRef.get();
+      if (!snapshot.exists) {
+        return res.status(404).json({ success: false, error: 'Not found' });
+      }
+
+      const data = snapshot.data() || {};
+      if (data.userId && data.userId !== auth.uid) {
+        return res.status(403).json({ success: false, error: 'Forbidden' });
+      }
+
+      const merged = {
+        ...data,
+        ...body,
+        tags: Array.isArray(body.tags) ? body.tags.map(String) : data.tags,
+        starred: typeof body.starred === 'boolean' ? body.starred : data.starred,
+        updatedAt: new Date(),
+      };
+
+      await docRef.set(merged, { merge: true });
+      const updated = {
+        id,
+        ...merged,
+        updatedAt: merged.updatedAt instanceof Date ? merged.updatedAt.toISOString() : new Date().toISOString(),
+      };
+
+      return res.json({ success: true, note: updated });
+    } catch (error) {
+      console.error('[notes] Failed to update note in Firestore:', error?.message);
+      return res.status(500).json({ success: false, error: 'Failed to update note.' });
+    }
   } catch (e) {
     res.status(400).json({ success: false, error: e?.message || 'Invalid request' });
   }
@@ -283,31 +242,107 @@ export async function handleUpdateNote(req, res) {
 
 export async function handleDeleteNote(req, res) {
   const { id } = req.params;
-  // Firestore first
   try {
     const auth = await verifyBearer(req);
+    if (!auth) {
+      return res.status(401).json({ success: false, error: 'Authentication required to delete notes.' });
+    }
+
     const db = getDb();
-    if (auth && db) {
-      let doc = db.collection('users').doc(auth.uid).collection('notes').doc(id);
-      let current = await doc.get();
-      if (!current.exists) {
-        doc = db.collection('notes').doc(id);
-        current = await doc.get();
+    if (!db) {
+      console.error('[notes] Firestore unavailable while deleting note');
+      return res.status(503).json({ success: false, error: 'Content service is unavailable. Please try again later.' });
+    }
+
+    try {
+      const docRef = await resolveNoteDocRef(db, auth.uid, id);
+      if (!docRef) {
+        return res.status(404).json({ success: false, error: 'Not found' });
       }
-      if (!current.exists) return res.status(404).json({ success: false, error: 'Not found' });
-      const data = current.data();
-      if (data.userId && data.userId !== auth.uid) return res.status(403).json({ success: false, error: 'Forbidden' });
-      await doc.delete();
+
+      const snapshot = await docRef.get();
+      if (!snapshot.exists) {
+        return res.status(404).json({ success: false, error: 'Not found' });
+      }
+
+      const data = snapshot.data() || {};
+      if (data.userId && data.userId !== auth.uid) {
+        return res.status(403).json({ success: false, error: 'Forbidden' });
+      }
+
+      await docRef.delete();
       return res.json({ success: true });
+    } catch (error) {
+      console.error('[notes] Failed to delete note in Firestore:', error?.message);
+      return res.status(500).json({ success: false, error: 'Failed to delete note.' });
     }
   } catch (e) {
-    console.warn('[notes] Firestore DELETE failed, fallback JSON:', e?.message);
+    res.status(400).json({ success: false, error: e?.message || 'Invalid request' });
+  }
+}
+
+async function persistNote(db, uid, note) {
+  const timestamps = { createdAt: new Date(), updatedAt: new Date() };
+  const payload = { ...note, userId: uid, ...timestamps };
+  delete payload.id;
+
+  const configuredPath = process.env.CONTENT_NOTES_PATH;
+  const configuredRef = configuredPath ? getCollectionRefByPath(db, configuredPath, uid) : null;
+
+  if (configuredRef) {
+    console.log('[notes] Write via configured path:', configuredPath);
+    const ref = await configuredRef.add(payload);
+    return { ...note, id: ref.id, userId: uid, createdAt: timestamps.createdAt.toISOString(), updatedAt: timestamps.updatedAt.toISOString() };
   }
 
-  const notes = readNotes();
-  const idx = notes.findIndex((n) => n.id === id);
-  if (idx === -1) return res.status(404).json({ success: false, error: 'Not found' });
-  notes.splice(idx, 1);
-  writeNotes(notes);
-  res.json({ success: true });
+  try {
+    const subRef = await db.collection('users').doc(uid).collection('notes').add(payload);
+    return { ...note, id: subRef.id, userId: uid, createdAt: timestamps.createdAt.toISOString(), updatedAt: timestamps.updatedAt.toISOString() };
+  } catch {
+    const ref = await db.collection('notes').add(payload);
+    return { ...note, id: ref.id, userId: uid, createdAt: timestamps.createdAt.toISOString(), updatedAt: timestamps.updatedAt.toISOString() };
+  }
+}
+
+async function resolveNoteDocRef(db, uid, id) {
+  let docRef = db.collection('users').doc(uid).collection('notes').doc(id);
+  let snapshot = await docRef.get();
+  if (snapshot.exists) {
+    return docRef;
+  }
+
+  docRef = db.collection('notes').doc(id);
+  snapshot = await docRef.get();
+  if (snapshot.exists) {
+    return docRef;
+  }
+
+  const configuredPath = process.env.CONTENT_NOTES_PATH;
+  if (configuredPath) {
+    const ref = getCollectionRefByPath(db, configuredPath, uid);
+    if (ref) {
+      try {
+        const found = await ref.doc(id).get();
+        if (found.exists) {
+          return ref.doc(id);
+        }
+      } catch (error) {
+        console.warn('[notes] resolveNoteDocRef configured path failed:', error?.message);
+      }
+    }
+  }
+
+  return null;
+}
+
+async function findNoteById(db, uid, id) {
+  const docRef = await resolveNoteDocRef(db, uid, id);
+  if (!docRef) {
+    return null;
+  }
+  const snapshot = await docRef.get();
+  if (!snapshot.exists) {
+    return null;
+  }
+  return formatNoteDoc(snapshot);
 }
