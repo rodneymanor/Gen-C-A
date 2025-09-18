@@ -73,58 +73,30 @@ async function buildAuthHeaders(): Promise<Record<string, string>> {
 }
 
 export async function getLibraryContent(): Promise<ContentItem[]> {
-  const debug = new ReactDebugger('LibraryService', { level: DEBUG_LEVELS.DEBUG });
   const headers = await buildAuthHeaders();
 
-  const [scripts, notes] = await Promise.all([
+  const [scriptsResponse, notesResponse] = await Promise.all([
     fetch('/api/scripts', { cache: 'no-store' as any, headers }),
     fetch('/api/notes', { cache: 'no-store' as any, headers }),
   ]);
 
-  if (!scripts.ok) {
-    const message = await resolveErrorMessage(scripts, 'Failed to load scripts');
-    debug.error('Failed to fetch scripts', { message });
-    throw new Error(message);
+  if (!scriptsResponse.ok) {
+    throw new Error('Failed to load scripts.');
   }
 
-  if (!notes.ok) {
-    const message = await resolveErrorMessage(notes, 'Failed to load notes');
-    debug.error('Failed to fetch notes', { message });
-    throw new Error(message);
+  if (!notesResponse.ok) {
+    throw new Error('Failed to load notes.');
   }
 
-  const scriptsPayload = await scripts.json();
-  const notesPayload = await notes.json();
+  const scriptsPayload = await scriptsResponse.json();
+  const notesPayload = await notesResponse.json();
 
-  if (!Array.isArray(scriptsPayload?.scripts)) {
-    throw new Error('Unexpected scripts payload received from the server.');
-  }
+  const scripts = Array.isArray(scriptsPayload?.scripts)
+    ? scriptsPayload.scripts
+    : [];
+  const notes = Array.isArray(notesPayload?.notes) ? notesPayload.notes : [];
 
-  if (!Array.isArray(notesPayload?.notes)) {
-    throw new Error('Unexpected notes payload received from the server.');
-  }
-
-  const scriptItems = scriptsPayload.scripts.map(mapScriptToItem);
-  const noteItems = notesPayload.notes.map(mapNoteToItem);
-
-  debug.debug('Library content sample', {
-    scripts: scriptItems.slice(0, 3).map((item) => ({
-      id: item.id,
-      title: item.title,
-      createdAt: item.created.toISOString(),
-      type: item.type,
-    })),
-    notes: noteItems.slice(0, 3).map((item) => ({
-      id: item.id,
-      title: item.title,
-      createdAt: item.created.toISOString(),
-      type: item.type,
-    })),
-  });
-
-  return [...scriptItems, ...noteItems].sort(
-    (a, b) => b.created.getTime() - a.created.getTime(),
-  );
+  return [...scripts.map(mapScriptToItem), ...notes.map(mapNoteToItem)];
 }
 
 export async function deleteLibraryItem(item: ContentItem): Promise<void> {
@@ -166,25 +138,3 @@ export async function deleteLibraryItem(item: ContentItem): Promise<void> {
   debug.info('Deleted content item', { id: item.id, type: item.type });
 }
 
-async function resolveErrorMessage(
-  response: Response,
-  fallback: string,
-): Promise<string> {
-  try {
-    const errorPayload = await response.json();
-    if (errorPayload?.error) {
-      return errorPayload.error;
-    }
-  } catch {
-    try {
-      const text = await response.text();
-      if (text) {
-        return text;
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  return `${fallback} (status ${response.status})`;
-}

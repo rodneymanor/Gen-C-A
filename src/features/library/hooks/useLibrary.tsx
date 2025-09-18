@@ -7,15 +7,11 @@ import { deleteLibraryItem, getLibraryContent } from '../services/libraryService
 import type { ContentType, LibraryFilter } from '../types';
 import DocumentIcon from '@atlaskit/icon/glyph/document';
 import EditIcon from '@atlaskit/icon/glyph/edit';
-import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb';
-import VideoIcon from '@atlaskit/icon/glyph/vid-play';
 
 const FILTERS: LibraryFilter[] = [
   { key: 'all', label: 'All', icon: <DocumentIcon label="" /> },
-  { key: 'videos', label: 'Videos', icon: <VideoIcon label="" /> },
   { key: 'scripts', label: 'Scripts', icon: <EditIcon label="" /> },
   { key: 'notes', label: 'Notes', icon: <DocumentIcon label="" /> },
-  { key: 'ideas', label: 'Ideas', icon: <LightbulbIcon label="" /> },
 ];
 
 type UseLibraryState = {
@@ -132,10 +128,8 @@ export function useLibrary(): UseLibraryState {
 
       const matchesFilter =
         activeFilter === 'all' ||
-        (activeFilter === 'videos' && item.type === 'video') ||
         (activeFilter === 'scripts' && item.type === 'script') ||
-        (activeFilter === 'notes' && item.type === 'note') ||
-        (activeFilter === 'ideas' && item.type === 'idea');
+        (activeFilter === 'notes' && item.type === 'note');
 
       return matchesSearch && matchesFilter;
     });

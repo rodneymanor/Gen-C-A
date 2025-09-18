@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type ContentType = 'all' | 'videos' | 'scripts' | 'notes' | 'ideas';
+export type ContentType = 'all' | 'scripts' | 'notes';
 
 export type LibraryFilter = {
   key: ContentType;
