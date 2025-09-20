@@ -6,7 +6,7 @@ import Textfield from '@atlaskit/textfield';
 import { Card, CardHeader, CardContent, CardFooter } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { TextArea } from '../ui/TextArea';
-import type { AIGenerationRequest, BrandPersona, Platform } from '../../types';
+import type { AIGenerationRequest, BrandVoice, Platform } from '../../types';
 
 // Atlassian Design System Icons
 import RobotIcon from '@atlaskit/icon/glyph/emoji/objects';
@@ -19,7 +19,7 @@ export interface EnhancedScriptGeneratorProps {
   onGenerate?: (request: AIGenerationRequest) => void;
   onVoiceInput?: () => void;
   isLoading?: boolean;
-  personas?: BrandPersona[];
+  brandVoices?: BrandVoice[];
   fallbackToOriginal?: boolean;
 }
 
@@ -207,7 +207,7 @@ const brandVoiceSectionStyles = css`
     }
   }
   
-  .persona-preview {
+  .brand-voice-preview {
     margin-top: var(--space-3);
     padding: var(--space-3);
     background: var(--color-primary-50);
@@ -286,7 +286,7 @@ export const EnhancedScriptGenerator: React.FC<EnhancedScriptGeneratorProps> = (
   onGenerate,
   onVoiceInput,
   isLoading = false,
-  personas = [],
+  brandVoices = [],
   fallbackToOriginal = false
 }) => {
   const [promptValue, setPromptValue] = useState('');
@@ -304,7 +304,7 @@ export const EnhancedScriptGenerator: React.FC<EnhancedScriptGeneratorProps> = (
       length: (data.length?.value || 'short') as 'short' | 'medium' | 'long',
       style: data.style?.value || 'engaging',
       platform: (data.platform?.value || 'tiktok') as Platform,
-      persona: data.persona?.value || undefined,
+      brandVoiceId: data.brandVoice?.value || undefined,
       additionalSettings: {}
     };
     
@@ -322,9 +322,9 @@ export const EnhancedScriptGenerator: React.FC<EnhancedScriptGeneratorProps> = (
     return undefined;
   };
 
-  const personaOptions = personas.map(persona => ({
-    label: persona.name,
-    value: persona.id
+  const brandVoiceOptions = brandVoices.map(voice => ({
+    label: voice.name,
+    value: voice.id
   }));
 
   if (fallbackToOriginal) {
@@ -470,13 +470,13 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
                       <h3>Brand Voice</h3>
                     </div>
                     
-                    <Field name="persona" label="Persona">
+                    <Field name="brandVoice" label="Brand Voice">
                       {({ fieldProps }) => (
                         <div className="atlassian-form-field">
                           <Select
                             {...fieldProps}
-                            options={personaOptions}
-                            placeholder="Select persona (optional)"
+                            options={brandVoiceOptions}
+                            placeholder="Select brand voice (optional)"
                             isClearable
                             isSearchable={false}
                           />
@@ -484,10 +484,10 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
                       )}
                     </Field>
 
-                    <div className="persona-preview">
+                    <div className="brand-voice-preview">
                       <p className="preview-text">
                         <span className="preview-icon"><TargetIcon label="Target" /></span>
-                        Select a persona to match your brand voice, or we'll use a generic style
+                        Select a brand voice to guide your script, or we'll use the default style
                       </p>
                     </div>
                   </Card>

@@ -10,6 +10,16 @@ async function loadFirebaseAdmin() {
 }
 import fs from 'fs';
 import path from 'path';
+import {
+  ensureCreatorLibraryDoc,
+  getAnalysesCollectionRef,
+  getBrandVoiceDocRef,
+  mergeTemplates,
+  mergeTranscriptCollections,
+  mergeVideoMeta,
+  mergeStyleSignature,
+  buildAnalysisRecord,
+} from './utils/brand-voice-store.js';
 
 function extractTemplates(sectionName, text) {
   // Match lines under a section like "## HOOK TEMPLATES" that start with number.
@@ -77,13 +87,14 @@ export async function handleSaveCreatorAnalysis(req, res) {
     let creatorId = '';
     let useFirestore = !!db;
     let fallbackSummary = null;
+    let creatorDocRef = null;
 
     if (useFirestore) {
       try {
         // Upsert creator document keyed by handle
         const creatorsRef = db.collection('creators');
         const existing = await creatorsRef.where('handle', '==', handle).limit(1).get();
-        const creatorDocRef = existing.empty ? creatorsRef.doc() : existing.docs[0].ref;
+        creatorDocRef = existing.empty ? creatorsRef.doc() : existing.docs[0].ref;
 
         await creatorDocRef.set({
           name,
@@ -151,30 +162,29 @@ export async function handleSaveCreatorAnalysis(req, res) {
       tone = extractString('Tone', text) || 'Varied';
     }
 
-    // Save templates
-    const addTemplates = async (col, patterns) => {
-      if (!patterns.length) return 0;
-      let count = 0;
-      for (const pattern of patterns) {
-        const variables = findPlaceholders(pattern);
-        // Upsert by (creatorId, pattern) to avoid duplicates
-        const existing = await db
-          .collection(col)
-          .where('pattern', '==', pattern)
-          .where('creatorIds', 'array-contains', creatorId)
-          .limit(1)
-          .get();
-        if (!existing.empty) {
-          await existing.docs[0].ref.set({ pattern, variables, creatorIds: [creatorId], updatedAt: new Date() }, { merge: true });
-        } else {
-          await db.collection(col).add({ pattern, variables, creatorIds: [creatorId], createdAt: new Date() });
-        }
-        count++;
-      }
-      return count;
+    const saved = { hooks: 0, bridges: 0, ctas: 0, nuggets: 0, scriptStructures: 0 };
+
+    const templatesPayload = {
+      hooks: hookTemplates.map((pattern) => ({ pattern, variables: findPlaceholders(pattern) })),
+      bridges: bridgeTemplates.map((pattern) => ({ pattern, variables: findPlaceholders(pattern) })),
+      ctas: ctaTemplates.map((pattern) => ({ pattern, variables: findPlaceholders(pattern) })),
+      nuggets: nuggetTemplates.map((n) => ({
+        pattern: n.pattern,
+        structure: n.structure || 'unspecified',
+        variables: Array.isArray(n.variables) && n.variables.length ? n.variables : findPlaceholders(n.pattern),
+      })),
     };
 
-    const saved = { hooks: 0, bridges: 0, ctas: 0, nuggets: 0, scriptStructures: 0 };
+    const styleSignature = {
+      powerWords,
+      fillerPhrases,
+      transitionPhrases,
+      avgWordsPerSentence,
+      tone,
+    };
+
+    const normalizedTranscripts = Array.isArray(perTranscript) ? perTranscript : [];
+    const normalizedVideoMeta = Array.isArray(videoMeta) ? videoMeta : [];
 
     const persistLocal = (summary) => {
       const baseDir = path.join(process.cwd(), 'data');
@@ -183,124 +193,162 @@ export async function handleSaveCreatorAnalysis(req, res) {
       if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir);
       if (!fs.existsSync(creatorsDir)) fs.mkdirSync(creatorsDir);
       fs.writeFileSync(path.join(creatorsDir, `${handle}.json`), JSON.stringify(summary, null, 2));
+
       let voices = [];
       if (fs.existsSync(voicesPath)) {
         try { voices = JSON.parse(fs.readFileSync(voicesPath, 'utf8')); } catch {}
       }
-      const existingIdx = voices.findIndex((v) => v.handle === handle);
+
+      const summaryId = summary.brandVoiceId || summary.creatorId || handle;
+      const existingIdx = Array.isArray(voices) ? voices.findIndex((v) => v.id === summaryId) : -1;
+      const existing = existingIdx >= 0 ? voices[existingIdx] : null;
+
+      const mergedTemplates = mergeTemplates(existing?.templates, summary.templates, `offline-${Date.now()}`);
+      const mergedTranscripts = mergeTranscriptCollections(existing?.perTranscript, summary.perTranscript);
+      const mergedVideoMeta = mergeVideoMeta(existing?.videoMeta, summary.videoMeta);
+      const mergedStyleSignature = mergeStyleSignature(existing?.styleSignature, summary.styleSignature);
+
       const voiceEntry = {
-        id: summary.creatorId || handle,
-        name: name,
-        handle,
-        description: `${handle} brand voice`,
-        tone: summary.styleSignature?.tone || 'Varied',
-        keywords: summary.styleSignature?.powerWords || [],
-        created: new Date().toISOString(),
+        id: summaryId,
+        creatorId: summary.creatorId || handle,
+        brandVoiceId: summary.brandVoiceId || summaryId,
+        handle: summary.handle || handle,
+        displayName: summary.displayName || summary.name || name,
+        description: summary.description || `${handle} brand voice`,
+        templates: mergedTemplates,
+        styleSignature: mergedStyleSignature,
+        perTranscript: mergedTranscripts,
+        videoMeta: mergedVideoMeta,
+        analysis: summary.analysis,
+        transcriptsCount: mergedTranscripts.length,
+        niche: summary.niche,
+        savedAt: summary.savedAt,
+        updatedAt: summary.updatedAt,
+        createdAt: existing?.createdAt || summary.createdAt || new Date().toISOString(),
+        isDefault: existing?.isDefault ?? summary.isDefault ?? false,
+        isShared: existing?.isShared ?? summary.isShared ?? false,
       };
-      if (existingIdx >= 0) voices[existingIdx] = voiceEntry; else voices.push(voiceEntry);
+
+      if (existingIdx >= 0) {
+        voices[existingIdx] = voiceEntry;
+      } else {
+        voices = Array.isArray(voices) ? voices : [];
+        voices.push(voiceEntry);
+      }
+
       fs.writeFileSync(voicesPath, JSON.stringify(voices, null, 2));
     };
 
     try {
       if (useFirestore) {
-        saved.hooks = await addTemplates('hookTemplates', hookTemplates);
-        saved.bridges = await addTemplates('bridgeTemplates', bridgeTemplates);
-        saved.ctas = await addTemplates('ctaTemplates', ctaTemplates);
+        const libraryCreatorId = creatorId || handle;
+        const brandVoiceId = libraryCreatorId;
 
-        if (nuggetTemplates.length) {
-          for (const n of nuggetTemplates) {
-            const pattern = n.pattern;
-            const variables = n.variables || findPlaceholders(pattern);
-            const structure = n.structure || 'unspecified';
-            const existing = await db
-              .collection('goldenNuggetTemplates')
-              .where('pattern', '==', pattern)
-              .where('creatorIds', 'array-contains', creatorId)
-              .limit(1)
-              .get();
-            if (!existing.empty) {
-              await existing.docs[0].ref.set({ pattern, structure, variables, creatorIds: [creatorId], updatedAt: new Date() }, { merge: true });
-            } else {
-              await db.collection('goldenNuggetTemplates').add({ pattern, structure, variables, creatorIds: [creatorId], createdAt: new Date() });
-            }
-            saved.nuggets++;
-          }
-        }
-
-        if (perTranscript && perTranscript.length) {
-          for (const item of perTranscript) {
-            const i = (item.index ?? 1) - 1;
-            const vm = Array.isArray(videoMeta) ? videoMeta[i] : undefined;
-            const videoId = vm?.id || '';
-
-            if (!videoId) {
-              // No videoId to key on; add as new record to avoid data loss
-              await db.collection('scriptStructures').add({
-                videoId: '',
-                creatorId,
-                hook: item.hook || null,
-                bridge: item.bridge || null,
-                goldenNugget: item.goldenNugget || null,
-                cta: item.cta || null,
-                microHooks: item.microHooks || [],
-                createdAt: new Date(),
-              });
-              saved.scriptStructures++;
-              continue;
-            }
-
-            // Upsert by (creatorId, videoId) to avoid duplicates when adding more content later
-            const existing = await db
-              .collection('scriptStructures')
-              .where('creatorId', '==', creatorId)
-              .where('videoId', '==', videoId)
-              .limit(1)
-              .get();
-
-            const payload = {
-              videoId,
-              creatorId,
-              hook: item.hook || null,
-              bridge: item.bridge || null,
-              goldenNugget: item.goldenNugget || null,
-              cta: item.cta || null,
-              microHooks: item.microHooks || [],
-              updatedAt: new Date(),
-            };
-
-            if (!existing.empty) {
-              await existing.docs[0].ref.set(payload, { merge: true });
-            } else {
-              await db.collection('scriptStructures').add({ ...payload, createdAt: new Date() });
-            }
-            saved.scriptStructures++;
-          }
-        }
-
-        await db.collection('speakingStyles').add({
-          creatorId,
-          pacing: { wordsPerMinute: undefined, pauseFrequency: undefined, emphasisPoints: [], pauseLocations: [] },
-          vocabulary: { commonWords: [], industryTerms: [], emotionalWords: powerWords, fillerWords: fillerPhrases, powerWords, transitionPhrases },
-          structure: {
-            sentenceLength: avgWordsPerSentence ? (avgWordsPerSentence < 12 ? 'short' : avgWordsPerSentence > 20 ? 'long' : 'medium') : 'mixed',
-            paragraphFlow: 'unspecified', repetitionPatterns: [], avgWordsPerSentence, questionFrequency: 0, personalPronounUsage: 'unspecified'
-          },
-          tonalElements: { enthusiasm: 0, authority: 0, relatability: 0, urgency: 0, humor: 0, controversy: 0, empathy: 0, tone },
-          createdAt: new Date(),
+        await ensureCreatorLibraryDoc(db, libraryCreatorId, {
+          creatorHandle: handle,
+          creatorName: name,
+          niche,
         });
+
+        const brandVoiceDocRef = getBrandVoiceDocRef(db, libraryCreatorId, brandVoiceId);
+        const existingVoiceDoc = await brandVoiceDocRef.get();
+        const existingData = existingVoiceDoc.exists ? existingVoiceDoc.data() || {} : {};
+
+        const now = new Date();
+        const nowIso = now.toISOString();
+        const analysisId = `analysis-${Date.now()}`;
+
+        const combinedTemplates = mergeTemplates(existingData.templates, templatesPayload, analysisId);
+        const combinedTranscripts = mergeTranscriptCollections(existingData.perTranscript, normalizedTranscripts);
+        const combinedVideoMeta = mergeVideoMeta(existingData.videoMeta, normalizedVideoMeta);
+        const mergedStyleSignature = mergeStyleSignature(existingData.styleSignature, styleSignature);
+
+        const isDefaultFlag = existingVoiceDoc.exists ? existingData.isDefault === true : true;
+        const isSharedFlag = existingVoiceDoc.exists ? existingData.isShared === true : false;
+        const existingDisplayName = existingData.displayName || name;
+        const existingDescription = existingData.description || '';
+
+        const brandVoicePayload = {
+          creatorId: libraryCreatorId,
+          brandVoiceId,
+          handle,
+          creatorHandle: handle,
+          creatorName: name,
+          displayName: existingDisplayName,
+          description: existingDescription || `${name} brand voice`,
+          transcriptsCount: combinedTranscripts.length,
+          niche,
+          templates: combinedTemplates,
+          styleSignature: mergedStyleSignature,
+          perTranscript: combinedTranscripts,
+          videoMeta: combinedVideoMeta,
+          analysis: {
+            json: analysisJson || null,
+            text: analysisText || null,
+            latestAnalysisId: analysisId,
+            lastRunAt: nowIso,
+          },
+          latestAnalysisId: analysisId,
+          analysisCount: (existingData.analysisCount || 0) + 1,
+          savedAt: nowIso,
+          updatedAt: now,
+          createdAt: existingData.createdAt || now,
+          isDefault: isDefaultFlag,
+          isShared: isSharedFlag,
+        };
+
+        await brandVoiceDocRef.set(brandVoicePayload, { merge: true });
+
+        const analysesRef = getAnalysesCollectionRef(db, libraryCreatorId, brandVoiceId);
+        const analysisRecord = buildAnalysisRecord(analysisId, {
+          createdAt: now,
+          savedAt: now,
+          transcriptsCount,
+          templates: templatesPayload,
+          styleSignature,
+          perTranscript: normalizedTranscripts,
+          videoMeta: normalizedVideoMeta,
+          analysis: {
+            json: analysisJson || null,
+            text: analysisText || null,
+          },
+        });
+        await analysesRef.doc(analysisId).set(analysisRecord, { merge: true });
+
+        saved.hooks = templatesPayload.hooks.length;
+        saved.bridges = templatesPayload.bridges.length;
+        saved.ctas = templatesPayload.ctas.length;
+        saved.nuggets = templatesPayload.nuggets.length;
+        saved.scriptStructures = normalizedTranscripts.length;
       } else {
         // Offline/local persistence
         fallbackSummary = {
           creatorId: creatorId || handle,
-          name,
+          brandVoiceId: creatorId || handle,
           handle,
-          niche,
+          displayName: name,
+          description: `${name} brand voice`,
           transcriptsCount,
-          templates: { hooks: hookTemplates, bridges: bridgeTemplates, ctas: ctaTemplates, nuggets: nuggetTemplates },
-          styleSignature: { powerWords, fillerPhrases, transitionPhrases, avgWordsPerSentence, tone },
-          perTranscript,
+          niche,
+          templates: templatesPayload,
+          styleSignature,
+          perTranscript: normalizedTranscripts,
+          videoMeta: normalizedVideoMeta,
+          analysis: {
+            json: analysisJson || null,
+            text: analysisText || null,
+          },
           savedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          isDefault: true,
+          isShared: false,
         };
+        saved.hooks = templatesPayload.hooks.length;
+        saved.bridges = templatesPayload.bridges.length;
+        saved.ctas = templatesPayload.ctas.length;
+        saved.nuggets = templatesPayload.nuggets.length;
+        saved.scriptStructures = normalizedTranscripts.length;
         persistLocal(fallbackSummary);
       }
     } catch (persistErr) {
@@ -308,15 +356,31 @@ export async function handleSaveCreatorAnalysis(req, res) {
       console.warn('Persisting to Firestore failed, falling back to local files:', persistErr?.message);
       fallbackSummary = {
         creatorId: creatorId || handle,
-        name,
+        brandVoiceId: creatorId || handle,
         handle,
-        niche,
+        displayName: name,
+        description: `${name} brand voice`,
         transcriptsCount,
-        templates: { hooks: hookTemplates, bridges: bridgeTemplates, ctas: ctaTemplates, nuggets: nuggetTemplates },
-        styleSignature: { powerWords, fillerPhrases, transitionPhrases, avgWordsPerSentence, tone },
-        perTranscript,
+        niche,
+        templates: templatesPayload,
+        styleSignature,
+        perTranscript: normalizedTranscripts,
+        videoMeta: normalizedVideoMeta,
+        analysis: {
+          json: analysisJson || null,
+          text: analysisText || null,
+        },
         savedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        isDefault: true,
+        isShared: false,
       };
+      saved.hooks = templatesPayload.hooks.length;
+      saved.bridges = templatesPayload.bridges.length;
+      saved.ctas = templatesPayload.ctas.length;
+      saved.nuggets = templatesPayload.nuggets.length;
+      saved.scriptStructures = normalizedTranscripts.length;
       persistLocal(fallbackSummary);
     }
 
@@ -325,6 +389,7 @@ export async function handleSaveCreatorAnalysis(req, res) {
     return res.json({
       success: true,
       creator: { id: creatorId || handle, name, handle },
+      brandVoice: { id: creatorId || handle, creatorId: creatorId || handle },
       saved,
       offline: !!fallbackSummary,
     });

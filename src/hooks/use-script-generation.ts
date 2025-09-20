@@ -20,6 +20,18 @@ type VoiceStyle = {
   tone?: string;
 } | null;
 
+const EMOJI_REGEX = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu;
+
+function stripEmojis(input: string): string {
+  if (!input) return "";
+  const withoutEmojis = input.replace(EMOJI_REGEX, "");
+  return withoutEmojis
+    .split("\n")
+    .map((line) => line.replace(/\s{2,}/g, " ").trim())
+    .join("\n")
+    .trim();
+}
+
 function nextIndex(key: string, length: number): number {
   if (!length) return 0;
   try {
@@ -32,8 +44,20 @@ function nextIndex(key: string, length: number): number {
   } catch { return 0; }
 }
 
-async function fetchVoiceTemplates(creatorId: string): Promise<{ templates: VoiceTemplates; style: VoiceStyle }> {
-  const res = await fetch(`/api/brand-voices/templates?creatorId=${encodeURIComponent(creatorId)}`);
+async function fetchVoiceTemplates(
+  brandVoiceId: string,
+  creatorId?: string
+): Promise<{ templates: VoiceTemplates; style: VoiceStyle }> {
+  if (!creatorId) {
+    console.warn('⚠️ [useScriptGeneration] Missing creatorId for brand voice', { brandVoiceId });
+    return { templates: { hooks: [], bridges: [], ctas: [], nuggets: [] }, style: null };
+  }
+
+  const params = new URLSearchParams({
+    creatorId,
+    brandVoiceId,
+  });
+  const res = await fetch(`/api/brand-voices/templates?${params.toString()}`);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data?.success) return { templates: { hooks: [], bridges: [], ctas: [], nuggets: [] }, style: null };
   return { templates: data.templates as VoiceTemplates, style: (data.styleSignature as VoiceStyle) ?? null };
@@ -52,59 +76,82 @@ type GenerateScriptResponse = {
   error?: string;
 };
 
+export type GenerateScriptParams = {
+  idea: string;
+  length?: "15" | "20" | "30" | "45" | "60" | "90";
+  brandVoiceId?: string;
+  brandVoiceCreatorId?: string;
+};
+
 export function useScriptGeneration() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const generateScript = useCallback(
-    async (idea: string, length: "15" | "20" | "30" | "45" | "60" | "90" = "60", persona?: any) => {
-      console.log("🚀 [useScriptGeneration] Starting script generation:", { idea, length, persona });
+    async ({
+      idea,
+      length = "60",
+      brandVoiceId,
+      brandVoiceCreatorId
+    }: GenerateScriptParams) => {
+      console.log("🚀 [useScriptGeneration] Starting script generation:", {
+        idea,
+        length,
+        brandVoiceId,
+        brandVoiceCreatorId
+      });
       setIsLoading(true);
       setError(null);
       
       try {
         console.log("🤖 [useScriptGeneration] Using server API for Gemini generation");
         
-        // If a brand voice (persona id) is provided, fetch templates + choose next templates in rotation
+        // If a brand voice is provided, fetch templates + choose next templates in rotation
         let voiceBlock = '';
-        if (persona && typeof persona === 'string') {
-          const { templates, style } = await fetchVoiceTemplates(persona);
+        if (brandVoiceId && typeof brandVoiceId === 'string') {
+          if (!brandVoiceCreatorId) {
+            console.warn('⚠️ [useScriptGeneration] brandVoiceCreatorId missing; skipping template fetch', {
+              brandVoiceId
+            });
+          } else {
+            const { templates, style } = await fetchVoiceTemplates(brandVoiceId, brandVoiceCreatorId);
 
-          const hookIdx = nextIndex(`genC.templateIndex.${persona}.hook`, templates.hooks.length);
-          const bridgeIdx = nextIndex(`genC.templateIndex.${persona}.bridge`, templates.bridges.length);
-          const ctaIdx = nextIndex(`genC.templateIndex.${persona}.cta`, templates.ctas.length);
-          const nuggetIdx = nextIndex(`genC.templateIndex.${persona}.nugget`, templates.nuggets.length);
+            const hookIdx = nextIndex(`genC.templateIndex.${brandVoiceId}.hook`, templates.hooks.length);
+            const bridgeIdx = nextIndex(`genC.templateIndex.${brandVoiceId}.bridge`, templates.bridges.length);
+            const ctaIdx = nextIndex(`genC.templateIndex.${brandVoiceId}.cta`, templates.ctas.length);
+            const nuggetIdx = nextIndex(`genC.templateIndex.${brandVoiceId}.nugget`, templates.nuggets.length);
 
-          const hook = templates.hooks[hookIdx]?.pattern;
-          const bridge = templates.bridges[bridgeIdx]?.pattern;
-          const cta = templates.ctas[ctaIdx]?.pattern;
-          const nugget = templates.nuggets[nuggetIdx]?.pattern;
+            const hook = templates.hooks[hookIdx]?.pattern;
+            const bridge = templates.bridges[bridgeIdx]?.pattern;
+            const cta = templates.ctas[ctaIdx]?.pattern;
+            const nugget = templates.nuggets[nuggetIdx]?.pattern;
 
-          const styleHints = [
-            style?.tone ? `Tone: ${style.tone}` : '',
-            style?.powerWords?.length ? `Power words to prefer: ${style.powerWords.slice(0, 10).join(', ')}` : '',
-            style?.transitionPhrases?.length
-              ? `Use transitions like: ${style.transitionPhrases.slice(0, 8).join(', ')}`
-              : '',
-            style?.avgWordsPerSentence ? `Average sentence length: ${style.avgWordsPerSentence}` : '',
-          ]
-            .filter(Boolean)
-            .join('\n');
+            const styleHints = [
+              style?.tone ? `Tone: ${style.tone}` : '',
+              style?.powerWords?.length ? `Power words to prefer: ${style.powerWords.slice(0, 10).join(', ')}` : '',
+              style?.transitionPhrases?.length
+                ? `Use transitions like: ${style.transitionPhrases.slice(0, 8).join(', ')}`
+                : '',
+              style?.avgWordsPerSentence ? `Average sentence length: ${style.avgWordsPerSentence}` : '',
+            ]
+              .filter(Boolean)
+              .join('\n');
 
-          const parts = [
-            '',
-            'BRAND VOICE TEMPLATES (use these as strict patterns, replacing [VARIABLES] from the idea):',
-            `- Hook pattern: ${hook || 'n/a'}`,
-            `- Bridge pattern: ${bridge || 'n/a'}`,
-            `- Golden Nugget pattern: ${nugget || 'n/a'}`,
-            `- Why to Act pattern: ${cta || 'n/a'}`,
-          ];
+            const parts = [
+              '',
+              'BRAND VOICE TEMPLATES (use these as strict patterns, replacing [VARIABLES] from the idea):',
+              `- Hook pattern: ${hook || 'n/a'}`,
+              `- Bridge pattern: ${bridge || 'n/a'}`,
+              `- Golden Nugget pattern: ${nugget || 'n/a'}`,
+              `- Why to Act pattern: ${cta || 'n/a'}`,
+            ];
 
-          if (styleHints) {
-            parts.push('', 'STYLE SIGNATURE:', styleHints, '');
+            if (styleHints) {
+              parts.push('', 'STYLE SIGNATURE:', styleHints, '');
+            }
+
+            voiceBlock = parts.join('\n');
           }
-
-          voiceBlock = parts.join('\n');
         }
 
         // Create a strict JSON prompt for Gemini
@@ -122,14 +169,28 @@ export function useScriptGeneration() {
 ${jsonSchemaLines.join('\n')}
 
 Task: Generate a ${length}-second short-form video script for the idea: "${idea}"
-Use concise sentences and platform-native tone. Follow the brand voice patterns if provided, replacing [VARIABLES] from the idea/context.
+Rules:
+- Use concise sentences and platform-native tone.
+- Do not include emojis or emoticons in any part of the script. Rely on words only.
+- Follow the brand voice patterns if provided, replacing [VARIABLES] from the idea/context.
 ${voiceBlock}`.trim();
         
         console.log("📝 [useScriptGeneration] Sending to server API (Gemini)...");
         console.log("📊 [useScriptGeneration] Prompt length:", scriptPrompt.length, "characters");
         
         // JSON-only with guarded retries via /api/voice/analyze-patterns
-        const validate = (obj: any) => !!(obj && typeof obj.hook === 'string' && typeof obj.bridge === 'string' && typeof obj.nugget === 'string' && typeof obj.wta === 'string' && obj.hook && obj.bridge && obj.nugget && obj.wta);
+        const validate = (obj: any) =>
+          !!(
+            obj &&
+            typeof obj.hook === 'string' &&
+            typeof obj.bridge === 'string' &&
+            typeof obj.nugget === 'string' &&
+            typeof obj.wta === 'string' &&
+            stripEmojis(obj.hook).trim() &&
+            stripEmojis(obj.bridge).trim() &&
+            stripEmojis(obj.nugget).trim() &&
+            stripEmojis(obj.wta).trim()
+          );
 
         const maxRetries = 2;
         let parsed: any = null;
@@ -178,10 +239,10 @@ ${voiceBlock}`.trim();
         console.log("📝 [useScriptGeneration] Generated script components:", parsed);
 
         const script: GeneratedScript = {
-          hook: parsed.hook,
-          bridge: parsed.bridge,
-          goldenNugget: parsed.nugget,
-          wta: parsed.wta,
+          hook: stripEmojis(parsed.hook),
+          bridge: stripEmojis(parsed.bridge),
+          goldenNugget: stripEmojis(parsed.nugget),
+          wta: stripEmojis(parsed.wta),
         };
         
         const response: GenerateScriptResponse = {

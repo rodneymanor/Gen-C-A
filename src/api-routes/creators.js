@@ -1,3 +1,19 @@
+import { rapidApiFetch } from './videos/rapidapi-rate-limit.js';
+import { processInstagramReels } from '../lib/instagram-reels-processor.js';
+
+const USER_ID_CACHE_TTL_MS = (() => {
+  const env = Number(process.env.INSTAGRAM_USER_ID_CACHE_TTL_MS);
+  return Number.isFinite(env) && env >= 0 ? env : 24 * 60 * 60 * 1000;
+})();
+
+const instagramUserIdCache = (() => {
+  const key = '__instagramUserIdCache__';
+  if (!globalThis[key]) {
+    globalThis[key] = new Map();
+  }
+  return globalThis[key];
+})();
+
 /**
  * Simplified Creator API Routes for Transcription Service
  *
@@ -107,60 +123,71 @@ async function fetchVideosFromRapidAPI(platform, userId) {
 /**
  * Fetch Instagram videos using RapidAPI Instagram endpoints
  */
-// Rate limiting helper function
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 async function fetchInstagramVideosFromRapidAPI(username) {
   const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '7d8697833dmsh0919d85dc19515ap1175f7jsn0f8bb6dae84e';
   const RAPIDAPI_HOST = 'instagram-api-fast-reliable-data-scraper.p.rapidapi.com';
-  const RATE_LIMIT_DELAY = 2000; // 2 seconds between API calls
 
   try {
     console.log(`📱 [RAPIDAPI] Getting Instagram videos for: ${username}`);
 
     // Clean username (remove @ and URL parts)
     const cleanUsername = username.replace(/^@/, '').replace(/.*instagram\.com\//, '').replace(/\/$/, '');
+    const cacheKey = cleanUsername.toLowerCase();
 
     // Step 1: Convert username to user ID
     let userId = cleanUsername;
-    if (isNaN(cleanUsername)) {
-      // Username provided, need to convert to ID
-      console.log(`🔄 [RAPIDAPI] Converting username ${cleanUsername} to user ID...`);
+    if (isNaN(Number(cleanUsername))) {
+      const cached = instagramUserIdCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        userId = cached.value;
+        console.log(`✅ [RAPIDAPI] Cache hit for username ${cleanUsername} → User ID: ${userId}`);
+      } else {
+        if (cached) {
+          instagramUserIdCache.delete(cacheKey);
+        }
+        console.log(`🔄 [RAPIDAPI] Converting username ${cleanUsername} to user ID...`);
 
-      const userIdResponse = await fetch(`https://${RAPIDAPI_HOST}/user_id_by_username?username=${cleanUsername}`, {
+        const userIdResponse = await rapidApiFetch(
+          `https://${RAPIDAPI_HOST}/user_id_by_username?username=${cleanUsername}`,
+          {
+            method: 'GET',
+            headers: {
+              'x-rapidapi-key': RAPIDAPI_KEY,
+              'x-rapidapi-host': RAPIDAPI_HOST
+            }
+          },
+          'instagram username lookup'
+        );
+
+        if (userIdResponse.ok) {
+          const userIdData = await userIdResponse.json();
+          if (userIdData?.UserID) {
+            userId = userIdData.UserID.toString();
+            instagramUserIdCache.set(cacheKey, {
+              value: userId,
+              expiresAt: Date.now() + USER_ID_CACHE_TTL_MS
+            });
+            console.log(`✅ [RAPIDAPI] Username ${cleanUsername} → User ID: ${userId}`);
+          }
+        } else {
+          console.log(`⚠️ [RAPIDAPI] Could not convert username ${cleanUsername}, trying as-is`);
+        }
+      }
+    }
+
+    // Step 2: Get user reels with the user ID
+    console.log(`🎬 [RAPIDAPI] Fetching videos for user ID: ${userId}`);
+    const response = await rapidApiFetch(
+      `https://${RAPIDAPI_HOST}/reels?user_id=${userId}&include_feed_video=true`,
+      {
         method: 'GET',
         headers: {
           'x-rapidapi-key': RAPIDAPI_KEY,
           'x-rapidapi-host': RAPIDAPI_HOST
         }
-      });
-
-      if (userIdResponse.ok) {
-        const userIdData = await userIdResponse.json();
-        if (userIdData.UserID) {
-          userId = userIdData.UserID.toString();
-          console.log(`✅ [RAPIDAPI] Username ${cleanUsername} → User ID: ${userId}`);
-        }
-      } else {
-        console.log(`⚠️ [RAPIDAPI] Could not convert username ${cleanUsername}, trying as-is`);
-      }
-
-      // Rate limit: Wait 2 seconds before next API call
-      console.log(`⏳ [RAPIDAPI] Rate limiting: waiting ${RATE_LIMIT_DELAY}ms before next call...`);
-      await delay(RATE_LIMIT_DELAY);
-    }
-
-    // Step 2: Get user reels with the user ID
-    console.log(`🎬 [RAPIDAPI] Fetching videos for user ID: ${userId}`);
-    const response = await fetch(`https://${RAPIDAPI_HOST}/reels?user_id=${userId}&include_feed_video=true`, {
-      method: 'GET',
-      headers: {
-        'x-rapidapi-key': RAPIDAPI_KEY,
-        'x-rapidapi-host': RAPIDAPI_HOST
-      }
-    });
+      },
+      'instagram reels list'
+    );
 
     if (!response.ok) {
       console.error(`❌ [RAPIDAPI] HTTP ${response.status}: ${response.statusText}`);
@@ -173,39 +200,27 @@ async function fetchInstagramVideosFromRapidAPI(username) {
     const data = await response.json();
     console.log(`📊 [RAPIDAPI] Response received, processing videos...`);
 
-    // Extract video posts from new API format
-    const videos = [];
-    if (data && data.status === 'ok' && data.data && data.data.items && Array.isArray(data.data.items)) {
-      for (const item of data.data.items.slice(0, 50)) { // Get up to 50 videos
-        const media = item.media;
-        if (media && (media.media_type === 2 || media.video_versions)) { // Video content
-          // Get highest quality video URL
-          const videoUrl = media.video_versions && media.video_versions[0] ? media.video_versions[0].url : null;
-          const thumbnailUrl = media.image_versions2 && media.image_versions2.candidates && media.image_versions2.candidates[0] ? media.image_versions2.candidates[0].url : null;
+    const items = data?.data?.items ?? [];
+    const processed = processInstagramReels(items, cleanUsername, 50);
 
-          videos.push({
-            id: media.id || media.code,
-            title: media.caption ? media.caption.text.substring(0, 100) + '...' : 'Instagram Reel',
-            url: videoUrl,
-            thumbnailUrl: thumbnailUrl,
-            duration: media.video_duration || 'Unknown',
-            timestamp: media.taken_at,
-            likeCount: media.like_count,
-            viewCount: media.play_count,
-            username: media.user ? media.user.username : 'unknown',
-            isReel: true
-          });
-        }
-      }
-    }
-
-    if (videos.length === 0) {
+    if (!processed.videos.length) {
       console.log('⚠️ [RAPIDAPI] No videos found, generating mock data');
       return generateMockVideos(cleanUsername, 50);
     }
 
-    console.log(`✅ [RAPIDAPI] Successfully fetched ${videos.length} real videos`);
-    return videos;
+    console.log(`✅ [RAPIDAPI] Successfully processed ${processed.videos.length} real videos`);
+    return processed.videos.map((video) => ({
+      id: video.id,
+      title: video.title,
+      url: video.videoUrl,
+      thumbnailUrl: video.thumbnailUrl,
+      duration: video.duration ?? 'Unknown',
+      timestamp: Date.now(),
+      likeCount: video.likeCount,
+      viewCount: video.viewCount,
+      username: video.author ?? cleanUsername,
+      isReel: true
+    }));
 
   } catch (error) {
     console.error('❌ [RAPIDAPI] Error fetching Instagram videos:', error);
@@ -241,52 +256,6 @@ function generateMockVideos(username, count = 50) {
 }
 
 /**
- * Handle Instagram user reels fetching (simplified)
- * This endpoint now just returns the same data as the creator follow endpoint
- * since we've combined the workflow
- */
-export async function handleInstagramReels(req, res) {
-  try {
-    const { userId, count = 5 } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        error: 'User ID is required'
-      });
-    }
-
-    console.log(`🎬 [REELS] Fetching ${count} reels for user: ${userId}`);
-
-    // Simulate fetching reels (replace with actual implementation)
-    const videos = await fetchVideosFromRapidAPI('instagram', userId);
-
-    // Format for frontend compatibility
-    const reelsData = videos.slice(0, count).map((video, index) => ({
-      id: video.id || `reel_${index + 1}`,
-      videoUrl: video.url,
-      thumbnailUrl: video.thumbnailUrl,
-      title: video.title || `Video ${index + 1}`,
-      duration: video.duration
-    }));
-
-    return res.json({
-      success: true,
-      videos: reelsData,
-      totalCount: reelsData.length
-    });
-
-  } catch (error) {
-    console.error('❌ [REELS] Error fetching Instagram reels:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch Instagram reels',
-      details: error.message
-    });
-  }
-}
-
-/**
  * Health check for the API
  */
 export function handleHealthCheck(req, res) {
@@ -297,7 +266,10 @@ export function handleHealthCheck(req, res) {
     endpoints: [
       'POST /api/creators/follow',
       'POST /api/creators/transcribe',
+      'GET /api/instagram/user-reels',
       'POST /api/instagram/user-reels',
+      'GET /api/instagram/user-id',
+      'POST /api/video/transcribe-from-url',
       'GET /api/health'
     ]
   });

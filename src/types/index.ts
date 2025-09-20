@@ -74,7 +74,12 @@ export interface Script {
   length: 'short' | 'medium' | 'long'; // 15s, 30s, 60s+
   style: 'engaging' | 'educational' | 'promotional' | 'storytelling';
   aiModel?: string;
-  persona?: string;
+  brandVoiceId?: string;
+  voice?: {
+    id: string;
+    name: string;
+    badges?: string[];
+  };
   wordCount: number;
   estimatedDuration: number;
   insights: ScriptInsight[];
@@ -95,7 +100,8 @@ export interface AIGenerationRequest {
   length: 'short' | 'medium' | 'long';
   style: 'engaging' | 'educational' | 'promotional' | 'storytelling' | string;
   platform: Platform;
-  persona?: string;
+  brandVoiceId?: string;
+  brandVoiceCreatorId?: string;
   additionalSettings?: Record<string, any>;
 }
 
@@ -108,8 +114,9 @@ export interface AIGenerationResponse {
   error?: string;
 }
 
-export interface BrandPersona {
+export interface BrandVoice {
   id: string;
+  creatorId?: string;
   name: string;
   description: string;
   tone: string;
@@ -120,13 +127,14 @@ export interface BrandPersona {
   examples?: string[];
   created: Date;
   isDefault?: boolean;
+  isShared?: boolean;
 }
 
 export interface Activity {
   id: string;
   type: 'created' | 'updated' | 'deleted' | 'generated' | 'imported';
   description: string;
-  entityType: ContentType | 'collection' | 'persona';
+  entityType: ContentType | 'collection' | 'brand-voice';
   entityId: string;
   timestamp: Date;
   user: User;
@@ -233,7 +241,7 @@ export interface AppState {
   scripts: Script[];
   contentLibrary: ContentItem[];
   activities: Activity[];
-  brandPersonas: BrandPersona[];
+  brandVoices: BrandVoice[];
   loading: LoadingState;
   errors: ErrorState;
 }

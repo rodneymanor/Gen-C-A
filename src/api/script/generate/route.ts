@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 interface GenerateScriptRequest {
   idea: string;
   length: "15" | "20" | "30" | "45" | "60" | "90";
-  persona?: any;
+  brandVoiceId?: string;
 }
 
 interface GeneratedScript {
@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log("📄 [API] Raw request body:", body);
     
-    const { idea, length = "60", persona }: GenerateScriptRequest = body;
-    console.log("🔍 [API] Parsed parameters:", { idea, length, persona });
+    const { idea, length = "60", brandVoiceId }: GenerateScriptRequest = body;
+    console.log("🔍 [API] Parsed parameters:", { idea, length, brandVoiceId });
 
     if (!idea || idea.trim().length === 0) {
       console.log("❌ [API] Validation failed: idea is required");

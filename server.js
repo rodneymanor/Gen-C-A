@@ -92,11 +92,14 @@ async function handleApiRoute(routeHandler, req, res) {
 async function setupRoutes() {
   try {
     // Import simplified creator API routes
-    const { handleCreatorTranscription, handleInstagramReels, handleHealthCheck } = await import('./src/api-routes/creators.js');
+    const { handleCreatorTranscription, handleHealthCheck } = await import('./src/api-routes/creators.js');
+    const { handleInstagramReels } = await import('./src/api-routes/videos/instagram-reels.js');
+    const { handleInstagramUserId } = await import('./src/api-routes/videos/instagram-user-id.js');
 
     // Import other API route handlers
-    const { handleTikTokUserFeed } = await import('./src/api-routes/tiktok.js');
-    const { handleVideoTranscribe } = await import('./src/api-routes/video.js');
+    const { handleTikTokUserFeed } = await import('./src/api-routes/videos/tiktok-user-feed.js');
+    const { handleVideoTranscribe } = await import('./src/api-routes/videos/transcribe.js');
+    const { handleVideoWorkflow } = await import('./src/api-routes/videos/orchestrate.js');
     const { handleVoiceAnalyzePatterns } = await import('./src/api-routes/voice.js');
     const { handleSaveCreatorAnalysis } = await import('./src/api-routes/creator-analysis.js');
     const { handleListAnalyzedVideoIds } = await import('./src/api-routes/creator-lookup.js');
@@ -122,12 +125,15 @@ async function setupRoutes() {
     app.post('/api/creators/transcribe', handleCreatorTranscription);
 
     // Instagram specific endpoints
+    app.get('/api/instagram/user-id', handleInstagramUserId);
+    app.get('/api/instagram/user-reels', handleInstagramReels);
     app.post('/api/instagram/user-reels', handleInstagramReels);
 
     // TikTok API routes
     app.post('/api/tiktok/user-feed', handleTikTokUserFeed);
 
     app.post('/api/video/transcribe-from-url', handleVideoTranscribe);
+    app.post('/api/video/orchestrate', handleVideoWorkflow);
 
     app.post('/api/voice/analyze-patterns', handleVoiceAnalyzePatterns);
     app.post('/api/creator/save-analysis', handleSaveCreatorAnalysis);
@@ -195,7 +201,14 @@ async function setupRoutes() {
       });
     });
 
-    app.post('/api/instagram/user-reels', (req, res) => {
+    app.get('/api/instagram/user-id', (req, res) => {
+      res.status(503).json({
+        success: false,
+        error: 'Instagram user-id route unavailable in fallback mode'
+      });
+    });
+
+    const fallbackReels = (req, res) => {
       res.json({
         success: true,
         videos: [
@@ -208,7 +221,10 @@ async function setupRoutes() {
         ],
         totalCount: 1
       });
-    });
+    };
+
+    app.get('/api/instagram/user-reels', fallbackReels);
+    app.post('/api/instagram/user-reels', fallbackReels);
   }
 }
 

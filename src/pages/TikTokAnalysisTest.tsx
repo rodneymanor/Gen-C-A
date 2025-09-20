@@ -23,6 +23,15 @@ interface NormalizedHandleResult {
   displayHandle: string;
 }
 
+type TranscribedVideoMeta = {
+  id: string;
+  url?: string;
+  title?: string;
+  sourceUrl?: string;
+  platform?: PlatformType;
+  thumbnailUrl?: string | null;
+};
+
 const getPlatformLabel = (platform: PlatformType) => (platform === 'instagram' ? 'Instagram' : 'TikTok');
 
 const extractInstagramUsernameFromInput = (input: string): string | null => {
@@ -215,7 +224,7 @@ const mapInstagramMediaToVideo = (media: any) => {
     null;
 
   const playUrl = lowestVersion?.url || dashUrls.videoUrl || audioUrl || '';
-  const downloadUrl = audioUrl || playUrl;
+  const downloadUrl = playUrl; // For transcription, we need video not audio-only
 
   if (!downloadUrl) {
     return null;
@@ -584,7 +593,7 @@ const TemplateTester: React.FC<{ templates: any }> = ({ templates }) => {
 export const TikTokAnalysisTest: React.FC = () => {
   // Controls
   const VIDEO_LIMIT = 20; // Number of videos to fetch/transcribe/analyze
-  const TRANSCRIBE_CONCURRENCY = 3; // Parallel transcriptions
+  const TRANSCRIBE_CONCURRENCY = 2; // Parallel transcriptions (lowered for Gemini stability)
   const [platform, setPlatform] = useState<PlatformType>('tiktok');
   const [username, setUsername] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -642,9 +651,12 @@ export const TikTokAnalysisTest: React.FC = () => {
     const userId = String(userIdResult.user_id);
     console.log(`📸 Fetching Instagram reels for user ID: ${userId}`);
 
-    const reelsResponse = await fetch(
-      `/api/instagram/user-reels?user_id=${encodeURIComponent(userId)}&include_feed_video=true`
-    );
+    const reelsQuery = new URLSearchParams({
+      user_id: userId,
+      include_feed_video: 'true',
+      username: identifier
+    });
+    const reelsResponse = await fetch(`/api/instagram/user-reels?${reelsQuery.toString()}`);
     const { data: reelsResult } = await parseJsonResponse<InstagramReelsApiResponse>(
       reelsResponse,
       'Instagram reels fetch'
@@ -662,8 +674,82 @@ export const TikTokAnalysisTest: React.FC = () => {
       throw new Error('Failed to fetch Instagram reels (empty response).');
     }
 
-    const items = reelsResult?.data?.items ?? [];
-    const mapped = mapInstagramItemsToResult(items, userId, identifier);
+    const items = Array.isArray(reelsResult?.data?.items) ? reelsResult.data.items : [];
+    let mapped;
+
+    if (items.length > 0) {
+      mapped = mapInstagramItemsToResult(items, userId, identifier);
+    } else if (Array.isArray((reelsResult as any)?.processed?.videos) && (reelsResult as any).processed.videos.length) {
+      const processed: any = (reelsResult as any).processed;
+      const profileData = processed.profileData || {};
+      const videos = processed.videos.map((video: any) => ({
+        id: video.id,
+        description: video.description ?? '',
+        createTime: 0,
+        duration: video.duration ?? 0,
+        cover: video.thumbnailUrl ?? '',
+        playUrl: video.playUrl ?? video.videoUrl,
+        downloadUrl: video.downloadUrl ?? video.videoUrl,
+        audioUrl: undefined,
+        stats: {
+          diggCount: video.likeCount ?? 0,
+          shareCount: 0,
+          commentCount: 0,
+          playCount: video.viewCount ?? 0,
+          collectCount: 0,
+        },
+        music: {
+          id: '',
+          title: video.title ?? 'Original Audio',
+          author: video.author ?? identifier,
+          playUrl: video.audioUrl ?? '',
+          cover: video.thumbnailUrl ?? '',
+          original: true,
+          duration: video.duration ?? 0,
+        },
+        author: {
+          id: userId,
+          username: profileData?.displayName ?? identifier,
+          nickname: profileData?.displayName ?? identifier,
+          avatar: profileData?.profileImageUrl ?? '',
+          verified: Boolean(profileData?.isVerified),
+          signature: profileData?.bio ?? '',
+          stats: {
+            followingCount: profileData?.followingCount ?? 0,
+            followerCount: profileData?.followersCount ?? 0,
+            heartCount: profileData?.postsCount ?? 0,
+            videoCount: processed.totalFound ?? processed.videos.length,
+            diggCount: 0,
+          },
+        },
+        platform: 'instagram' as const,
+        permalink: undefined,
+      }));
+
+      mapped = {
+        success: true,
+        platform: 'instagram' as const,
+        platformUserId: userId,
+        userInfo: {
+          id: userId,
+          username: identifier,
+          nickname: profileData?.displayName ?? identifier,
+          avatar: profileData?.profileImageUrl ?? '',
+          signature: profileData?.bio ?? '',
+          verified: Boolean(profileData?.isVerified),
+          stats: {
+            followingCount: profileData?.followingCount ?? 0,
+            followerCount: profileData?.followersCount ?? 0,
+            heartCount: 0,
+            videoCount: processed.videos.length,
+            diggCount: 0,
+          },
+        },
+        videos,
+      };
+    } else {
+      mapped = mapInstagramItemsToResult([], userId, identifier);
+    }
 
     return {
       ...mapped,
@@ -757,8 +843,58 @@ export const TikTokAnalysisTest: React.FC = () => {
 
       // Concurrency-limited worker pool (size 3)
       const CONCURRENCY = TRANSCRIBE_CONCURRENCY;
-      const results: Array<{ transcript?: string; meta?: { id: string; url?: string; title?: string } } | null> = new Array(videos.length).fill(null);
+      const results: Array<{ transcript?: string; meta?: TranscribedVideoMeta } | null> = new Array(videos.length).fill(null);
       let nextIndex = 0;
+
+      const resolveScrapeSourceUrl = (video: any): string | null => {
+        const directCandidates: Array<unknown> = [
+          video?.permalink,
+          video?.shareUrl,
+          video?.share_url,
+          video?.url,
+          video?.meta?.permalink,
+          video?.meta?.url,
+        ];
+
+        for (const candidate of directCandidates) {
+          if (typeof candidate === 'string') {
+            const trimmed = candidate.trim();
+            if (trimmed.length > 0 && /^https?:\/\//i.test(trimmed)) {
+              return trimmed;
+            }
+          }
+        }
+
+        const platformHint = (video?.platform || step1.data?.platform) as PlatformType | undefined;
+
+        if (platformHint === 'tiktok') {
+          const rawHandle =
+            (typeof video?.author?.username === 'string' && video.author.username.trim()) ||
+            (typeof video?.author?.uniqueId === 'string' && video.author.uniqueId.trim()) ||
+            (typeof step1.data?.userInfo?.username === 'string' && step1.data.userInfo.username.trim()) ||
+            '';
+
+          if (rawHandle && video?.id) {
+            const cleanHandle = rawHandle.replace(/^@/, '');
+            return `https://www.tiktok.com/@${cleanHandle}/video/${video.id}`;
+          }
+        }
+
+        if (platformHint === 'instagram') {
+          const shortcode =
+            (typeof video?.code === 'string' && video.code.trim()) ||
+            (typeof video?.shortcode === 'string' && video.shortcode.trim()) ||
+            (typeof video?.id === 'string' && video.id.length <= 15 ? video.id.trim() : '');
+
+          if (shortcode) {
+            return `https://www.instagram.com/reel/${shortcode.replace(/\//g, '')}/`;
+          }
+        }
+
+        return null;
+      };
+
+      const preferAudioOnly = false;
 
       const worker = async (workerId: number) => {
         while (nextIndex < videos.length) {
@@ -769,23 +905,94 @@ export const TikTokAnalysisTest: React.FC = () => {
           }
 
           const video = videos[i];
-          console.log(`🎬 [W${workerId}] Transcribing video ${i + 1}/${videos.length}: ${video.id}`);
+          const scrapeSourceUrl = resolveScrapeSourceUrl(video);
+          const fallbackTranscriptionUrl =
+            video.downloadUrl ||
+            video.playUrl ||
+            video.audioUrl ||
+            (video.meta?.url ? video.meta.url : undefined) ||
+            (video.videoUrl ? video.videoUrl : undefined) ||
+            null;
+
+          if (!scrapeSourceUrl && !fallbackTranscriptionUrl) {
+            console.warn(`⚠️ [W${workerId}] Unable to determine any transcription URL for video ${video?.id}, skipping.`);
+            continue;
+          }
+
+          console.log(
+            `🎬 [W${workerId}] ${scrapeSourceUrl ? 'Scraping +' : ''} transcribing video ${i + 1}/${videos.length}: ${video.id}`
+          );
+
           try {
-            const response = await fetch('/api/video/transcribe-from-url', {
+            let transcriptionUrl: string | null = fallbackTranscriptionUrl;
+            let scrapedMeta: Partial<TranscribedVideoMeta> = {};
+
+            if (scrapeSourceUrl) {
+              try {
+                const scrapeResponse = await fetch('/api/video/scrape-url', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ url: scrapeSourceUrl, options: { preferAudioOnly } })
+                });
+
+                const scrapeText = await scrapeResponse.text();
+                let scrapeJson: any = null;
+                if (scrapeText && scrapeText.trim().length) {
+                  try {
+                    scrapeJson = JSON.parse(scrapeText);
+                  } catch (jsonError) {
+                    console.warn(`⚠️ [W${workerId}] Failed to parse scrape response for ${video.id}:`, jsonError);
+                  }
+                }
+
+                const scrapedResult = scrapeJson?.result;
+
+                if (scrapeResponse.ok && scrapeJson?.success && scrapedResult?.downloadUrl) {
+                  transcriptionUrl = scrapedResult.audioUrl || scrapedResult.downloadUrl || transcriptionUrl;
+                  scrapedMeta = {
+                    url: transcriptionUrl ?? undefined,
+                    title: scrapedResult?.title ?? scrapedResult?.description,
+                    sourceUrl: scrapeSourceUrl,
+                    platform: scrapedResult?.platform as PlatformType | undefined,
+                    thumbnailUrl: scrapedResult?.thumbnailUrl ?? null,
+                  };
+                } else {
+                  const scrapeErrorMessage = scrapeJson?.error || scrapedResult?.error || scrapeResponse.statusText;
+                  console.warn(`⚠️ [W${workerId}] Video ${i + 1} scraping failed:`, scrapeErrorMessage);
+                }
+              } catch (scrapeErr) {
+                console.warn(`⚠️ [W${workerId}] Error scraping video ${i + 1}:`, scrapeErr);
+              }
+            }
+
+            if (!transcriptionUrl) {
+              console.warn(`⚠️ [W${workerId}] No transcription URL available for video ${video.id}, skipping.`);
+              continue;
+            }
+
+            const transcriptionResponse = await fetch('/api/video/transcribe-from-url', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ videoUrl: video.downloadUrl })
+              body: JSON.stringify({ videoUrl: transcriptionUrl })
             });
 
-            const result = await response.json();
-            if (response.ok && result.success && result.transcript) {
+            const transcriptionResult = await transcriptionResponse.json();
+
+            if (transcriptionResponse.ok && transcriptionResult.success && transcriptionResult.transcript) {
               results[i] = {
-                transcript: result.transcript,
-                meta: { id: String(video.id), url: video.downloadUrl, title: video.description }
+                transcript: transcriptionResult.transcript,
+                meta: {
+                  id: String(video.id ?? video.meta?.id ?? `video-${i}`),
+                  url: transcriptionUrl,
+                  title: scrapedMeta.title ?? video.description,
+                  sourceUrl: scrapedMeta.sourceUrl ?? (typeof scrapeSourceUrl === 'string' ? scrapeSourceUrl : undefined),
+                  platform: scrapedMeta.platform ?? (video.platform as PlatformType | undefined),
+                  thumbnailUrl: scrapedMeta.thumbnailUrl ?? video.cover ?? null,
+                },
               };
               console.log(`✅ [W${workerId}] Video ${i + 1} transcribed`);
             } else {
-              console.warn(`⚠️ [W${workerId}] Video ${i + 1} transcription failed:`, result.error);
+              console.warn(`⚠️ [W${workerId}] Video ${i + 1} transcription failed:`, transcriptionResult?.error);
             }
           } catch (err) {
             console.warn(`⚠️ [W${workerId}] Error transcribing video ${i + 1}:`, err);
@@ -798,7 +1005,7 @@ export const TikTokAnalysisTest: React.FC = () => {
 
       // Collect successful results in original order
       const transcripts: string[] = [];
-      const videoMeta: Array<{ id: string; url?: string; title?: string }> = [];
+      const videoMeta: TranscribedVideoMeta[] = [];
       results.forEach((r) => {
         if (r?.transcript) {
           transcripts.push(r.transcript);
@@ -1290,7 +1497,7 @@ OUTPUT FORMAT:
                 </select>
               </div>
               <div className="input-container">
-                <PersonIcon className="handle-icon" label="Username" />
+                <PersonIcon label="Username" />
                 <Input
                   type="text"
                   placeholder={handlePlaceholder}

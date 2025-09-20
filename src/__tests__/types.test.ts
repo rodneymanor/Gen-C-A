@@ -12,7 +12,7 @@ import type {
   ScriptInsight,
   AIGenerationRequest,
   AIGenerationResponse,
-  BrandPersona,
+  BrandVoice,
   Activity,
   SearchFilters,
   PaginationOptions,
@@ -202,7 +202,12 @@ describe('TypeScript Type Safety Tests', () => {
         length: 'short',
         style: 'engaging',
         aiModel: 'gpt-4',
-        persona: 'casual',
+        brandVoiceId: 'brand-voice-1',
+        voice: {
+          id: 'brand-voice-1',
+          name: 'Test Voice',
+          badges: ['engaging']
+        },
         wordCount: 50,
         estimatedDuration: 15,
         insights: [],
@@ -239,7 +244,7 @@ describe('TypeScript Type Safety Tests', () => {
         length: 'short',
         style: 'engaging',
         platform: 'tiktok',
-        persona: 'casual',
+        brandVoiceId: 'brand-voice-1',
         additionalSettings: { temperature: 0.7 }
       };
 
@@ -279,26 +284,29 @@ describe('TypeScript Type Safety Tests', () => {
   });
 
   describe('Brand and Activity Types', () => {
-    it('should have proper BrandPersona type structure', () => {
-      const persona: BrandPersona = {
+    it('should have proper BrandVoice type structure', () => {
+      const voice: BrandVoice = {
         id: '1',
+        creatorId: 'creator-1',
         name: 'Casual Brand',
-        description: 'A casual brand persona',
+        description: 'A casual brand voice',
         tone: 'friendly',
         voice: 'conversational',
         targetAudience: 'young adults',
         keywords: ['casual', 'friendly'],
         platforms: ['tiktok', 'instagram'],
         examples: ['Example 1', 'Example 2'],
-        created: new Date()
+        created: new Date(),
+        isDefault: false,
+        isShared: false,
       };
 
-      expect(typeof persona.id).toBe('string');
-      expect(typeof persona.name).toBe('string');
-      expect(typeof persona.description).toBe('string');
-      expect(Array.isArray(persona.keywords)).toBe(true);
-      expect(Array.isArray(persona.platforms)).toBe(true);
-      expect(Array.isArray(persona.examples)).toBe(true);
+      expect(typeof voice.id).toBe('string');
+      expect(typeof voice.name).toBe('string');
+      expect(typeof voice.description).toBe('string');
+      expect(Array.isArray(voice.keywords)).toBe(true);
+      expect(Array.isArray(voice.platforms)).toBe(true);
+      expect(Array.isArray(voice.examples)).toBe(true);
     });
 
     it('should have proper Activity type structure', () => {
@@ -497,7 +505,7 @@ describe('TypeScript Type Safety Tests', () => {
         scripts: [],
         contentLibrary: [],
         activities: [],
-        brandPersonas: [],
+        brandVoices: [],
         loading: {
           global: false,
           collections: false,

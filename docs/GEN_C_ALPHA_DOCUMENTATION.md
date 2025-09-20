@@ -15,9 +15,9 @@
 ## Admin: Brand Voice Controls
 
 - API: POST /api/brand-voices/update-meta (x-internal-secret required)
-  - Body: { creatorId, displayName?: string, isShared?: boolean, isDefault?: boolean }
-  - Firestore: overrides in brandVoiceMeta/{creatorId}; only one default at a time
-  - Offline: data/brand-voice-meta.json
+  - Body: { creatorId, brandVoiceId, displayName?, isShared?, isDefault?, templates?, styleSignature? }
+  - Firestore: writes to brandVoiceLibrary/{creatorId}/brandVoices/{brandVoiceId}; sibling voices are cleared when a new default is set
+  - Offline: no-op when Firestore unavailable
 - Listing: GET /api/brand-voices/list returns voices with overrides applied; default voice sorted first
 - UI: Admin action in src/components/layout/Navigation.tsx -> "Admin: Make Default & Share…"
 

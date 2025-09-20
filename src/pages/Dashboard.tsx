@@ -2,12 +2,6 @@ import React from 'react';
 import { css } from '@emotion/react';
 import { useNavigate } from 'react-router-dom';
 
-// Atlassian Design System Icons
-import LightbulbIcon from '@atlaskit/icon/glyph/lightbulb';
-import FolderIcon from '@atlaskit/icon/glyph/folder';
-import EditIcon from '@atlaskit/icon/glyph/edit';
-import RadioIcon from '@atlaskit/icon/glyph/radio';
-
 const dashboardStyles = css`
   max-width: 1200px;
   margin: 0 auto;
@@ -50,6 +44,11 @@ const heroTextStyles = css`
     align-items: center;
     gap: var(--space-3);
     justify-content: center;
+    
+    .hero-emoji {
+      font-size: 1.25em;
+      line-height: 1;
+    }
   }
 `;
 
@@ -130,12 +129,6 @@ const cardStyles = css`
     opacity: 1;
   }
 
-  .card-icon {
-    width: 48px;
-    height: 48px;
-    color: var(--color-primary-500);
-  }
-  
   .card-title {
     font-size: var(--font-size-h4);
     font-weight: var(--font-weight-semibold);
@@ -157,7 +150,6 @@ interface DashboardCard {
   id: string;
   title: string;
   description: string;
-  icon: React.ReactNode;
   action: () => void;
 }
 
@@ -176,9 +168,6 @@ const DashboardCard: React.FC<{ card: DashboardCard }> = ({ card }) => (
     }}
     aria-label={`${card.title}: ${card.description}`}
   >
-    <div className="card-icon">
-      {card.icon}
-    </div>
     <h3 className="card-title">{card.title}</h3>
     <p className="card-description">{card.description}</p>
   </div>
@@ -189,25 +178,22 @@ export const Dashboard: React.FC = () => {
 
   const dashboardCards: DashboardCard[] = [
     {
-      id: 'collections',
-      title: 'Collections',
-      description: 'Get inspiration',
-      icon: <FolderIcon label="" size="xlarge" />,
-      action: () => navigate('/collections')
-    },
-    {
-      id: 'script-writing',
-      title: 'Write Script',
-      description: 'AI-powered script writing',
-      icon: <EditIcon label="" size="xlarge" />,
+      id: 'write-scripts',
+      title: 'Write Scripts Instantly',
+      description: 'Transform ideas into ready-to-use scripts in seconds. Leverage proven frameworks to create high-quality content with zero guesswork.',
       action: () => navigate('/write')
     },
     {
-      id: 'channels',
-      title: 'Channels',
-      description: 'Follow your favorite creators',
-      icon: <RadioIcon label="" size="xlarge" />,
-      action: () => navigate('/channels')
+      id: 'creators',
+      title: "Discover What's Going Viral",
+      description: "Follow top creators and track trending content so you're always inspired and never short on ideas.",
+      action: () => navigate('/creators')
+    },
+    {
+      id: 'collections',
+      title: 'Get Inspired by the Best',
+      description: 'Explore top-performing scripts and delivery styles from leading creators to elevate your own content strategy.',
+      action: () => navigate('/collections')
     }
   ];
 
@@ -219,7 +205,7 @@ export const Dashboard: React.FC = () => {
           <span className="hero-line-1">Ready to create something amazing?</span>
           <span className="hero-line-2">
             Let's write your script.
-            <LightbulbIcon label="" size="large" />
+            <span role="img" aria-label="light bulb" className="hero-emoji">💡</span>
           </span>
         </h1>
       </section>

@@ -2,9 +2,11 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import url from 'url';
 
 // Import handlers from existing Express-style modules
-import { handleCreatorTranscription, handleInstagramReels, handleHealthCheck } from '../src/api-routes/creators.js';
-import { handleTikTokUserFeed } from '../src/api-routes/tiktok.js';
-import { handleVideoTranscribe } from '../src/api-routes/video.js';
+import { handleCreatorTranscription, handleHealthCheck } from '../src/api-routes/creators.js';
+import { handleInstagramReels } from '../src/api-routes/videos/instagram-reels.js';
+import { handleInstagramUserId } from '../src/api-routes/videos/instagram-user-id.js';
+import { handleTikTokUserFeed } from '../src/api-routes/videos/tiktok-user-feed.js';
+import { handleVideoTranscribe } from '../src/api-routes/videos/transcribe.js';
 import { handleVoiceAnalyzePatterns } from '../src/api-routes/voice.js';
 import { handleSaveCreatorAnalysis } from '../src/api-routes/creator-analysis.js';
 import { handleListAnalyzedVideoIds } from '../src/api-routes/creator-lookup.js';
@@ -47,7 +49,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Creators/Instagram/TikTok/Video
     if (path === '/api/creators/follow' && req.method === 'POST') return handleCreatorTranscription(req as any, res as any);
     if (path === '/api/creators/transcribe' && req.method === 'POST') return handleCreatorTranscription(req as any, res as any);
-    if (path === '/api/instagram/user-reels' && req.method === 'POST') return handleInstagramReels(req as any, res as any);
+    if (path === '/api/instagram/user-id' && (req.method === 'GET' || req.method === 'POST')) {
+      return handleInstagramUserId(req as any, res as any);
+    }
+    if (path === '/api/instagram/user-reels' && (req.method === 'GET' || req.method === 'POST')) {
+      return handleInstagramReels(req as any, res as any);
+    }
     if (path === '/api/tiktok/user-feed' && req.method === 'POST') return handleTikTokUserFeed(req as any, res as any);
     if (path === '/api/video/transcribe-from-url' && req.method === 'POST') return handleVideoTranscribe(req as any, res as any);
 
@@ -109,4 +116,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ success: false, error: err?.message || 'Internal Server Error' });
   }
 }
-

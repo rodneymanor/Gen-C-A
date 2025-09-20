@@ -22,11 +22,13 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/docs', express.static(path.join(process.cwd(), 'docs')));
 
 // Import existing creator routes
-import { handleCreatorTranscription, handleInstagramReels, handleHealthCheck } from './src/api-routes/creators.js';
+import { handleCreatorTranscription, handleHealthCheck } from './src/api-routes/creators.js';
+import { handleInstagramReels } from './src/api-routes/videos/instagram-reels.js';
+import { handleInstagramUserId } from './src/api-routes/videos/instagram-user-id.js';
 
 // Import converted TikTok routes
-import { handleTikTokUserFeed } from './src/api-routes/tiktok.js';
-import { handleVideoTranscribe } from './src/api-routes/video.js';
+import { handleTikTokUserFeed } from './src/api-routes/videos/tiktok-user-feed.js';
+import { handleVideoTranscribe } from './src/api-routes/videos/transcribe.js';
 import { handleVoiceAnalyzePatterns } from './src/api-routes/voice.js';
 import { handleSaveCreatorAnalysis } from './src/api-routes/creator-analysis.js';
 import { handleListAnalyzedVideoIds } from './src/api-routes/creator-lookup.js';
@@ -62,6 +64,8 @@ import {
 // Existing API routes
 app.post('/api/creators/follow', handleCreatorTranscription);
 app.post('/api/creators/transcribe', handleCreatorTranscription);
+app.get('/api/instagram/user-id', handleInstagramUserId);
+app.get('/api/instagram/user-reels', handleInstagramReels);
 app.post('/api/instagram/user-reels', handleInstagramReels);
 app.get('/api/health', handleHealthCheck);
 

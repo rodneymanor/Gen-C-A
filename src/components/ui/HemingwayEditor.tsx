@@ -14,7 +14,7 @@ import { FloatingToolbar } from './FloatingToolbar';
 import { ScriptComponentEditor } from './ScriptComponentEditor';
 import { InteractiveScript } from '../writing-analysis/interactive-script';
 import { useScriptGeneration } from '@/hooks/use-script-generation';
-import type { BrandPersona } from '@/types';
+import type { BrandVoice } from '@/types';
 import type { ScriptElements } from '@/lib/script-analysis';
 import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME, resolveDefaultBrandVoiceId } from '@/constants/brand-voices';
 
@@ -194,8 +194,8 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarCollapsed);
   const [focusMode, setFocusMode] = useState(initialFocusMode);
   const [activeTab, setActiveTab] = useState<'readability' | 'writing'>('readability');
-  const [personas, setPersonas] = useState<BrandPersona[]>([]);
-  const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
+  const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([]);
+  const [selectedBrandVoiceId, setSelectedBrandVoiceId] = useState<string>('');
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date>(new Date());
   const [, forceRelativeRefresh] = useState(0);
@@ -212,7 +212,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const handleRegenerateRef = useRef<(() => Promise<void>) | null>(null);
-  const previousPersonaRef = useRef<string | null>(null);
+  const previousBrandVoiceRef = useRef<string | null>(null);
   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep editor content/title in sync with incoming props (e.g., navigation from generator)
@@ -403,10 +403,11 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
         const res = await fetch('/api/brand-voices/list');
         const data = await res.json().catch(() => null);
         if (isMounted && res.ok && data?.success && Array.isArray(data.voices)) {
-          const mapped: BrandPersona[] = data.voices.map((v: any) => {
+          const mapped: BrandVoice[] = data.voices.map((v: any) => {
             const isDefault = v.isDefault === true || v.id === DEFAULT_BRAND_VOICE_ID;
             return {
               id: v.id,
+              creatorId: v.creatorId,
               name: isDefault ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
               description: v.description || '',
               tone: v.tone || 'Varied',
@@ -416,10 +417,11 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
               platforms: v.platforms || ['tiktok'],
               created: v.created ? new Date(v.created._seconds ? v.created._seconds * 1000 : v.created) : new Date(),
               isDefault,
+              isShared: v.isShared ?? false,
             };
           });
-          setPersonas(mapped);
-          setSelectedPersonaId(prev => {
+          setBrandVoices(mapped);
+          setSelectedBrandVoiceId(prev => {
             if (prev) return prev;
             const resolvedDefaultId = resolveDefaultBrandVoiceId(mapped);
             const hasDefault = mapped.some(p => p.id === resolvedDefaultId);
@@ -458,9 +460,15 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
       setIsRegenerating(true);
       const idea = deriveIdeaFromEditor();
       const length = decideLength();
-      const persona = selectedPersonaId || undefined;
+      const brandVoiceId = selectedBrandVoiceId || undefined;
+      const brandVoiceCreatorId = brandVoices.find(voice => voice.id === brandVoiceId)?.creatorId;
 
-      const result = await generateScript(idea, length, persona);
+      const result = await generateScript({
+        idea,
+        length,
+        brandVoiceId,
+        brandVoiceCreatorId
+      });
       if (result.success && result.script) {
         onScriptElementsChange({
           hook: result.script.hook,
@@ -474,34 +482,42 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
     } finally {
       setIsRegenerating(false);
     }
-  }, [isScriptMode, onScriptElementsChange, deriveIdeaFromEditor, decideLength, selectedPersonaId, generateScript]);
+  }, [
+    isScriptMode,
+    onScriptElementsChange,
+    deriveIdeaFromEditor,
+    decideLength,
+    selectedBrandVoiceId,
+    brandVoices,
+    generateScript
+  ]);
 
-  // Keep the latest regenerate handler in a ref so persona effect doesn't retrigger when dependencies change
+  // Keep the latest regenerate handler in a ref so the brand voice effect doesn't retrigger when dependencies change
   useEffect(() => {
     handleRegenerateRef.current = handleRegenerate;
   }, [handleRegenerate]);
 
-  // Trigger an automatic regenerate when the persona changes after mount
+  // Trigger an automatic regenerate when the brand voice changes after mount
   useEffect(() => {
     if (!isScriptMode || !onScriptElementsChange) {
-      previousPersonaRef.current = selectedPersonaId;
+      previousBrandVoiceRef.current = selectedBrandVoiceId;
       return;
     }
 
-    const previousPersona = previousPersonaRef.current;
-    previousPersonaRef.current = selectedPersonaId;
+    const previousBrandVoice = previousBrandVoiceRef.current;
+    previousBrandVoiceRef.current = selectedBrandVoiceId;
 
-    if (previousPersona === null) {
+    if (previousBrandVoice === null) {
       // Skip first run on mount
       return;
     }
 
-    if (previousPersona === selectedPersonaId) {
+    if (previousBrandVoice === selectedBrandVoiceId) {
       return;
     }
 
     handleRegenerateRef.current?.();
-  }, [selectedPersonaId, isScriptMode, onScriptElementsChange]);
+  }, [selectedBrandVoiceId, isScriptMode, onScriptElementsChange]);
 
   return (
     <EditorContainer focusMode={focusMode} className={className}>
@@ -605,9 +621,9 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
         onAIAction={(action) => console.log('AI Action:', action)}
         onRegenerate={handleRegenerate}
         isGenerating={isRegenerating || isGenLoading}
-        brandVoices={personas}
-        selectedBrandVoiceId={selectedPersonaId}
-        onBrandVoiceChange={setSelectedPersonaId}
+        brandVoices={brandVoices}
+        selectedBrandVoiceId={selectedBrandVoiceId}
+        onBrandVoiceChange={setSelectedBrandVoiceId}
         onSave={() => console.log('Save')}
         onExport={() => console.log('Export')}
         onShare={() => console.log('Share')}

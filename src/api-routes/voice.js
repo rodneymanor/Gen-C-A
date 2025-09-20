@@ -25,7 +25,10 @@ async function loadGeminiService() {
  *   temperature?: number,           // default: 0.2
  *   maxTokens?: number,             // default: 2048
  *   header?: string,                // optional header before transcripts
- *   responseType?: 'text' | 'json'  // default: 'text'
+ *   responseType?: 'text' | 'json', // default: 'text'
+ *   enableBatching?: boolean,       // default: false - enables batched processing
+ *   batchSize?: number,             // default: 10 - number of transcripts per batch
+ *   creator?: object                // optional creator info
  * }
  */
 export async function handleVoiceAnalyzePatterns(req, res) {
@@ -40,12 +43,71 @@ export async function handleVoiceAnalyzePatterns(req, res) {
       maxTokens = 6000,
       header = 'Context: Transcripts',
       responseType = 'text',
+      enableBatching = false,
+      batchSize = 10,
+      creator = {}
     } = req.body || {};
 
     if (!prompt && (!transcripts || !Array.isArray(transcripts) || transcripts.length === 0)) {
       return res.status(400).json({
         success: false,
         error: "Provide 'prompt' and/or 'transcripts' to generate output.",
+      });
+    }
+
+    // Handle batched processing if enabled
+    console.log(`🔍 [Voice] Batching check - enableBatching: ${enableBatching}, isArray: ${Array.isArray(transcripts)}, length: ${transcripts?.length}`);
+    if (enableBatching && Array.isArray(transcripts) && transcripts.length > 1) {
+      console.log(`🧩 [Voice] Batching enabled: ${transcripts.length} transcripts in batches of ${batchSize}`);
+      
+      // Simple batching test - just concatenate results for now
+      const chunks = [];
+      for (let i = 0; i < transcripts.length; i += batchSize) {
+        chunks.push(transcripts.slice(i, i + batchSize));
+      }
+
+      const batchResults = [];
+      for (let b = 0; b < chunks.length; b++) {
+        const chunk = chunks[b];
+        console.log(`🧩 [Voice] Processing batch ${b + 1}/${chunks.length} (${chunk.length} transcripts)`);
+        
+        const batchPrompt = prompt || `Analyze these ${chunk.length} transcripts for voice patterns:
+${chunk.map((t, i) => `--- Transcript ${i + 1} ---\n${t}`).join('\n\n')}
+
+Return JSON with voice analysis.`;
+
+        const batchResult = await GeminiService.generateContent({
+          prompt: batchPrompt,
+          responseType: responseType,
+          temperature,
+          maxTokens,
+          model,
+          systemPrompt,
+        });
+
+        if (!batchResult?.success) {
+          return res.status(500).json({
+            success: false,
+            error: `Batch ${b + 1} failed: ${batchResult?.error || 'Generation failed'}`,
+          });
+        }
+
+        batchResults.push(batchResult.content);
+      }
+
+      return res.json({
+        success: true,
+        model,
+        temperature,
+        maxTokens,
+        systemPrompt,
+        responseType,
+        enableBatching: true,
+        batchSize,
+        batchCount: chunks.length,
+        creator,
+        content: batchResults,
+        summary: `Processed ${transcripts.length} transcripts in ${chunks.length} batches`
       });
     }
 

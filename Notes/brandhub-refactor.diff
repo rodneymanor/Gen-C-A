@@ -1,0 +1,4034 @@
+diff --git a/src/__tests__/types.test.ts b/src/__tests__/types.test.ts
+index 060faec1..45fc110f 100644
+--- a/src/__tests__/types.test.ts
++++ b/src/__tests__/types.test.ts
+@@ -12,7 +12,7 @@ import type {
+   ScriptInsight,
+   AIGenerationRequest,
+   AIGenerationResponse,
+-  BrandPersona,
++  BrandVoice,
+   Activity,
+   SearchFilters,
+   PaginationOptions,
+@@ -202,7 +202,12 @@ describe('TypeScript Type Safety Tests', () => {
+         length: 'short',
+         style: 'engaging',
+         aiModel: 'gpt-4',
+-        persona: 'casual',
++        brandVoiceId: 'brand-voice-1',
++        voice: {
++          id: 'brand-voice-1',
++          name: 'Test Voice',
++          badges: ['engaging']
++        },
+         wordCount: 50,
+         estimatedDuration: 15,
+         insights: [],
+@@ -239,7 +244,7 @@ describe('TypeScript Type Safety Tests', () => {
+         length: 'short',
+         style: 'engaging',
+         platform: 'tiktok',
+-        persona: 'casual',
++        brandVoiceId: 'brand-voice-1',
+         additionalSettings: { temperature: 0.7 }
+       };
+ 
+@@ -279,26 +284,29 @@ describe('TypeScript Type Safety Tests', () => {
+   });
+ 
+   describe('Brand and Activity Types', () => {
+-    it('should have proper BrandPersona type structure', () => {
+-      const persona: BrandPersona = {
++    it('should have proper BrandVoice type structure', () => {
++      const voice: BrandVoice = {
+         id: '1',
++        creatorId: 'creator-1',
+         name: 'Casual Brand',
+-        description: 'A casual brand persona',
++        description: 'A casual brand voice',
+         tone: 'friendly',
+         voice: 'conversational',
+         targetAudience: 'young adults',
+         keywords: ['casual', 'friendly'],
+         platforms: ['tiktok', 'instagram'],
+         examples: ['Example 1', 'Example 2'],
+-        created: new Date()
++        created: new Date(),
++        isDefault: false,
++        isShared: false,
+       };
+ 
+-      expect(typeof persona.id).toBe('string');
+-      expect(typeof persona.name).toBe('string');
+-      expect(typeof persona.description).toBe('string');
+-      expect(Array.isArray(persona.keywords)).toBe(true);
+-      expect(Array.isArray(persona.platforms)).toBe(true);
+-      expect(Array.isArray(persona.examples)).toBe(true);
++      expect(typeof voice.id).toBe('string');
++      expect(typeof voice.name).toBe('string');
++      expect(typeof voice.description).toBe('string');
++      expect(Array.isArray(voice.keywords)).toBe(true);
++      expect(Array.isArray(voice.platforms)).toBe(true);
++      expect(Array.isArray(voice.examples)).toBe(true);
+     });
+ 
+     it('should have proper Activity type structure', () => {
+@@ -497,7 +505,7 @@ describe('TypeScript Type Safety Tests', () => {
+         scripts: [],
+         contentLibrary: [],
+         activities: [],
+-        brandPersonas: [],
++        brandVoices: [],
+         loading: {
+           global: false,
+           collections: false,
+diff --git a/src/api-routes/brand-voices.js b/src/api-routes/brand-voices.js
+index 22690544..6445539a 100644
+--- a/src/api-routes/brand-voices.js
++++ b/src/api-routes/brand-voices.js
+@@ -14,29 +14,53 @@ export async function handleListBrandVoices(req, res) {
+     const metaSnap = await db.collection('brandVoiceMeta').get();
+     metaSnap.forEach((d) => { metaMap[d.id] = d.data() || {}; });
+     const creatorsSnap = await db.collection('creators').limit(50).get();
++
++    const toDate = (value) => {
++      if (!value) return null;
++      if (value instanceof Date) return value;
++      if (typeof value.toDate === 'function') return value.toDate();
++      const parsed = new Date(value);
++      return Number.isNaN(parsed.getTime()) ? null : parsed;
++    };
++
+     for (const doc of creatorsSnap.docs) {
+-      const c = doc.data();
+-      // Skip invalid creator docs that have neither name nor handle
+-      if (!c || (!c.name && !c.handle)) {
++      const creatorData = doc.data();
++      if (!creatorData || (!creatorData.name && !creatorData.handle)) {
+         continue;
+       }
+-      const meta = metaMap[doc.id] || {};
+-      const displayName = meta.displayName || c.name || c.handle;
+-      const stylesSnap = await db.collection('speakingStyles').where('creatorId', '==', doc.id).limit(1).get();
+-      const style = stylesSnap.empty ? null : stylesSnap.docs[0].data();
+-      voices.push({
+-        id: doc.id,
+-        name: displayName,
+-        description: `${displayName} brand voice` + (style?.tonalElements?.tone ? ` • Tone: ${style.tonalElements.tone}` : ''),
+-        tone: style?.tonalElements?.tone || 'Varied',
+-        voice: 'Derived from creator analysis',
+-        targetAudience: c.niche || 'General',
+-        keywords: (style?.vocabulary?.powerWords || []).slice(0, 8),
+-        platforms: ['tiktok'],
+-        created: c.analysisDate || new Date(),
+-        isShared: !!meta.isShared,
+-        isDefault: !!meta.isDefault,
+-      });
++
++      const brandVoicesSnap = await doc.ref.collection('brandVoices').get();
++      if (brandVoicesSnap.empty) {
++        continue;
++      }
++
++      for (const voiceDoc of brandVoicesSnap.docs) {
++        const voiceData = voiceDoc.data() || {};
++        const meta = metaMap[voiceDoc.id] || metaMap[doc.id] || {};
++        const style = voiceData.styleSignature || {};
++        const displayName = voiceData.displayName || meta.displayName || creatorData.name || creatorData.handle || voiceDoc.id;
++
++        voices.push({
++          id: voiceDoc.id,
++          creatorId: doc.id,
++          name: displayName,
++          description: voiceData.description || `${displayName} brand voice`,
++          tone: style.tone || voiceData.tone || 'Varied',
++          voice: voiceData.voice || 'Derived from creator analysis',
++          targetAudience: voiceData.targetAudience || creatorData.niche || 'General',
++          keywords: Array.isArray(style.powerWords) && style.powerWords.length
++            ? style.powerWords.slice(0, 8)
++            : Array.isArray(voiceData.keywords)
++              ? voiceData.keywords.slice(0, 8)
++              : [],
++          platforms: Array.isArray(voiceData.platforms) && voiceData.platforms.length
++            ? voiceData.platforms
++            : ['tiktok'],
++          created: toDate(voiceData.createdAt) || toDate(creatorData.analysisDate) || new Date(),
++          isShared: voiceData.isShared ?? meta.isShared ?? false,
++          isDefault: voiceData.isDefault ?? meta.isDefault ?? false,
++        });
++      }
+     }
+ 
+     // Sort default first if exists
+@@ -51,6 +75,7 @@ export async function handleListBrandVoices(req, res) {
+ export async function handleGetBrandVoiceTemplates(req, res) {
+   try {
+     const creatorId = req.query?.creatorId || req.body?.creatorId;
++    const brandVoiceId = req.query?.brandVoiceId || req.query?.voiceId || req.body?.brandVoiceId;
+     if (!creatorId) return res.status(400).json({ success: false, error: 'creatorId is required' });
+ 
+     const db = getAdminDb();
+@@ -59,32 +84,51 @@ export async function handleGetBrandVoiceTemplates(req, res) {
+       return res.status(500).json({ success: false, error: 'Brand voice templates unavailable. Firestore not initialized.' });
+     }
+ 
+-    const [hooksSnap, bridgesSnap, ctasSnap, nuggetsSnap, styleSnap] = await Promise.all([
+-      db.collection('hookTemplates').where('creatorIds', 'array-contains', creatorId).limit(100).get(),
+-      db.collection('bridgeTemplates').where('creatorIds', 'array-contains', creatorId).limit(100).get(),
+-      db.collection('ctaTemplates').where('creatorIds', 'array-contains', creatorId).limit(100).get(),
+-      db.collection('goldenNuggetTemplates').where('creatorIds', 'array-contains', creatorId).limit(100).get(),
+-      db.collection('speakingStyles').where('creatorId', '==', creatorId).limit(1).get(),
+-    ]);
++    const voiceDocRef = db
++      .collection('creators')
++      .doc(String(creatorId))
++      .collection('brandVoices')
++      .doc(String(brandVoiceId || creatorId));
+ 
+-    const toList = (snap) => snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+-    const style = styleSnap.empty ? null : styleSnap.docs[0].data();
++    const voiceDoc = await voiceDocRef.get();
++    if (!voiceDoc.exists) {
++      return res.status(404).json({ success: false, error: 'Brand voice not found' });
++    }
++
++    const voiceData = voiceDoc.data() || {};
++    const templates = voiceData.templates || {};
++
++    const mapTemplates = (items, type) => {
++      if (!Array.isArray(items)) return [];
++      return items
++        .map((item, index) => {
++          if (!item) return null;
++          if (typeof item === 'string') {
++            return { id: `${voiceDoc.id}:${type}:${index}`, pattern: item, variables: [] };
++          }
++          const pattern = item.pattern || '';
++          if (!pattern) return null;
++          return {
++            id: item.id || `${voiceDoc.id}:${type}:${index}`,
++            pattern,
++            variables: Array.isArray(item.variables) ? item.variables : [],
++            structure: item.structure,
++          };
++        })
++        .filter(Boolean);
++    };
++
++    const styleSignature = voiceData.styleSignature || null;
+ 
+     return res.json({
+       success: true,
+       templates: {
+-        hooks: toList(hooksSnap),
+-        bridges: toList(bridgesSnap),
+-        ctas: toList(ctasSnap),
+-        nuggets: toList(nuggetsSnap),
++        hooks: mapTemplates(templates.hooks, 'hook'),
++        bridges: mapTemplates(templates.bridges, 'bridge'),
++        ctas: mapTemplates(templates.ctas, 'cta'),
++        nuggets: mapTemplates(templates.nuggets, 'nugget'),
+       },
+-      styleSignature: style ? {
+-        powerWords: style?.vocabulary?.powerWords || [],
+-        fillerPhrases: style?.vocabulary?.fillerWords || [],
+-        transitionPhrases: style?.vocabulary?.transitionPhrases || [],
+-        avgWordsPerSentence: style?.structure?.avgWordsPerSentence,
+-        tone: style?.tonalElements?.tone || 'Varied',
+-      } : null,
++      styleSignature,
+     });
+   } catch (error) {
+     console.error('Get brand voice templates error:', error);
+@@ -100,6 +144,7 @@ export async function handleDeleteBrandVoice(req, res) {
+     }
+ 
+     const creatorId = req.body?.creatorId || req.query?.creatorId;
++    const brandVoiceId = req.body?.brandVoiceId || req.body?.voiceId || req.query?.brandVoiceId || req.query?.voiceId;
+     if (!creatorId) return res.status(400).json({ success: false, error: 'creatorId is required' });
+ 
+     const db = getAdminDb();
+@@ -108,14 +153,48 @@ export async function handleDeleteBrandVoice(req, res) {
+       return res.status(500).json({ success: false, error: 'Unable to delete brand voice. Firestore not initialized.' });
+     }
+ 
+-    // Delete creator doc
+-    await db.collection('creators').doc(creatorId).delete();
+-    // Delete related speakingStyles
+-    const styles = await db.collection('speakingStyles').where('creatorId', '==', creatorId).get();
+-    const batch = db.batch();
+-    styles.forEach((doc) => batch.delete(doc.ref));
+-    if (!styles.empty) await batch.commit();
+-    return res.json({ success: true, deleted: { creator: creatorId, speakingStyles: styles.size } });
++    const creatorRef = db.collection('creators').doc(String(creatorId));
++    const voiceRef = creatorRef.collection('brandVoices').doc(String(brandVoiceId || creatorId));
++    const voiceSnap = await voiceRef.get();
++
++    if (!voiceSnap.exists) {
++      return res.status(404).json({ success: false, error: 'Brand voice not found' });
++    }
++
++    const voiceData = voiceSnap.data() || {};
++    const wasDefault = voiceData.isDefault === true;
++
++    await voiceRef.delete();
++
++    // Clean up any meta overrides keyed by the brand voice id
++    try {
++      await db.collection('brandVoiceMeta').doc(String(brandVoiceId || creatorId)).delete();
++    } catch (metaError) {
++      console.warn('[brand-voices] Failed to delete brand voice meta override', metaError);
++    }
++
++    const remainingVoicesSnap = await creatorRef.collection('brandVoices').get();
++    let reassignedDefault = null;
++    let deletedCreatorDoc = false;
++
++    if (remainingVoicesSnap.empty) {
++      await creatorRef.delete();
++      deletedCreatorDoc = true;
++    } else if (wasDefault) {
++      const fallbackVoice = remainingVoicesSnap.docs[0];
++      await fallbackVoice.ref.set({ isDefault: true }, { merge: true });
++      reassignedDefault = fallbackVoice.id;
++    }
++
++    return res.json({
++      success: true,
++      deleted: {
++        creatorId: String(creatorId),
++        brandVoiceId: String(brandVoiceId || creatorId),
++        reassignedDefault,
++        deletedCreatorDoc,
++      },
++    });
+   } catch (error) {
+     console.error('Delete brand voice error:', error);
+     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+@@ -135,7 +214,7 @@ export async function handleUpdateBrandVoiceMeta(req, res) {
+       return res.status(401).json({ success: false, error: 'Unauthorized' });
+     }
+ 
+-    const { creatorId, displayName, isShared, isDefault } = req.body || {};
++    const { creatorId, displayName, isShared, isDefault, brandVoiceId, voiceId } = req.body || {};
+     if (!creatorId) return res.status(400).json({ success: false, error: 'creatorId is required' });
+ 
+     const db = getAdminDb();
+@@ -144,14 +223,38 @@ export async function handleUpdateBrandVoiceMeta(req, res) {
+       return res.status(500).json({ success: false, error: 'Unable to update brand voice meta. Firestore not initialized.' });
+     }
+ 
+-    const metaRef = db.collection('brandVoiceMeta').doc(String(creatorId));
+-    // If making default, unset previous defaults
++    const effectiveVoiceId = brandVoiceId || voiceId || creatorId;
++    const voiceRef = db
++      .collection('creators')
++      .doc(String(creatorId))
++      .collection('brandVoices')
++      .doc(String(effectiveVoiceId));
++
++    const voiceSnap = await voiceRef.get();
++    if (!voiceSnap.exists) {
++      return res.status(404).json({ success: false, error: 'Brand voice not found' });
++    }
++
++    // If making default, unset previous defaults within the same creator scope
+     if (isDefault === true) {
+-      const prev = await db.collection('brandVoiceMeta').where('isDefault', '==', true).get();
++      const siblings = await voiceRef.parent.get();
+       const batch = db.batch();
+-      prev.forEach((doc) => batch.set(doc.ref, { isDefault: false }, { merge: true }));
+-      if (!prev.empty) await batch.commit();
++      siblings.forEach((doc) => {
++        if (doc.id === voiceRef.id) return;
++        batch.set(doc.ref, { isDefault: false }, { merge: true });
++      });
++      if (!siblings.empty) await batch.commit();
+     }
++
++    await voiceRef.set({
++      ...(displayName !== undefined ? { displayName: String(displayName) } : {}),
++      ...(isShared !== undefined ? { isShared: !!isShared } : {}),
++      ...(isDefault !== undefined ? { isDefault: !!isDefault } : {}),
++      updatedAt: new Date(),
++    }, { merge: true });
++
++    // Maintain legacy meta document for backwards compatibility
++    const metaRef = db.collection('brandVoiceMeta').doc(String(effectiveVoiceId));
+     await metaRef.set({
+       creatorId: String(creatorId),
+       ...(displayName !== undefined ? { displayName: String(displayName) } : {}),
+diff --git a/src/api-routes/creator-analysis.js b/src/api-routes/creator-analysis.js
+index 5ec022ab..48aa8d15 100644
+--- a/src/api-routes/creator-analysis.js
++++ b/src/api-routes/creator-analysis.js
+@@ -77,13 +77,14 @@ export async function handleSaveCreatorAnalysis(req, res) {
+     let creatorId = '';
+     let useFirestore = !!db;
+     let fallbackSummary = null;
++    let creatorDocRef = null;
+ 
+     if (useFirestore) {
+       try {
+         // Upsert creator document keyed by handle
+         const creatorsRef = db.collection('creators');
+         const existing = await creatorsRef.where('handle', '==', handle).limit(1).get();
+-        const creatorDocRef = existing.empty ? creatorsRef.doc() : existing.docs[0].ref;
++        creatorDocRef = existing.empty ? creatorsRef.doc() : existing.docs[0].ref;
+ 
+         await creatorDocRef.set({
+           name,
+@@ -151,30 +152,29 @@ export async function handleSaveCreatorAnalysis(req, res) {
+       tone = extractString('Tone', text) || 'Varied';
+     }
+ 
+-    // Save templates
+-    const addTemplates = async (col, patterns) => {
+-      if (!patterns.length) return 0;
+-      let count = 0;
+-      for (const pattern of patterns) {
+-        const variables = findPlaceholders(pattern);
+-        // Upsert by (creatorId, pattern) to avoid duplicates
+-        const existing = await db
+-          .collection(col)
+-          .where('pattern', '==', pattern)
+-          .where('creatorIds', 'array-contains', creatorId)
+-          .limit(1)
+-          .get();
+-        if (!existing.empty) {
+-          await existing.docs[0].ref.set({ pattern, variables, creatorIds: [creatorId], updatedAt: new Date() }, { merge: true });
+-        } else {
+-          await db.collection(col).add({ pattern, variables, creatorIds: [creatorId], createdAt: new Date() });
+-        }
+-        count++;
+-      }
+-      return count;
++    const saved = { hooks: 0, bridges: 0, ctas: 0, nuggets: 0, scriptStructures: 0 };
++
++    const templatesPayload = {
++      hooks: hookTemplates.map((pattern) => ({ pattern, variables: findPlaceholders(pattern) })),
++      bridges: bridgeTemplates.map((pattern) => ({ pattern, variables: findPlaceholders(pattern) })),
++      ctas: ctaTemplates.map((pattern) => ({ pattern, variables: findPlaceholders(pattern) })),
++      nuggets: nuggetTemplates.map((n) => ({
++        pattern: n.pattern,
++        structure: n.structure || 'unspecified',
++        variables: Array.isArray(n.variables) && n.variables.length ? n.variables : findPlaceholders(n.pattern),
++      })),
+     };
+ 
+-    const saved = { hooks: 0, bridges: 0, ctas: 0, nuggets: 0, scriptStructures: 0 };
++    const styleSignature = {
++      powerWords,
++      fillerPhrases,
++      transitionPhrases,
++      avgWordsPerSentence,
++      tone,
++    };
++
++    const normalizedTranscripts = Array.isArray(perTranscript) ? perTranscript : [];
++    const normalizedVideoMeta = Array.isArray(videoMeta) ? videoMeta : [];
+ 
+     const persistLocal = (summary) => {
+       const baseDir = path.join(process.cwd(), 'data');
+@@ -187,15 +187,19 @@ export async function handleSaveCreatorAnalysis(req, res) {
+       if (fs.existsSync(voicesPath)) {
+         try { voices = JSON.parse(fs.readFileSync(voicesPath, 'utf8')); } catch {}
+       }
+-      const existingIdx = voices.findIndex((v) => v.handle === handle);
++      const summaryId = summary.brandVoiceId || summary.creatorId || handle;
++      const existingIdx = voices.findIndex((v) => v.id === summaryId);
+       const voiceEntry = {
+-        id: summary.creatorId || handle,
+-        name: name,
+-        handle,
+-        description: `${handle} brand voice`,
++        id: summaryId,
++        creatorId: summary.creatorId || handle,
++        name: summary.displayName || name,
++        handle: summary.handle || handle,
++        description: summary.description || `${handle} brand voice`,
+         tone: summary.styleSignature?.tone || 'Varied',
+         keywords: summary.styleSignature?.powerWords || [],
+-        created: new Date().toISOString(),
++        created: summary.createdAt || summary.savedAt || new Date().toISOString(),
++        isDefault: summary.isDefault || false,
++        isShared: summary.isShared || false,
+       };
+       if (existingIdx >= 0) voices[existingIdx] = voiceEntry; else voices.push(voiceEntry);
+       fs.writeFileSync(voicesPath, JSON.stringify(voices, null, 2));
+@@ -203,104 +207,95 @@ export async function handleSaveCreatorAnalysis(req, res) {
+ 
+     try {
+       if (useFirestore) {
+-        saved.hooks = await addTemplates('hookTemplates', hookTemplates);
+-        saved.bridges = await addTemplates('bridgeTemplates', bridgeTemplates);
+-        saved.ctas = await addTemplates('ctaTemplates', ctaTemplates);
+-
+-        if (nuggetTemplates.length) {
+-          for (const n of nuggetTemplates) {
+-            const pattern = n.pattern;
+-            const variables = n.variables || findPlaceholders(pattern);
+-            const structure = n.structure || 'unspecified';
+-            const existing = await db
+-              .collection('goldenNuggetTemplates')
+-              .where('pattern', '==', pattern)
+-              .where('creatorIds', 'array-contains', creatorId)
+-              .limit(1)
+-              .get();
+-            if (!existing.empty) {
+-              await existing.docs[0].ref.set({ pattern, structure, variables, creatorIds: [creatorId], updatedAt: new Date() }, { merge: true });
+-            } else {
+-              await db.collection('goldenNuggetTemplates').add({ pattern, structure, variables, creatorIds: [creatorId], createdAt: new Date() });
+-            }
+-            saved.nuggets++;
+-          }
+-        }
+-
+-        if (perTranscript && perTranscript.length) {
+-          for (const item of perTranscript) {
+-            const i = (item.index ?? 1) - 1;
+-            const vm = Array.isArray(videoMeta) ? videoMeta[i] : undefined;
+-            const videoId = vm?.id || '';
+-
+-            if (!videoId) {
+-              // No videoId to key on; add as new record to avoid data loss
+-              await db.collection('scriptStructures').add({
+-                videoId: '',
+-                creatorId,
+-                hook: item.hook || null,
+-                bridge: item.bridge || null,
+-                goldenNugget: item.goldenNugget || null,
+-                cta: item.cta || null,
+-                microHooks: item.microHooks || [],
+-                createdAt: new Date(),
+-              });
+-              saved.scriptStructures++;
+-              continue;
+-            }
+-
+-            // Upsert by (creatorId, videoId) to avoid duplicates when adding more content later
+-            const existing = await db
+-              .collection('scriptStructures')
+-              .where('creatorId', '==', creatorId)
+-              .where('videoId', '==', videoId)
+-              .limit(1)
+-              .get();
++        const brandVoicesRef = creatorDocRef.collection('brandVoices');
++        const brandVoiceId = creatorId || handle;
++        const brandVoiceDocRef = brandVoicesRef.doc(brandVoiceId);
++        const existingVoiceDoc = await brandVoiceDocRef.get();
+ 
+-            const payload = {
+-              videoId,
+-              creatorId,
+-              hook: item.hook || null,
+-              bridge: item.bridge || null,
+-              goldenNugget: item.goldenNugget || null,
+-              cta: item.cta || null,
+-              microHooks: item.microHooks || [],
+-              updatedAt: new Date(),
+-            };
++        let createdAt = new Date();
++        let isDefault = false;
++        let isShared = false;
++        let displayName = name;
++        let description = '';
+ 
+-            if (!existing.empty) {
+-              await existing.docs[0].ref.set(payload, { merge: true });
+-            } else {
+-              await db.collection('scriptStructures').add({ ...payload, createdAt: new Date() });
+-            }
+-            saved.scriptStructures++;
+-          }
++        if (existingVoiceDoc.exists) {
++          const existingData = existingVoiceDoc.data() || {};
++          const existingCreated = existingData.createdAt;
++          createdAt = existingCreated && typeof existingCreated.toDate === 'function'
++            ? existingCreated.toDate()
++            : existingCreated instanceof Date
++              ? existingCreated
++              : createdAt;
++          isDefault = existingData.isDefault === true;
++          isShared = existingData.isShared === true;
++          displayName = existingData.displayName || displayName;
++          description = existingData.description || '';
++        } else {
++          const otherVoices = await brandVoicesRef.limit(1).get();
++          isDefault = otherVoices.empty;
+         }
+ 
+-        await db.collection('speakingStyles').add({
++        const now = new Date();
++
++        const voiceSummary = {
+           creatorId,
+-          pacing: { wordsPerMinute: undefined, pauseFrequency: undefined, emphasisPoints: [], pauseLocations: [] },
+-          vocabulary: { commonWords: [], industryTerms: [], emotionalWords: powerWords, fillerWords: fillerPhrases, powerWords, transitionPhrases },
+-          structure: {
+-            sentenceLength: avgWordsPerSentence ? (avgWordsPerSentence < 12 ? 'short' : avgWordsPerSentence > 20 ? 'long' : 'medium') : 'mixed',
+-            paragraphFlow: 'unspecified', repetitionPatterns: [], avgWordsPerSentence, questionFrequency: 0, personalPronounUsage: 'unspecified'
++          brandVoiceId,
++          handle,
++          displayName,
++          description: description || `${name} brand voice`,
++          transcriptsCount,
++          niche,
++          templates: templatesPayload,
++          styleSignature,
++          perTranscript: normalizedTranscripts,
++          videoMeta: normalizedVideoMeta,
++          analysis: {
++            json: analysisJson || null,
++            text: analysisText || null,
+           },
+-          tonalElements: { enthusiasm: 0, authority: 0, relatability: 0, urgency: 0, humor: 0, controversy: 0, empathy: 0, tone },
+-          createdAt: new Date(),
+-        });
++          savedAt: now.toISOString(),
++          updatedAt: now,
++          createdAt,
++          isDefault,
++          isShared,
++        };
++
++        await brandVoiceDocRef.set(voiceSummary, { merge: true });
++
++        saved.hooks = templatesPayload.hooks.length;
++        saved.bridges = templatesPayload.bridges.length;
++        saved.ctas = templatesPayload.ctas.length;
++        saved.nuggets = templatesPayload.nuggets.length;
++        saved.scriptStructures = normalizedTranscripts.length;
+       } else {
+         // Offline/local persistence
+         fallbackSummary = {
+           creatorId: creatorId || handle,
+-          name,
++          brandVoiceId: creatorId || handle,
+           handle,
+-          niche,
++          displayName: name,
++          description: `${name} brand voice`,
+           transcriptsCount,
+-          templates: { hooks: hookTemplates, bridges: bridgeTemplates, ctas: ctaTemplates, nuggets: nuggetTemplates },
+-          styleSignature: { powerWords, fillerPhrases, transitionPhrases, avgWordsPerSentence, tone },
+-          perTranscript,
++          niche,
++          templates: templatesPayload,
++          styleSignature,
++          perTranscript: normalizedTranscripts,
++          videoMeta: normalizedVideoMeta,
++          analysis: {
++            json: analysisJson || null,
++            text: analysisText || null,
++          },
+           savedAt: new Date().toISOString(),
++          updatedAt: new Date().toISOString(),
++          createdAt: new Date().toISOString(),
++          isDefault: true,
++          isShared: false,
+         };
++        saved.hooks = templatesPayload.hooks.length;
++        saved.bridges = templatesPayload.bridges.length;
++        saved.ctas = templatesPayload.ctas.length;
++        saved.nuggets = templatesPayload.nuggets.length;
++        saved.scriptStructures = normalizedTranscripts.length;
+         persistLocal(fallbackSummary);
+       }
+     } catch (persistErr) {
+@@ -308,15 +303,31 @@ export async function handleSaveCreatorAnalysis(req, res) {
+       console.warn('Persisting to Firestore failed, falling back to local files:', persistErr?.message);
+       fallbackSummary = {
+         creatorId: creatorId || handle,
+-        name,
++        brandVoiceId: creatorId || handle,
+         handle,
+-        niche,
++        displayName: name,
++        description: `${name} brand voice`,
+         transcriptsCount,
+-        templates: { hooks: hookTemplates, bridges: bridgeTemplates, ctas: ctaTemplates, nuggets: nuggetTemplates },
+-        styleSignature: { powerWords, fillerPhrases, transitionPhrases, avgWordsPerSentence, tone },
+-        perTranscript,
++        niche,
++        templates: templatesPayload,
++        styleSignature,
++        perTranscript: normalizedTranscripts,
++        videoMeta: normalizedVideoMeta,
++        analysis: {
++          json: analysisJson || null,
++          text: analysisText || null,
++        },
+         savedAt: new Date().toISOString(),
++        updatedAt: new Date().toISOString(),
++        createdAt: new Date().toISOString(),
++        isDefault: true,
++        isShared: false,
+       };
++      saved.hooks = templatesPayload.hooks.length;
++      saved.bridges = templatesPayload.bridges.length;
++      saved.ctas = templatesPayload.ctas.length;
++      saved.nuggets = templatesPayload.nuggets.length;
++      saved.scriptStructures = normalizedTranscripts.length;
+       persistLocal(fallbackSummary);
+     }
+ 
+@@ -325,6 +336,7 @@ export async function handleSaveCreatorAnalysis(req, res) {
+     return res.json({
+       success: true,
+       creator: { id: creatorId || handle, name, handle },
++      brandVoice: { id: creatorId || handle, creatorId: creatorId || handle },
+       saved,
+       offline: !!fallbackSummary,
+     });
+diff --git a/src/api/script/generate/route.ts b/src/api/script/generate/route.ts
+index da0b1fab..3ea63a21 100644
+--- a/src/api/script/generate/route.ts
++++ b/src/api/script/generate/route.ts
+@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
+ interface GenerateScriptRequest {
+   idea: string;
+   length: "15" | "20" | "30" | "45" | "60" | "90";
+-  persona?: any;
++  brandVoiceId?: string;
+ }
+ 
+ interface GeneratedScript {
+@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
+     const body = await request.json();
+     console.log("📄 [API] Raw request body:", body);
+     
+-    const { idea, length = "60", persona }: GenerateScriptRequest = body;
+-    console.log("🔍 [API] Parsed parameters:", { idea, length, persona });
++    const { idea, length = "60", brandVoiceId }: GenerateScriptRequest = body;
++    console.log("🔍 [API] Parsed parameters:", { idea, length, brandVoiceId });
+ 
+     if (!idea || idea.trim().length === 0) {
+       console.log("❌ [API] Validation failed: idea is required");
+diff --git a/src/components/enhanced/EnhancedScriptGenerator.tsx b/src/components/enhanced/EnhancedScriptGenerator.tsx
+index dca78dcf..3cc297f1 100644
+--- a/src/components/enhanced/EnhancedScriptGenerator.tsx
++++ b/src/components/enhanced/EnhancedScriptGenerator.tsx
+@@ -6,7 +6,7 @@ import Textfield from '@atlaskit/textfield';
+ import { Card, CardHeader, CardContent, CardFooter } from '../ui/Card';
+ import { Button } from '../ui/Button';
+ import { TextArea } from '../ui/TextArea';
+-import type { AIGenerationRequest, BrandPersona, Platform } from '../../types';
++import type { AIGenerationRequest, BrandVoice, Platform } from '../../types';
+ 
+ // Atlassian Design System Icons
+ import RobotIcon from '@atlaskit/icon/glyph/emoji/objects';
+@@ -19,7 +19,7 @@ export interface EnhancedScriptGeneratorProps {
+   onGenerate?: (request: AIGenerationRequest) => void;
+   onVoiceInput?: () => void;
+   isLoading?: boolean;
+-  personas?: BrandPersona[];
++  brandVoices?: BrandVoice[];
+   fallbackToOriginal?: boolean;
+ }
+ 
+@@ -207,7 +207,7 @@ const brandVoiceSectionStyles = css`
+     }
+   }
+   
+-  .persona-preview {
++  .brand-voice-preview {
+     margin-top: var(--space-3);
+     padding: var(--space-3);
+     background: var(--color-primary-50);
+@@ -286,7 +286,7 @@ export const EnhancedScriptGenerator: React.FC<EnhancedScriptGeneratorProps> = (
+   onGenerate,
+   onVoiceInput,
+   isLoading = false,
+-  personas = [],
++  brandVoices = [],
+   fallbackToOriginal = false
+ }) => {
+   const [promptValue, setPromptValue] = useState('');
+@@ -304,7 +304,7 @@ export const EnhancedScriptGenerator: React.FC<EnhancedScriptGeneratorProps> = (
+       length: (data.length?.value || 'short') as 'short' | 'medium' | 'long',
+       style: data.style?.value || 'engaging',
+       platform: (data.platform?.value || 'tiktok') as Platform,
+-      persona: data.persona?.value || undefined,
++      brandVoiceId: data.brandVoice?.value || undefined,
+       additionalSettings: {}
+     };
+     
+@@ -322,9 +322,9 @@ export const EnhancedScriptGenerator: React.FC<EnhancedScriptGeneratorProps> = (
+     return undefined;
+   };
+ 
+-  const personaOptions = personas.map(persona => ({
+-    label: persona.name,
+-    value: persona.id
++  const brandVoiceOptions = brandVoices.map(voice => ({
++    label: voice.name,
++    value: voice.id
+   }));
+ 
+   if (fallbackToOriginal) {
+@@ -470,13 +470,13 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
+                       <h3>Brand Voice</h3>
+                     </div>
+                     
+-                    <Field name="persona" label="Persona">
++                    <Field name="brandVoice" label="Brand Voice">
+                       {({ fieldProps }) => (
+                         <div className="atlassian-form-field">
+                           <Select
+                             {...fieldProps}
+-                            options={personaOptions}
+-                            placeholder="Select persona (optional)"
++                            options={brandVoiceOptions}
++                            placeholder="Select brand voice (optional)"
+                             isClearable
+                             isSearchable={false}
+                           />
+@@ -484,10 +484,10 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
+                       )}
+                     </Field>
+ 
+-                    <div className="persona-preview">
++                    <div className="brand-voice-preview">
+                       <p className="preview-text">
+                         <span className="preview-icon"><TargetIcon label="Target" /></span>
+-                        Select a persona to match your brand voice, or we'll use a generic style
++                        Select a brand voice to guide your script, or we'll use the default style
+                       </p>
+                     </div>
+                   </Card>
+diff --git a/src/components/library/primitives/Card/Card.tsx b/src/components/library/primitives/Card/Card.tsx
+index db5c9911..60ba05ba 100644
+--- a/src/components/library/primitives/Card/Card.tsx
++++ b/src/components/library/primitives/Card/Card.tsx
+@@ -53,6 +53,8 @@ const getCardStyles = (
+       padding: var(--space-6);
+     `}
+ 
++    padding-bottom: 0;
++
+     /* Appearance variants */
+     ${appearance === 'subtle' && css`
+       border: 1px solid var(--card-border);
+diff --git a/src/components/script/ScriptGenerator.tsx b/src/components/script/ScriptGenerator.tsx
+index df78e937..d65990cd 100644
+--- a/src/components/script/ScriptGenerator.tsx
++++ b/src/components/script/ScriptGenerator.tsx
+@@ -3,14 +3,14 @@ import { css } from '@emotion/react';
+ import { Card } from '../ui/Card';
+ import { Button } from '../ui/Button';
+ import { TextArea } from '../ui/TextArea';
+-import type { AIGenerationRequest, BrandPersona } from '../../types';
++import type { AIGenerationRequest, BrandVoice } from '../../types';
+ import { DEFAULT_BRAND_VOICE_ID } from '../../constants/brand-voices';
+ 
+ export interface ScriptGeneratorProps {
+   onGenerate?: (request: AIGenerationRequest) => void;
+   isLoading?: boolean;
+-  personas?: BrandPersona[];
+-  defaultPersonaId?: string;
++  brandVoices?: BrandVoice[];
++  defaultBrandVoiceId?: string;
+ }
+ 
+ const generatorStyles = css`
+@@ -136,7 +136,7 @@ const brandVoiceSectionStyles = css`
+     }
+   }
+   
+-  .persona-preview {
++  .brand-voice-preview {
+     margin-top: var(--space-3);
+     padding: var(--space-3);
+     background: var(--color-primary-50);
+@@ -196,8 +196,8 @@ const promptSuggestions = [
+ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
+   onGenerate,
+   isLoading = false,
+-  personas = [],
+-  defaultPersonaId = DEFAULT_BRAND_VOICE_ID
++  brandVoices = [],
++  defaultBrandVoiceId = DEFAULT_BRAND_VOICE_ID
+ }) => {
+   const [formData, setFormData] = useState({
+     prompt: '',
+@@ -205,16 +205,16 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
+     // Keep defaults for request payload, but no UI controls
+     style: 'engaging',
+     platform: 'tiktok' as const,
+-    persona: ''
++    brandVoiceId: ''
+   });
+ 
+   React.useEffect(() => {
+-    if (formData.persona) return;
+-    if (!defaultPersonaId) return;
+-    const found = personas.find(p => p.id === defaultPersonaId);
++    if (formData.brandVoiceId) return;
++    if (!defaultBrandVoiceId) return;
++    const found = brandVoices.find(p => p.id === defaultBrandVoiceId);
+     if (!found) return;
+-    setFormData(prev => ({ ...prev, persona: defaultPersonaId }));
+-  }, [defaultPersonaId, personas, formData.persona]);
++    setFormData(prev => ({ ...prev, brandVoiceId: defaultBrandVoiceId }));
++  }, [defaultBrandVoiceId, brandVoices, formData.brandVoiceId]);
+ 
+   const handleInputChange = (field: string, value: any) => {
+     setFormData(prev => ({ ...prev, [field]: value }));
+@@ -239,7 +239,7 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
+       length: formData.length as 'short' | 'medium' | 'long',
+       style: formData.style,
+       platform: formData.platform,
+-      persona: formData.persona || undefined,
++      brandVoiceId: formData.brandVoiceId || undefined,
+       additionalSettings: {}
+     };
+     
+@@ -248,7 +248,7 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
+     console.log("✅ [ScriptGenerator] onGenerate call completed");
+   };
+ 
+-  const selectedPersona = personas.find(p => p.id === formData.persona);
++  const selectedBrandVoice = brandVoices.find(p => p.id === formData.brandVoiceId);
+ 
+   return (
+     <Card appearance="elevated" spacing="comfortable" css={generatorStyles}>
+@@ -357,21 +357,21 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
+               <span className="brand-icon" aria-hidden="true">👥</span>
+               <h3>Brand Voice</h3>
+             </div>
+-            
++
+             <div>
+-              <label htmlFor="persona" style={{ 
+-                display: 'block', 
+-                marginBottom: 'var(--space-2)', 
+-                fontSize: 'var(--font-size-body-small)', 
++              <label htmlFor="brand-voice" style={{
++                display: 'block',
++                marginBottom: 'var(--space-2)',
++                fontSize: 'var(--font-size-body-small)',
+                 fontWeight: 'var(--font-weight-medium)',
+                 color: 'var(--color-neutral-700)'
+               }}>
+-                Persona
++                Voice profile
+               </label>
+               <select
+-                id="persona"
+-                value={formData.persona}
+-                onChange={(e) => handleInputChange('persona', e.target.value)}
++                id="brand-voice"
++                value={formData.brandVoiceId}
++                onChange={(e) => handleInputChange('brandVoiceId', e.target.value)}
+                 style={{
+                   width: '100%',
+                   padding: 'var(--space-3) var(--space-4)',
+@@ -382,29 +382,29 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
+                   minHeight: '40px'
+                 }}
+               >
+-                <option value="">Select persona (optional)</option>
+-                {personas.map(persona => (
+-                  <option key={persona.id} value={persona.id}>
+-                    {persona.name}
++                <option value="">Select brand voice (optional)</option>
++                {brandVoices.map(voice => (
++                  <option key={voice.id} value={voice.id}>
++                    {voice.name}
+                   </option>
+                 ))}
+               </select>
+             </div>
+ 
+-            {selectedPersona && (
+-              <div className="persona-preview">
++            {selectedBrandVoice && (
++              <div className="brand-voice-preview">
+                 <p className="preview-text">
+                   <span className="preview-icon" aria-hidden="true">✨</span>
+-                  This will create content that matches your "{selectedPersona.name}" brand personality
++                  This will create content that matches your "{selectedBrandVoice.name}" brand voice
+                 </p>
+               </div>
+             )}
+ 
+-            {!selectedPersona && (
+-              <div className="persona-preview">
++            {!selectedBrandVoice && (
++              <div className="brand-voice-preview">
+                 <p className="preview-text">
+                   <span className="preview-icon" aria-hidden="true">🎯</span>
+-                  Select a persona to match your brand voice, or we'll use a generic style
++                  Select a brand voice to guide the script, or we'll use the default style
+                 </p>
+               </div>
+             )}
+diff --git a/src/components/ui/Card.tsx b/src/components/ui/Card.tsx
+index d739edd3..ae745f4a 100644
+--- a/src/components/ui/Card.tsx
++++ b/src/components/ui/Card.tsx
+@@ -53,6 +53,8 @@ const getCardStyles = (
+       padding: var(--space-6);
+     `}
+ 
++    padding-bottom: 0;
++
+     /* Appearance variants - Perplexity Flat Design */
+     ${appearance === 'subtle' && css`
+       border: 1px solid var(--card-border);
+diff --git a/src/components/ui/FloatingToolbar.tsx b/src/components/ui/FloatingToolbar.tsx
+index 155ae9a0..37cd1330 100644
+--- a/src/components/ui/FloatingToolbar.tsx
++++ b/src/components/ui/FloatingToolbar.tsx
+@@ -16,7 +16,7 @@ import ShuffleIcon from '@atlaskit/icon/glyph/app-switcher';
+ import TimerIcon from '@atlaskit/icon/glyph/stopwatch';
+ import { Button } from './Button';
+ import { ShinyButton } from '@/components/ui/ShinyButton';
+-import type { BrandPersona } from '@/types';
++import type { BrandVoice } from '@/types';
+ import { DEFAULT_BRAND_VOICE_NAME } from '@/constants/brand-voices';
+ 
+ export interface FloatingToolbarProps {
+@@ -39,7 +39,7 @@ export interface FloatingToolbarProps {
+   /** Callback for share action (removed from toolbar) */
+   onShare?: () => void;
+   /** Available brand voices to choose from */
+-  brandVoices?: BrandPersona[];
++  brandVoices?: BrandVoice[];
+   /** Currently selected brand voice id */
+   selectedBrandVoiceId?: string;
+   /** Change handler for brand voice selection */
+@@ -491,7 +491,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
+                         color: token('color.text.subtle'),
+                         marginBottom: token('space.050')
+                       }}>
+-                        Select persona
++                        Select brand voice
+                       </label>
+                       <select
+                         id="brand-voice-select"
+@@ -515,7 +515,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
+                     </div>
+                   ) : (
+                     <div style={{ padding: `${token('space.100')}` }}>
+-                      <div className="button-description">No personas found. Create a brand voice to use here.</div>
++                      <div className="button-description">No brand voices found. Create one to use here.</div>
+                     </div>
+                   )}
+                 </>
+diff --git a/src/components/ui/HemingwayEditor.tsx b/src/components/ui/HemingwayEditor.tsx
+index 8438cb7a..f9a38db1 100644
+--- a/src/components/ui/HemingwayEditor.tsx
++++ b/src/components/ui/HemingwayEditor.tsx
+@@ -14,7 +14,7 @@ import { FloatingToolbar } from './FloatingToolbar';
+ import { ScriptComponentEditor } from './ScriptComponentEditor';
+ import { InteractiveScript } from '../writing-analysis/interactive-script';
+ import { useScriptGeneration } from '@/hooks/use-script-generation';
+-import type { BrandPersona } from '@/types';
++import type { BrandVoice } from '@/types';
+ import type { ScriptElements } from '@/lib/script-analysis';
+ import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME, resolveDefaultBrandVoiceId } from '@/constants/brand-voices';
+ 
+@@ -194,8 +194,8 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
+   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarCollapsed);
+   const [focusMode, setFocusMode] = useState(initialFocusMode);
+   const [activeTab, setActiveTab] = useState<'readability' | 'writing'>('readability');
+-  const [personas, setPersonas] = useState<BrandPersona[]>([]);
+-  const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
++  const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([]);
++  const [selectedBrandVoiceId, setSelectedBrandVoiceId] = useState<string>('');
+   const [isRegenerating, setIsRegenerating] = useState(false);
+   const [lastSaved, setLastSaved] = useState<Date>(new Date());
+   const [, forceRelativeRefresh] = useState(0);
+@@ -212,7 +212,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
+   // Refs
+   const textareaRef = useRef<HTMLTextAreaElement>(null);
+   const handleRegenerateRef = useRef<(() => Promise<void>) | null>(null);
+-  const previousPersonaRef = useRef<string | null>(null);
++  const previousBrandVoiceRef = useRef<string | null>(null);
+   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+ 
+   // Keep editor content/title in sync with incoming props (e.g., navigation from generator)
+@@ -403,10 +403,11 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
+         const res = await fetch('/api/brand-voices/list');
+         const data = await res.json().catch(() => null);
+         if (isMounted && res.ok && data?.success && Array.isArray(data.voices)) {
+-          const mapped: BrandPersona[] = data.voices.map((v: any) => {
++          const mapped: BrandVoice[] = data.voices.map((v: any) => {
+             const isDefault = v.isDefault === true || v.id === DEFAULT_BRAND_VOICE_ID;
+             return {
+               id: v.id,
++              creatorId: v.creatorId,
+               name: isDefault ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
+               description: v.description || '',
+               tone: v.tone || 'Varied',
+@@ -416,10 +417,11 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
+               platforms: v.platforms || ['tiktok'],
+               created: v.created ? new Date(v.created._seconds ? v.created._seconds * 1000 : v.created) : new Date(),
+               isDefault,
++              isShared: v.isShared ?? false,
+             };
+           });
+-          setPersonas(mapped);
+-          setSelectedPersonaId(prev => {
++          setBrandVoices(mapped);
++          setSelectedBrandVoiceId(prev => {
+             if (prev) return prev;
+             const resolvedDefaultId = resolveDefaultBrandVoiceId(mapped);
+             const hasDefault = mapped.some(p => p.id === resolvedDefaultId);
+@@ -458,9 +460,9 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
+       setIsRegenerating(true);
+       const idea = deriveIdeaFromEditor();
+       const length = decideLength();
+-      const persona = selectedPersonaId || undefined;
++      const brandVoiceId = selectedBrandVoiceId || undefined;
+ 
+-      const result = await generateScript(idea, length, persona);
++      const result = await generateScript(idea, length, brandVoiceId);
+       if (result.success && result.script) {
+         onScriptElementsChange({
+           hook: result.script.hook,
+@@ -474,34 +476,34 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
+     } finally {
+       setIsRegenerating(false);
+     }
+-  }, [isScriptMode, onScriptElementsChange, deriveIdeaFromEditor, decideLength, selectedPersonaId, generateScript]);
++  }, [isScriptMode, onScriptElementsChange, deriveIdeaFromEditor, decideLength, selectedBrandVoiceId, generateScript]);
+ 
+-  // Keep the latest regenerate handler in a ref so persona effect doesn't retrigger when dependencies change
++  // Keep the latest regenerate handler in a ref so the brand voice effect doesn't retrigger when dependencies change
+   useEffect(() => {
+     handleRegenerateRef.current = handleRegenerate;
+   }, [handleRegenerate]);
+ 
+-  // Trigger an automatic regenerate when the persona changes after mount
++  // Trigger an automatic regenerate when the brand voice changes after mount
+   useEffect(() => {
+     if (!isScriptMode || !onScriptElementsChange) {
+-      previousPersonaRef.current = selectedPersonaId;
++      previousBrandVoiceRef.current = selectedBrandVoiceId;
+       return;
+     }
+ 
+-    const previousPersona = previousPersonaRef.current;
+-    previousPersonaRef.current = selectedPersonaId;
++    const previousBrandVoice = previousBrandVoiceRef.current;
++    previousBrandVoiceRef.current = selectedBrandVoiceId;
+ 
+-    if (previousPersona === null) {
++    if (previousBrandVoice === null) {
+       // Skip first run on mount
+       return;
+     }
+ 
+-    if (previousPersona === selectedPersonaId) {
++    if (previousBrandVoice === selectedBrandVoiceId) {
+       return;
+     }
+ 
+     handleRegenerateRef.current?.();
+-  }, [selectedPersonaId, isScriptMode, onScriptElementsChange]);
++  }, [selectedBrandVoiceId, isScriptMode, onScriptElementsChange]);
+ 
+   return (
+     <EditorContainer focusMode={focusMode} className={className}>
+@@ -605,9 +607,9 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
+         onAIAction={(action) => console.log('AI Action:', action)}
+         onRegenerate={handleRegenerate}
+         isGenerating={isRegenerating || isGenLoading}
+-        brandVoices={personas}
+-        selectedBrandVoiceId={selectedPersonaId}
+-        onBrandVoiceChange={setSelectedPersonaId}
++        brandVoices={brandVoices}
++        selectedBrandVoiceId={selectedBrandVoiceId}
++        onBrandVoiceChange={setSelectedBrandVoiceId}
+         onSave={() => console.log('Save')}
+         onExport={() => console.log('Export')}
+         onShare={() => console.log('Share')}
+diff --git a/src/features/brandhub/components/ContentBlueprint.tsx b/src/features/brandhub/components/ContentBlueprint.tsx
+new file mode 100644
+index 00000000..670f4b62
+--- /dev/null
++++ b/src/features/brandhub/components/ContentBlueprint.tsx
+@@ -0,0 +1,208 @@
++import React from 'react'
++import { css } from '@emotion/react'
++import { Badge } from '../../../components/ui/Badge'
++import { Button } from '../../../components/ui/Button'
++import { Card, CardContent, CardHeader } from '../../../components/ui/Card'
++import { onboardingPrompts } from '../constants/onboarding'
++import { buildContentPillars, buildIntentPlaybook, buildQaPrompts } from '../utils/blueprint'
++import { OnboardingFormState } from '../types/brandHub'
++
++const blueprintCardStyles = css`
++  display: grid;
++  gap: var(--space-5);
++
++  .section {
++    display: grid;
++    gap: var(--space-3);
++  }
++
++  .empty-state {
++    padding: var(--space-5);
++    border: 1px dashed var(--color-neutral-300);
++    border-radius: var(--radius-medium);
++    text-align: center;
++    color: var(--color-neutral-500);
++    font-size: var(--font-size-body);
++    display: grid;
++    gap: var(--space-3);
++    background: var(--color-neutral-50);
++  }
++
++  .pillars,
++  .qa-list,
++  .intent-list,
++  .transcript-list {
++    display: grid;
++    gap: var(--space-3);
++  }
++
++  .pillar-tag {
++    display: flex;
++    justify-content: space-between;
++    align-items: center;
++    padding: var(--space-3);
++    border-radius: var(--radius-medium);
++    border: 1px solid var(--color-neutral-200);
++    background: var(--color-neutral-0);
++
++    span {
++      font-weight: var(--font-weight-medium);
++      color: var(--color-neutral-700);
++    }
++
++    p {
++      margin: 0;
++      color: var(--color-neutral-500);
++      font-size: var(--font-size-caption);
++    }
++  }
++
++  .qa-item {
++    padding: var(--space-3);
++    border-radius: var(--radius-medium);
++    border: 1px solid var(--color-neutral-200);
++    background: var(--color-neutral-50);
++
++    h4 {
++      margin: 0 0 var(--space-2);
++      font-size: var(--font-size-body);
++      color: var(--color-neutral-800);
++    }
++
++    p {
++      margin: 0;
++      font-size: var(--font-size-body-small);
++      color: var(--color-neutral-600);
++      line-height: var(--line-height-normal, 1.55);
++    }
++  }
++
++  .intent-item {
++    display: grid;
++    gap: var(--space-2);
++    padding: var(--space-3);
++    border-radius: var(--radius-medium);
++    border: 1px solid var(--color-neutral-200);
++
++    h4 {
++      margin: 0;
++      font-size: var(--font-size-body);
++      color: var(--color-neutral-800);
++    }
++
++    p {
++      margin: 0;
++      font-size: var(--font-size-body-small);
++      color: var(--color-neutral-600);
++      line-height: var(--line-height-normal, 1.55);
++    }
++  }
++`
++
++type ContentBlueprintProps = {
++  isComplete: boolean
++  responses: OnboardingFormState
++  selectedIntents: string[]
++  onReturnToOnboarding: () => void
++}
++
++export const ContentBlueprint: React.FC<ContentBlueprintProps> = ({
++  isComplete,
++  responses,
++  selectedIntents,
++  onReturnToOnboarding
++}) => {
++  const contentPillars = buildContentPillars(responses)
++  const qaPrompts = buildQaPrompts(responses)
++  const intentPlaybook = buildIntentPlaybook(selectedIntents)
++
++  return (
++    <Card css={blueprintCardStyles} appearance="raised">
++      <CardHeader>
++        <div
++          style={{
++            display: 'flex',
++            justifyContent: 'space-between',
++            alignItems: 'center',
++            flexWrap: 'wrap',
++            gap: 'var(--space-3)'
++          }}
++        >
++          <div>
++            <h2
++              style={{
++                margin: 0,
++                fontSize: 'var(--font-size-h4)',
++                color: 'var(--color-neutral-800)'
++              }}
++            >
++              Content blueprint
++            </h2>
++            <p
++              style={{
++                margin: 'var(--space-1) 0 0',
++                color: 'var(--color-neutral-600)',
++                fontSize: 'var(--font-size-body-small)'
++              }}
++            >
++              Your spoken answers and intent selections craft a strategy-ready outline for writers
++              and creative partners.
++            </p>
++          </div>
++          {isComplete && <Badge variant="success">Ready to deploy</Badge>}
++        </div>
++      </CardHeader>
++      <CardContent>
++        {!isComplete ? (
++          <div className="empty-state">
++            <p>
++              Complete the interactive onboarding to unlock tailored content pillars, tone guidance,
++              and Q&amp;A prompts.
++            </p>
++            <Button variant="primary" onClick={onReturnToOnboarding}>
++              Return to onboarding interview
++            </Button>
++          </div>
++        ) : (
++          <div className="section">
++            <div className="pillars">
++              {contentPillars.map((pillar) => (
++                <div key={pillar.title} className="pillar-tag">
++                  <span>{pillar.title}</span>
++                  <p>{pillar.description}</p>
++                </div>
++              ))}
++            </div>
++
++            <div className="transcript-list">
++              {onboardingPrompts.map((prompt) => (
++                <div key={prompt.id} className="qa-item">
++                  <h4>{prompt.title}</h4>
++                  <p>{responses[prompt.id]}</p>
++                </div>
++              ))}
++            </div>
++
++            <div className="qa-list">
++              {qaPrompts.map((qa) => (
++                <div key={qa.question} className="qa-item">
++                  <h4>{qa.question}</h4>
++                  <p>{qa.answer}</p>
++                </div>
++              ))}
++            </div>
++
++            <div className="intent-list">
++              {intentPlaybook.map((item) => (
++                <div key={item.intent} className="intent-item">
++                  <h4>{item.intent}</h4>
++                  <p>{item.guidance}</p>
++                </div>
++              ))}
++            </div>
++          </div>
++        )}
++      </CardContent>
++    </Card>
++  )
++}
+diff --git a/src/features/brandhub/components/CreateVoiceModal.tsx b/src/features/brandhub/components/CreateVoiceModal.tsx
+new file mode 100644
+index 00000000..ae79aed8
+--- /dev/null
++++ b/src/features/brandhub/components/CreateVoiceModal.tsx
+@@ -0,0 +1,394 @@
++import React, { useCallback, useEffect, useRef, useState } from 'react'
++import { css } from '@emotion/react'
++import DownloadIcon from '@atlaskit/icon/glyph/download'
++import VidPlayIcon from '@atlaskit/icon/glyph/vid-play'
++import CheckCircleIcon from '@atlaskit/icon/glyph/check-circle'
++import { BasicModal } from '../../../components/ui/BasicModal'
++import { Button } from '../../../components/ui/Button'
++import { Input } from '../../../components/ui/Input'
++import { platformOptions, mockVideos } from '../constants/brandVoices'
++
++const modalBodyStyles = css`
++  display: grid;
++  gap: var(--space-4);
++
++  .field-group {
++    display: grid;
++    gap: var(--space-2);
++  }
++
++  .field-label {
++    font-size: var(--font-size-body-small);
++    font-weight: var(--font-weight-medium);
++    color: var(--color-neutral-700);
++  }
++
++  .platform-options {
++    display: flex;
++    flex-wrap: wrap;
++    gap: var(--space-2);
++  }
++
++  .helper {
++    font-size: var(--font-size-caption);
++    color: var(--color-neutral-500);
++  }
++
++  .video-list {
++    display: grid;
++    gap: var(--space-3);
++    max-height: 260px;
++    overflow-y: auto;
++    padding-right: var(--space-1);
++  }
++
++  .video-item {
++    display: flex;
++    gap: var(--space-3);
++    padding: var(--space-3);
++    border-radius: var(--radius-medium);
++    border: 1px solid var(--color-neutral-200);
++    background: var(--color-neutral-0);
++
++    .thumbnail {
++      width: 56px;
++      height: 56px;
++      border-radius: var(--radius-medium);
++      background: var(--color-neutral-100);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      color: var(--color-neutral-500);
++    }
++
++    .details {
++      flex: 1;
++      display: grid;
++      gap: 4px;
++
++      h4 {
++        margin: 0;
++        font-size: var(--font-size-body);
++        color: var(--color-neutral-800);
++      }
++
++      p {
++        margin: 0;
++        color: var(--color-neutral-600);
++        font-size: var(--font-size-body-small);
++        line-height: var(--line-height-normal, 1.55);
++      }
++
++      .meta {
++        display: flex;
++        flex-wrap: wrap;
++        gap: var(--space-2);
++        font-size: var(--font-size-caption);
++        color: var(--color-neutral-500);
++      }
++    }
++  }
++
++  .empty-state {
++    padding: var(--space-6);
++    border: 1px dashed var(--color-neutral-300);
++    border-radius: var(--radius-medium);
++    text-align: center;
++    display: grid;
++    gap: var(--space-3);
++    background: var(--color-neutral-50);
++
++    p {
++      margin: 0;
++      color: var(--color-neutral-600);
++      line-height: var(--line-height-relaxed, 1.6);
++    }
++  }
++
++  .analysis-summary {
++    padding: var(--space-4);
++    border-radius: var(--radius-medium);
++    border: 1px solid var(--color-success-200);
++    background: var(--color-success-50);
++    display: grid;
++    gap: var(--space-2);
++
++    h4 {
++      margin: 0;
++      font-size: var(--font-size-body);
++      color: var(--color-success-700);
++      display: flex;
++      align-items: center;
++      gap: var(--space-2);
++    }
++
++    ul {
++      margin: 0;
++      padding-left: var(--space-4);
++      color: var(--color-neutral-600);
++      font-size: var(--font-size-body-small);
++      line-height: var(--line-height-normal, 1.55);
++    }
++  }
++`
++
++const intentChipStyles = (isActive: boolean) => css`
++  padding: 6px 12px;
++  border-radius: var(--radius-pill, 999px);
++  border: 1px solid ${isActive ? 'var(--color-primary-500)' : 'var(--color-neutral-200)'};
++  background: ${isActive ? 'var(--color-primary-50)' : 'var(--color-neutral-0)'};
++  color: ${isActive ? 'var(--color-primary-700)' : 'var(--color-neutral-600)'};
++  font-size: var(--font-size-body-small);
++  font-weight: var(--font-weight-medium);
++  cursor: pointer;
++  transition: var(--transition-all);
++
++  &:hover {
++    border-color: var(--color-primary-400);
++  }
++`
++
++type CreateVoiceModalProps = {
++  open: boolean
++  onClose: () => void
++  onCreateDraft?: () => void
++}
++
++const FETCH_DELAY = 700
++const ANALYZE_DELAY = 900
++
++export const CreateVoiceModal: React.FC<CreateVoiceModalProps> = ({ open, onClose, onCreateDraft }) => {
++  const [creatorInput, setCreatorInput] = useState('')
++  const [selectedPlatform, setSelectedPlatform] = useState<(typeof platformOptions)[number]>(
++    platformOptions[0]
++  )
++  const [selectedCreator, setSelectedCreator] = useState('')
++  const [hasFetchedVideos, setHasFetchedVideos] = useState(false)
++  const [isFetching, setIsFetching] = useState(false)
++  const [isAnalyzing, setIsAnalyzing] = useState(false)
++  const [analysisComplete, setAnalysisComplete] = useState(false)
++  const fetchTimerRef = useRef<number | null>(null)
++  const analyzeTimerRef = useRef<number | null>(null)
++
++  const clearTimers = useCallback(() => {
++    if (fetchTimerRef.current && typeof window !== 'undefined') {
++      window.clearTimeout(fetchTimerRef.current)
++    }
++    if (analyzeTimerRef.current && typeof window !== 'undefined') {
++      window.clearTimeout(analyzeTimerRef.current)
++    }
++    fetchTimerRef.current = null
++    analyzeTimerRef.current = null
++  }, [])
++
++  const resetState = useCallback(() => {
++    setCreatorInput('')
++    setSelectedPlatform(platformOptions[0])
++    setSelectedCreator('')
++    setHasFetchedVideos(false)
++    setIsFetching(false)
++    setIsAnalyzing(false)
++    setAnalysisComplete(false)
++  }, [])
++
++  useEffect(() => {
++    if (!open) {
++      clearTimers()
++      resetState()
++    }
++  }, [clearTimers, open, resetState])
++
++  useEffect(() => () => clearTimers(), [clearTimers])
++
++  const handleFetchVideos = () => {
++    if (!creatorInput.trim()) return
++    clearTimers()
++    setIsFetching(true)
++    setSelectedCreator(creatorInput.trim().replace(/^@/, ''))
++    setHasFetchedVideos(false)
++    setAnalysisComplete(false)
++
++    if (typeof window === 'undefined') {
++      setIsFetching(false)
++      setHasFetchedVideos(true)
++      return
++    }
++
++    fetchTimerRef.current = window.setTimeout(() => {
++      setIsFetching(false)
++      setHasFetchedVideos(true)
++    }, FETCH_DELAY)
++  }
++
++  const handleAnalyzeVideos = () => {
++    if (!hasFetchedVideos) return
++    clearTimers()
++    setIsAnalyzing(true)
++    setAnalysisComplete(false)
++
++    if (typeof window === 'undefined') {
++      setIsAnalyzing(false)
++      setAnalysisComplete(true)
++      return
++    }
++
++    analyzeTimerRef.current = window.setTimeout(() => {
++      setIsAnalyzing(false)
++      setAnalysisComplete(true)
++    }, ANALYZE_DELAY)
++  }
++
++  const handleClose = () => {
++    clearTimers()
++    onClose()
++  }
++
++  const handleCreateDraft = () => {
++    if (!analysisComplete) {
++      return
++    }
++    onCreateDraft?.()
++    handleClose()
++  }
++
++  const modalFooter = (
++    <>
++      <Button variant="secondary" onClick={handleClose}>
++        Cancel
++      </Button>
++      <Button
++        variant="primary"
++        iconBefore={<DownloadIcon label="" />}
++        onClick={handleAnalyzeVideos}
++        isDisabled={!hasFetchedVideos}
++        isLoading={isAnalyzing}
++      >
++        {analysisComplete ? 'Re-run analysis' : 'Analyze videos'}
++      </Button>
++      <Button variant="creative" onClick={handleCreateDraft} isDisabled={!analysisComplete}>
++        Create voice draft
++      </Button>
++    </>
++  )
++
++  return (
++    <BasicModal open={open} title="Create a new brand voice" onClose={handleClose} footer={modalFooter}>
++      <div css={modalBodyStyles}>
++        <div className="field-group">
++          <span className="field-label">Creator URL or username</span>
++          <Input
++            placeholder="https://www.tiktok.com/@creator-handle"
++            value={creatorInput}
++            onChange={(event) => setCreatorInput(event.target.value)}
++          />
++          <span className="helper">
++            We&apos;ll grab the most recent 12 videos, transcripts, and top comments.
++          </span>
++        </div>
++
++        <div className="field-group">
++          <span className="field-label">Primary platform</span>
++          <div className="platform-options">
++            {platformOptions.map((platform) => {
++              const isActive = selectedPlatform === platform
++              return (
++                <button
++                  key={platform}
++                  type="button"
++                  onClick={() => setSelectedPlatform(platform)}
++                  css={intentChipStyles(isActive)}
++                >
++                  {platform}
++                </button>
++              )
++            })}
++          </div>
++        </div>
++
++        {!hasFetchedVideos && (
++          <div className="empty-state">
++            <p>
++              Paste a creator link or @handle, choose the platform, and load their latest videos for
++              analysis.
++            </p>
++            <Button
++              variant="primary"
++              iconBefore={<DownloadIcon label="" />}
++              onClick={handleFetchVideos}
++              isDisabled={!creatorInput}
++              isLoading={isFetching}
++            >
++              Fetch latest videos
++            </Button>
++          </div>
++        )}
++
++        {hasFetchedVideos && (
++          <>
++            <div
++              className="field-group"
++              style={{
++                display: 'flex',
++                justifyContent: 'space-between',
++                alignItems: 'center',
++                gap: 'var(--space-3)'
++              }}
++            >
++              <div>
++                <span className="field-label">Loaded creator</span>
++                <p
++                  style={{
++                    margin: 'var(--space-1) 0 0',
++                    color: 'var(--color-neutral-600)',
++                    fontSize: 'var(--font-size-body-small)'
++                  }}
++                >
++                  @{selectedCreator} · {selectedPlatform}
++                </p>
++              </div>
++              <Button variant="subtle" size="small" onClick={handleFetchVideos} isLoading={isFetching}>
++                Refresh pull
++              </Button>
++            </div>
++
++            <div className="video-list">
++              {mockVideos.map((video) => (
++                <div key={video.id} className="video-item">
++                  <div className="thumbnail" aria-hidden="true">
++                    <VidPlayIcon label="" />
++                  </div>
++                  <div className="details">
++                    <h4>{video.title}</h4>
++                    <div className="meta">
++                      <span>{video.duration}</span>
++                      <span>·</span>
++                      <span>{video.performance}</span>
++                      <span>·</span>
++                      <span>{video.postedAt}</span>
++                    </div>
++                    <p>
++                      We&apos;ll analyze the hook, pacing, call to action, and transcript sentiment.
++                    </p>
++                  </div>
++                </div>
++              ))}
++            </div>
++          </>
++        )}
++
++        {analysisComplete && (
++          <div className="analysis-summary">
++            <h4>
++              <CheckCircleIcon label="Complete" /> Analysis ready
++            </h4>
++            <ul>
++              <li>Top hooks revolve around social proof and transparent build-in-public lessons.</li>
++              <li>Tone scores balance optimistic coaching with tactical specificity.</li>
++              <li>Audience questions lean toward launch sequencing and content consistency.</li>
++            </ul>
++          </div>
++        )}
++      </div>
++    </BasicModal>
++  )
++}
+diff --git a/src/features/brandhub/components/OnboardingModal.tsx b/src/features/brandhub/components/OnboardingModal.tsx
+new file mode 100644
+index 00000000..9db82a45
+--- /dev/null
++++ b/src/features/brandhub/components/OnboardingModal.tsx
+@@ -0,0 +1,402 @@
++import React, { useMemo } from 'react'
++import { css } from '@emotion/react'
++import StopwatchIcon from '@atlaskit/icon/glyph/stopwatch'
++import VidPlayIcon from '@atlaskit/icon/glyph/vid-play'
++import ArrowUpIcon from '@atlaskit/icon/glyph/arrow-up'
++import ArrowDownIcon from '@atlaskit/icon/glyph/arrow-down'
++import { Badge } from '../../../components/ui/Badge'
++import { BasicModal } from '../../../components/ui/BasicModal'
++import { Button } from '../../../components/ui/Button'
++import { TextArea } from '../../../components/ui/TextArea'
++import { onboardingPrompts } from '../constants/onboarding'
++import { useSpeechTranscription } from '../hooks/useSpeechTranscription'
++import { formatTime } from '../utils/time'
++import { OnboardingFormState, OnboardingPrompt } from '../types/brandHub'
++
++const onboardingModalStyles = css`
++  display: flex;
++  flex-direction: column;
++  gap: var(--space-4);
++  min-height: 560px;
++
++  .modal-layout {
++    display: flex;
++    justify-content: center;
++    min-height: 100%;
++    width: 100%;
++  }
++
++  .question-panel {
++    display: flex;
++    flex-direction: column;
++    gap: var(--space-5);
++    padding: var(--space-7);
++    border-radius: var(--radius-large);
++    border: 1px solid var(--color-neutral-200);
++    background: var(--color-neutral-0);
++    box-shadow: 0 32px 60px rgba(15, 23, 42, 0.08);
++    width: min(960px, 100%);
++    min-height: 560px;
++  }
++
++  .panel-header {
++    display: flex;
++    justify-content: space-between;
++    align-items: center;
++    flex-wrap: wrap;
++    gap: var(--space-3);
++  }
++
++  .question-prefix {
++    font-size: var(--font-size-caption);
++    text-transform: uppercase;
++    letter-spacing: 0.08em;
++    color: var(--color-neutral-500);
++  }
++
++  .prompt-text {
++    margin: 0;
++    color: var(--color-neutral-900);
++    font-size: var(--font-size-body-large);
++    line-height: var(--line-height-relaxed, 1.6);
++  }
++
++  .question-copy {
++    display: grid;
++    gap: var(--space-3);
++  }
++
++  .helper-text {
++    margin: 0;
++    color: var(--color-neutral-500);
++    font-size: var(--font-size-caption);
++  }
++
++  .milestone-banner {
++    display: inline-flex;
++    align-items: center;
++    gap: var(--space-2);
++    padding: 10px 14px;
++    border-radius: var(--radius-medium);
++    border: 1px solid var(--color-success-200);
++    background: var(--color-success-50);
++    color: var(--color-success-700);
++    font-size: var(--font-size-caption);
++    font-weight: var(--font-weight-medium);
++    width: fit-content;
++  }
++
++  .timer-pill {
++    display: inline-flex;
++    align-items: center;
++    gap: var(--space-2);
++    padding: 6px 12px;
++    border-radius: var(--radius-pill, 999px);
++    background: var(--color-neutral-900);
++    color: white;
++    font-size: var(--font-size-body-small);
++    white-space: nowrap;
++  }
++
++  .transcript-stream {
++    display: grid;
++    gap: var(--space-2);
++    background: var(--color-neutral-50);
++    border: 1px solid var(--color-neutral-200);
++    border-radius: var(--radius-medium);
++    padding: var(--space-3);
++    min-height: 96px;
++  }
++
++  .stream-label {
++    font-size: var(--font-size-caption);
++    font-weight: var(--font-weight-medium);
++    color: var(--color-neutral-600);
++    text-transform: uppercase;
++    letter-spacing: 0.04em;
++  }
++
++  .stream-output {
++    font-size: var(--font-size-body);
++    color: var(--color-neutral-800);
++    line-height: var(--line-height-relaxed, 1.6);
++    white-space: pre-wrap;
++  }
++
++  .response-controls {
++    display: flex;
++    flex-wrap: wrap;
++    gap: var(--space-2);
++    align-items: center;
++  }
++
++  .error-banner {
++    background: var(--color-danger-50);
++    border: 1px solid var(--color-danger-200);
++    border-radius: var(--radius-medium);
++    padding: var(--space-3);
++    color: var(--color-danger-600);
++    font-size: var(--font-size-body-small);
++  }
++
++  .panel-footer {
++    margin-top: auto;
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    gap: var(--space-4);
++    flex-wrap: wrap;
++  }
++
++  .progress-meta {
++    font-size: var(--font-size-caption);
++    color: var(--color-neutral-500);
++  }
++
++  .nav-cluster {
++    display: inline-flex;
++    align-items: center;
++    gap: var(--space-3);
++    margin-left: auto;
++    flex-wrap: wrap;
++    justify-content: flex-end;
++  }
++
++  .arrow-stack {
++    display: inline-flex;
++    flex-direction: row;
++    gap: var(--space-2);
++    color: var(--color-primary-500);
++  }
++
++  .nav-button {
++    display: inline-flex;
++    align-items: center;
++    justify-content: center;
++    width: 52px;
++    height: 52px;
++    border-radius: var(--radius-full);
++    border: 1px solid var(--color-neutral-300);
++    background: var(--color-neutral-0);
++    color: var(--color-neutral-700);
++    transition: var(--transition-all);
++    cursor: pointer;
++  }
++
++  .nav-button:hover:not(:disabled) {
++    border-color: var(--color-primary-300);
++    color: var(--color-primary-600);
++  }
++
++  .nav-button.primary {
++    background: var(--color-primary-50);
++    border-color: var(--color-primary-300);
++    color: var(--color-primary-600);
++  }
++
++  .nav-button:disabled {
++    cursor: not-allowed;
++    opacity: 0.5;
++    background: var(--color-neutral-100);
++    color: var(--color-neutral-400);
++  }
++
++  .powered {
++    display: inline-flex;
++    align-items: center;
++    justify-content: flex-start;
++    gap: var(--space-2);
++    font-weight: var(--font-weight-medium);
++    color: var(--color-neutral-600);
++  }
++
++  .keyboard-hint {
++    text-align: center;
++    font-size: var(--font-size-caption);
++    color: var(--color-neutral-500);
++    margin-top: var(--space-2);
++  }
++
++  .visually-hidden {
++    position: absolute;
++    width: 1px;
++    height: 1px;
++    padding: 0;
++    margin: -1px;
++    overflow: hidden;
++    clip: rect(0, 0, 0, 0);
++    white-space: nowrap;
++    border: 0;
++  }
++
++  @media (max-width: 720px) {
++    .modal-layout {
++      padding: 0 var(--space-2);
++    }
++
++    .question-panel {
++      max-width: none;
++    }
++
++    .panel-footer {
++      align-items: flex-start;
++      flex-direction: column;
++    }
++
++    .nav-cluster {
++      align-self: flex-end;
++      justify-content: flex-start;
++    }
++  }
++`
++
++type OnboardingModalProps = {
++  open: boolean
++  onClose: () => void
++  activeQuestionIndex: number
++  setActiveQuestionIndex: (index: number) => void
++  responses: OnboardingFormState
++  setResponse: (id: keyof OnboardingFormState, value: string) => void
++  completedCount: number
++  onComplete: () => void
++}
++
++export const OnboardingModal: React.FC<OnboardingModalProps> = ({
++  open,
++  onClose,
++  activeQuestionIndex,
++  setActiveQuestionIndex,
++  responses,
++  setResponse,
++  completedCount,
++  onComplete
++}) => {
++  const currentQuestion: OnboardingPrompt = onboardingPrompts[activeQuestionIndex]
++  const totalQuestions = onboardingPrompts.length
++  const isLastQuestion = activeQuestionIndex === totalQuestions - 1
++  const showHalfwayMessage = completedCount >= 3
++  const currentResponse = responses[currentQuestion.id] ?? ''
++
++  const {
++    liveTranscript,
++    updateTranscript,
++    clearTranscript,
++    isRecording,
++    startRecording,
++    stopRecording,
++    elapsedSeconds,
++    recordingError
++  } = useSpeechTranscription({
++    transcript: currentResponse,
++    onTranscriptChange: (value) => setResponse(currentQuestion.id, value)
++  })
++
++  const handleClose = () => {
++    stopRecording()
++    onClose()
++  }
++
++  const handlePrevious = () => {
++    stopRecording()
++    setActiveQuestionIndex(Math.max(activeQuestionIndex - 1, 0))
++  }
++
++  const handleNext = () => {
++    stopRecording()
++    if (isLastQuestion) {
++      onComplete()
++      return
++    }
++    setActiveQuestionIndex(Math.min(activeQuestionIndex + 1, totalQuestions - 1))
++  }
++
++  const canAdvance = useMemo(
++    () => (responses[currentQuestion.id] ?? '').trim().length > 0,
++    [currentQuestion.id, responses]
++  )
++
++  return (
++    <BasicModal open={open} title="Interactive onboarding interview" onClose={handleClose} size="large">
++      <div css={onboardingModalStyles}>
++        <div className="modal-layout">
++          <div className="question-panel">
++            <div className="panel-header">
++              <Badge variant="primary" size="small">
++                Question {activeQuestionIndex + 1} of {totalQuestions}
++              </Badge>
++              <div className="timer-pill">
++                <StopwatchIcon label="Timer" /> {formatTime(elapsedSeconds)}
++                {isRecording ? ' · Recording' : ' · Ready'}
++              </div>
++            </div>
++            <div className="question-copy">
++              <span className="question-prefix">Voice interview</span>
++              <h3 className="prompt-text">{currentQuestion.prompt}</h3>
++              {currentQuestion.helper && <p className="helper-text">{currentQuestion.helper}</p>}
++              {showHalfwayMessage && <div className="milestone-banner">Great! You're halfway done!</div>}
++            </div>
++            <div className="transcript-stream">
++              <span className="stream-label">Live transcript</span>
++              <div className="stream-output">
++                {liveTranscript || 'Your words will appear here as you speak.'}
++              </div>
++            </div>
++            <TextArea
++              label="Refine or add notes"
++              placeholder="Type to expand on your spoken answer."
++              value={responses[currentQuestion.id] ?? ''}
++              onChange={(event) => updateTranscript(event.target.value)}
++              size="small"
++            />
++            {recordingError && <div className="error-banner">{recordingError}</div>}
++            <div className="response-controls">
++              <Button
++                variant={isRecording ? 'secondary' : 'primary'}
++                iconBefore={<VidPlayIcon label={isRecording ? 'Stop recording' : 'Start recording'} />}
++                onClick={isRecording ? stopRecording : startRecording}
++              >
++                {isRecording ? 'Stop recording' : 'Start recording'}
++              </Button>
++              <Button variant="tertiary" onClick={clearTranscript} isDisabled={isRecording}>
++                Clear response
++              </Button>
++            </div>
++            <div className="panel-footer">
++              <div className="progress-meta">
++                {completedCount}/{totalQuestions} answered
++              </div>
++              <div className="nav-cluster">
++                <div className="arrow-stack">
++                  <button
++                    type="button"
++                    className="nav-button"
++                    onClick={handlePrevious}
++                    disabled={activeQuestionIndex === 0}
++                    aria-label="Previous question"
++                  >
++                    <ArrowUpIcon label="" />
++                    <span className="visually-hidden">Previous</span>
++                  </button>
++                  <button
++                    type="button"
++                    className={`nav-button${canAdvance ? ' primary' : ''}`}
++                    onClick={handleNext}
++                    disabled={!canAdvance}
++                    aria-label={isLastQuestion ? 'Finish onboarding' : 'Next question'}
++                  >
++                    <ArrowDownIcon label="" />
++                    <span className="visually-hidden">
++                      {isLastQuestion ? 'Finish onboarding' : 'Next question'}
++                    </span>
++                  </button>
++                </div>
++                <span className="powered">Powered by Gen.C</span>
++              </div>
++            </div>
++          </div>
++        </div>
++        <div className="keyboard-hint">Tip: Speak naturally — you can always refine the text before moving on.</div>
++      </div>
++    </BasicModal>
++  )
++}
+diff --git a/src/features/brandhub/components/OnboardingSection.tsx b/src/features/brandhub/components/OnboardingSection.tsx
+new file mode 100644
+index 00000000..660919a9
+--- /dev/null
++++ b/src/features/brandhub/components/OnboardingSection.tsx
+@@ -0,0 +1,223 @@
++import React from 'react'
++import { css } from '@emotion/react'
++import { Badge } from '../../../components/ui/Badge'
++import { Button } from '../../../components/ui/Button'
++import { Card } from '../../../components/ui/Card'
++
++const onboardingIntroCardStyles = css`
++  display: grid;
++  gap: var(--space-4);
++  justify-items: center;
++  text-align: center;
++  padding: var(--space-6);
++  border-radius: var(--radius-large);
++  border: 1px dashed var(--color-neutral-300);
++  background: var(--color-neutral-0);
++
++  .intro-eyebrow {
++    font-size: var(--font-size-caption);
++    text-transform: uppercase;
++    letter-spacing: 0.08em;
++    color: var(--color-neutral-500);
++  }
++
++  h2 {
++    margin: 0;
++    font-size: var(--font-size-h4);
++    color: var(--color-neutral-900);
++  }
++
++  p {
++    margin: 0;
++    color: var(--color-neutral-600);
++    font-size: var(--font-size-body);
++    line-height: var(--line-height-relaxed, 1.6);
++  }
++
++  .progress-hint {
++    font-size: var(--font-size-caption);
++    color: var(--color-neutral-500);
++  }
++
++  .intro-actions {
++    display: flex;
++    flex-wrap: wrap;
++    gap: var(--space-3);
++    justify-content: center;
++  }
++`
++
++const onboardingCompletedCardStyles = css`
++  display: grid;
++  gap: var(--space-5);
++  padding: var(--space-6);
++  border-radius: var(--radius-large);
++  border: 1px solid var(--color-neutral-200);
++  background: var(--color-neutral-0);
++
++  .completed-header {
++    display: flex;
++    justify-content: space-between;
++    align-items: flex-start;
++    flex-wrap: wrap;
++    gap: var(--space-3);
++  }
++
++  .completed-header h2 {
++    margin: 0;
++    font-size: var(--font-size-h4);
++    color: var(--color-neutral-900);
++  }
++
++  .completed-header p {
++    margin: var(--space-1) 0 0;
++    color: var(--color-neutral-600);
++    font-size: var(--font-size-body);
++    max-width: 520px;
++  }
++
++  .intro-actions {
++    display: flex;
++    flex-wrap: wrap;
++    gap: var(--space-3);
++  }
++
++  .intent-picker {
++    display: grid;
++    gap: var(--space-3);
++    padding: var(--space-4);
++    border: 1px solid var(--color-neutral-200);
++    border-radius: var(--radius-medium);
++    background: var(--color-neutral-0);
++  }
++
++  .intent-picker span,
++  .intent-picker p {
++    color: var(--color-neutral-500);
++    font-size: var(--font-size-caption);
++    margin: 0;
++  }
++
++  .intent-options {
++    display: flex;
++    flex-wrap: wrap;
++    gap: var(--space-2);
++  }
++`
++
++const intentChipStyles = (isActive: boolean) => css`
++  padding: 6px 12px;
++  border-radius: var(--radius-pill, 999px);
++  border: 1px solid ${isActive ? 'var(--color-primary-500)' : 'var(--color-neutral-200)'};
++  background: ${isActive ? 'var(--color-primary-50)' : 'var(--color-neutral-0)'};
++  color: ${isActive ? 'var(--color-primary-700)' : 'var(--color-neutral-600)'};
++  font-size: var(--font-size-body-small);
++  font-weight: var(--font-weight-medium);
++  cursor: pointer;
++  transition: var(--transition-all);
++
++  &:hover {
++    border-color: var(--color-primary-400);
++  }
++`
++
++type OnboardingSectionProps = {
++  hasCompleted: boolean
++  completedCount: number
++  totalQuestions: number
++  onStartInterview: () => void
++  onViewBlueprint: () => void
++  selectedIntents: string[]
++  onToggleIntent: (intent: string) => void
++  intentOptions: readonly string[]
++}
++
++export const OnboardingSection: React.FC<OnboardingSectionProps> = ({
++  hasCompleted,
++  completedCount,
++  totalQuestions,
++  onStartInterview,
++  onViewBlueprint,
++  selectedIntents,
++  onToggleIntent,
++  intentOptions
++}) => {
++  if (!hasCompleted) {
++    return (
++      <Card css={onboardingIntroCardStyles} appearance="raised" spacing="comfortable">
++        <span className="intro-eyebrow">Interactive onboarding</span>
++        <h2>Capture your voice in minutes</h2>
++        <p>
++          Launch a guided interview that feels like Typeform. Speak through each question, watch the
++          transcript appear instantly, and build your onboarding in one flow.
++        </p>
++        <div className="intro-actions">
++          <Button variant="primary" onClick={onStartInterview}>
++            Start interactive onboarding
++          </Button>
++        </div>
++        <p className="progress-hint">
++          {completedCount}/{totalQuestions} questions answered so far
++        </p>
++      </Card>
++    )
++  }
++
++  return (
++    <Card css={onboardingCompletedCardStyles} appearance="raised" spacing="comfortable">
++      <div className="completed-header">
++        <div>
++          <h2>Onboarding captured</h2>
++          <p>
++            Review your interview responses or refine your content intents before generating new
++            blueprints.
++          </p>
++        </div>
++        <Badge variant="success" size="small">
++          Complete
++        </Badge>
++      </div>
++      <div className="intro-actions">
++        <Button variant="primary" onClick={onStartInterview}>
++          Review answers
++        </Button>
++        <Button variant="secondary" onClick={onViewBlueprint}>
++          View content blueprint
++        </Button>
++      </div>
++      <div className="intent-picker">
++        <div
++          style={{
++            display: 'flex',
++            justifyContent: 'space-between',
++            alignItems: 'baseline',
++            flexWrap: 'wrap',
++            gap: 'var(--space-3)'
++          }}
++        >
++          <h3>Content intent focus</h3>
++          <span>Choose the outcomes you want each clip to drive.</span>
++        </div>
++        <div className="intent-options">
++          {intentOptions.map((intent) => {
++            const isActive = selectedIntents.includes(intent)
++            return (
++              <button
++                key={intent}
++                type="button"
++                css={intentChipStyles(isActive)}
++                onClick={() => onToggleIntent(intent)}
++              >
++                {intent}
++              </button>
++            )
++          })}
++        </div>
++        <p>
++          We recommend selecting two to three intents so your blueprint balances education,
++          inspiration, and conversion moments.
++        </p>
++      </div>
++    </Card>
++  )
++}
+diff --git a/src/features/brandhub/components/VoiceLibrary.tsx b/src/features/brandhub/components/VoiceLibrary.tsx
+new file mode 100644
+index 00000000..9d6a3650
+--- /dev/null
++++ b/src/features/brandhub/components/VoiceLibrary.tsx
+@@ -0,0 +1,253 @@
++import React from 'react'
++import { css } from '@emotion/react'
++import { Badge } from '../../../components/ui/Badge'
++import { Button } from '../../../components/ui/Button'
++import { Card, CardContent, CardFooter, CardHeader } from '../../../components/ui/Card'
++import { BrandVoice } from '../types/brandHub'
++
++const voiceLibraryStyles = css`
++  display: flex;
++  flex-direction: column;
++  gap: var(--space-5);
++
++  .voice-grid {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++    gap: var(--space-4);
++  }
++
++  .loading-state,
++  .error-state {
++    padding: var(--space-5);
++    border-radius: var(--radius-medium);
++    border: 1px dashed var(--color-neutral-200);
++    background: var(--color-neutral-50);
++    text-align: center;
++    color: var(--color-neutral-600);
++  }
++
++  .loading-state {
++    display: grid;
++    gap: var(--space-2);
++    justify-items: center;
++  }
++
++  .error-state {
++    border-color: var(--color-danger-200);
++    background: var(--color-danger-50);
++    color: var(--color-danger-600);
++    display: grid;
++    gap: var(--space-3);
++    justify-items: center;
++  }
++
++  .empty-voices {
++    padding: var(--space-5);
++    border-radius: var(--radius-medium);
++    border: 1px dashed var(--color-neutral-200);
++    background: var(--color-neutral-50);
++    display: grid;
++    gap: var(--space-3);
++    justify-items: center;
++    text-align: center;
++
++    h3 {
++      margin: 0;
++      font-size: var(--font-size-h5);
++      color: var(--color-neutral-800);
++    }
++
++    p {
++      margin: 0;
++      color: var(--color-neutral-600);
++      font-size: var(--font-size-body);
++      max-width: 420px;
++    }
++  }
++`
++
++const voiceCardStyles = css`
++  display: flex;
++  flex-direction: column;
++  gap: var(--space-4);
++
++  .voice-header {
++    display: flex;
++    justify-content: space-between;
++    align-items: flex-start;
++    gap: var(--space-3);
++
++    h3 {
++      margin: 0;
++      font-size: var(--font-size-h5);
++      font-weight: var(--font-weight-semibold);
++      color: var(--color-neutral-800);
++    }
++  }
++
++  .voice-summary {
++    margin: 0;
++    color: var(--color-neutral-600);
++    font-size: var(--font-size-body-small);
++    line-height: var(--line-height-normal, 1.55);
++  }
++
++  .voice-meta {
++    display: flex;
++    flex-wrap: wrap;
++    gap: var(--space-3);
++    font-size: var(--font-size-caption);
++    color: var(--color-neutral-500);
++  }
++
++  .pillars {
++    display: flex;
++    flex-wrap: wrap;
++    gap: var(--space-2);
++  }
++
++  .persona {
++    margin: 0;
++    font-size: var(--font-size-body-small);
++    color: var(--color-neutral-600);
++    font-weight: var(--font-weight-medium);
++  }
++`
++
++type VoiceLibraryProps = {
++  brandVoices: BrandVoice[]
++  isLoading: boolean
++  error: string | null
++  onRefresh: () => void
++  onCreateVoice: () => void
++  onOpenVoice?: (voiceId: string) => void
++  onSetActive?: (voiceId: string) => void
++}
++
++export const VoiceLibrary: React.FC<VoiceLibraryProps> = ({
++  brandVoices,
++  isLoading,
++  error,
++  onRefresh,
++  onCreateVoice,
++  onOpenVoice,
++  onSetActive
++}) => (
++  <Card css={voiceLibraryStyles} appearance="raised">
++    <CardHeader>
++      <div
++        className="section-heading"
++        style={{
++          display: 'flex',
++          justifyContent: 'space-between',
++          alignItems: 'center',
++          gap: 'var(--space-3)'
++        }}
++      >
++        <div>
++          <h2
++            style={{
++              margin: 0,
++              fontSize: 'var(--font-size-h4)',
++              color: 'var(--color-neutral-800)'
++            }}
++          >
++            Brand voices
++          </h2>
++          <p
++            style={{
++              margin: 'var(--space-1) 0 0',
++              color: 'var(--color-neutral-600)',
++              fontSize: 'var(--font-size-body-small)'
++            }}
++          >
++            Activate the voice that matches today&apos;s campaign. Each workspace stores scripts, hooks,
++            and tone notes.
++          </p>
++        </div>
++        <Badge variant="primary">{brandVoices.length} total</Badge>
++      </div>
++    </CardHeader>
++    <CardContent>
++      {isLoading ? (
++        <div className="loading-state">
++          <span aria-hidden="true">🔄</span>
++          <p>Loading brand voice workspaces…</p>
++        </div>
++      ) : error ? (
++        <div className="error-state">
++          <p>{error}</p>
++          <Button variant="secondary" size="small" onClick={onRefresh}>
++            Try again
++          </Button>
++        </div>
++      ) : brandVoices.length === 0 ? (
++        <div className="empty-voices">
++          <h3>Create your first brand voice</h3>
++          <p>
++            Run a creator analysis to capture templates, tonal cues, and publishing guidance in a
++            dedicated workspace.
++          </p>
++          <Button variant="primary" onClick={onCreateVoice}>
++            Create brand voice
++          </Button>
++        </div>
++      ) : (
++        <div className="voice-grid">
++          {brandVoices.map((voice) => (
++            <Card key={voice.id} css={voiceCardStyles} appearance="subtle" isHoverable>
++              <div className="voice-header">
++                <h3>{voice.name}</h3>
++                <Badge
++                  variant={
++                    voice.status === 'Live'
++                      ? 'success'
++                      : voice.status === 'Draft'
++                        ? 'neutral'
++                        : 'warning'
++                  }
++                >
++                  {voice.status}
++                </Badge>
++              </div>
++              <p className="voice-summary">{voice.summary}</p>
++              <p className="persona">{voice.persona}</p>
++              <div className="pillars">
++                {voice.pillars.map((pillar) => (
++                  <Badge key={pillar} variant="default" size="small">
++                    {pillar}
++                  </Badge>
++                ))}
++              </div>
++              <div className="voice-meta">
++                <span>{voice.platform}</span>
++                <span>·</span>
++                <span>{voice.audience}</span>
++                <span>·</span>
++                <span>{voice.lastUpdated}</span>
++              </div>
++              <CardFooter
++                style={{
++                  display: 'flex',
++                  justifyContent: 'space-between',
++                  gap: 'var(--space-3)'
++                }}
++              >
++                <Button variant="secondary" size="small" onClick={() => onOpenVoice?.(voice.id)}>
++                  Open voice workspace
++                </Button>
++                <Button
++                  variant="tertiary"
++                  size="small"
++                  onClick={() => onSetActive?.(voice.id)}
++                >
++                  Set active
++                </Button>
++              </CardFooter>
++            </Card>
++          ))}
++        </div>
++      )}
++    </CardContent>
++  </Card>
++)
+diff --git a/src/features/brandhub/components/WorkflowSpotlightModal.tsx b/src/features/brandhub/components/WorkflowSpotlightModal.tsx
+new file mode 100644
+index 00000000..01763072
+--- /dev/null
++++ b/src/features/brandhub/components/WorkflowSpotlightModal.tsx
+@@ -0,0 +1,126 @@
++import React from 'react'
++import { css } from '@emotion/react'
++import VidPlayIcon from '@atlaskit/icon/glyph/vid-play'
++import DownloadIcon from '@atlaskit/icon/glyph/download'
++import GraphLineIcon from '@atlaskit/icon/glyph/graph-line'
++import { BasicModal } from '../../../components/ui/BasicModal'
++
++const workflowSpotlightStyles = css`
++  display: grid;
++  gap: var(--space-4);
++
++  .workflow-intro {
++    display: grid;
++    gap: var(--space-2);
++
++    p {
++      margin: 0;
++      color: var(--color-neutral-600);
++      font-size: var(--font-size-body-small);
++      line-height: var(--line-height-normal, 1.55);
++    }
++  }
++
++  .workflow-list {
++    display: flex;
++    flex-direction: column;
++    gap: var(--space-3);
++  }
++
++  .workflow-item {
++    display: flex;
++    align-items: flex-start;
++    gap: var(--space-3);
++    padding: var(--space-3);
++    border-radius: var(--radius-medium);
++    border: 1px dashed var(--color-neutral-200);
++    background: var(--color-neutral-50);
++
++    .icon {
++      color: var(--color-primary-600);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    .details {
++      flex: 1;
++
++      h4 {
++        margin: 0 0 var(--space-1);
++        font-size: var(--font-size-body);
++        color: var(--color-neutral-800);
++      }
++
++      p {
++        margin: 0;
++        color: var(--color-neutral-600);
++        font-size: var(--font-size-body-small);
++        line-height: var(--line-height-normal, 1.55);
++      }
++    }
++  }
++
++  .workflow-hint {
++    margin: 0;
++    font-size: var(--font-size-caption);
++    color: var(--color-neutral-500);
++  }
++`
++
++type WorkflowSpotlightModalProps = {
++  open: boolean
++  onClose: () => void
++}
++
++export const WorkflowSpotlightModal: React.FC<WorkflowSpotlightModalProps> = ({ open, onClose }) => (
++  <BasicModal open={open} title="How voice creation works" onClose={onClose} size="medium">
++    <div css={workflowSpotlightStyles}>
++      <div className="workflow-intro">
++        <p>
++          Follow the same three-step workflow our team uses to turn any creator into a fully documented
++          voice workspace.
++        </p>
++      </div>
++      <div className="workflow-list">
++        <div className="workflow-item">
++          <div className="icon" aria-hidden="true">
++            <VidPlayIcon label="" />
++          </div>
++          <div className="details">
++            <h4>Pull creator library</h4>
++            <p>
++              Paste a handle and we&apos;ll fetch the latest clips, transcripts, and engagement metrics ready
++              for review in the modal.
++            </p>
++          </div>
++        </div>
++        <div className="workflow-item">
++          <div className="icon" aria-hidden="true">
++            <DownloadIcon label="" />
++          </div>
++          <div className="details">
++            <h4>Cluster the voice DNA</h4>
++            <p>
++              We identify recurring hooks, narrative beats, and tonal cues before turning them into reusable
++              brand voice ingredients.
++            </p>
++          </div>
++        </div>
++        <div className="workflow-item">
++          <div className="icon" aria-hidden="true">
++            <GraphLineIcon label="" />
++          </div>
++          <div className="details">
++            <h4>Publish your workspace</h4>
++            <p>
++              Approve the analysis, add onboarding inputs, and your writers immediately get playbooks,
++              prompts, and tone sliders.
++            </p>
++          </div>
++        </div>
++      </div>
++      <p className="workflow-hint">Need a refresher later? Open this spotlight any time.</p>
++    </div>
++  </BasicModal>
++)
+diff --git a/src/features/brandhub/constants/brandVoices.ts b/src/features/brandhub/constants/brandVoices.ts
+new file mode 100644
+index 00000000..539add0f
+--- /dev/null
++++ b/src/features/brandhub/constants/brandVoices.ts
+@@ -0,0 +1,34 @@
++import { CreatorVideo } from '../types/brandHub'
++
++export const platformOptions = ['TikTok', 'Instagram', 'YouTube Shorts'] as const
++
++export const mockVideos: CreatorVideo[] = [
++  {
++    id: 'video-1',
++    title: 'How I storyboard a 60-second launch video',
++    duration: '1:12',
++    performance: '54K views · 7.2% watch through',
++    postedAt: '3 days ago'
++  },
++  {
++    id: 'video-2',
++    title: 'This hook consistently adds 15% more watch time',
++    duration: '0:48',
++    performance: '42K views · 6.4% watch through',
++    postedAt: '5 days ago'
++  },
++  {
++    id: 'video-3',
++    title: 'What I look for in a creator partnership brief',
++    duration: '1:26',
++    performance: '37K views · 5.1% watch through',
++    postedAt: '1 week ago'
++  },
++  {
++    id: 'video-4',
++    title: 'The 15-minute voice warm up before I hit record',
++    duration: '0:52',
++    performance: '39K views · 6.9% watch through',
++    postedAt: '2 weeks ago'
++  }
++]
+diff --git a/src/features/brandhub/constants/onboarding.ts b/src/features/brandhub/constants/onboarding.ts
+new file mode 100644
+index 00000000..b05dd353
+--- /dev/null
++++ b/src/features/brandhub/constants/onboarding.ts
+@@ -0,0 +1,53 @@
++import { OnboardingFormState, OnboardingPrompt } from '../types/brandHub'
++
++export const onboardingPrompts: OnboardingPrompt[] = [
++  {
++    id: 'whoAndWhat',
++    title: 'Who & What',
++    prompt: 'What do you do and who do you help?',
++    helper: 'Example: “I’m a fitness coach who helps busy moms get strong.”'
++  },
++  {
++    id: 'audienceProblem',
++    title: 'The Problem',
++    prompt: "What's the #1 problem your audience is struggling with right now?",
++    helper: 'Example: “They want to work out but can’t find time with kids around.”'
++  },
++  {
++    id: 'quickWin',
++    title: 'Quick Win',
++    prompt: "What's the first small win they're looking for?",
++    helper: 'Example: “Just 10 minutes a day where they feel like themselves again.”'
++  },
++  {
++    id: 'bigDream',
++    title: 'Big Dream',
++    prompt: 'If they could wave a magic wand, what would their life look like in 1 year?',
++    helper: 'Example: “They’d have energy to play with kids and feel confident in their body.”'
++  },
++  {
++    id: 'voiceStyle',
++    title: 'Your Style',
++    prompt: 'Are you the tough coach, the supportive friend, or the wise teacher?',
++    helper: 'Example: “I’m the supportive friend who’s been there and gets it.”'
++  },
++  {
++    id: 'contentFocus',
++    title: 'Content Focus',
++    prompt: "What are the 3 main things you'll teach or share about?",
++    helper: 'Example: “Quick workouts, meal prep hacks, and mindset shifts for moms.”'
++  }
++]
++
++export const defaultIntentSelection = ['Educate', 'Inspire'] as const
++
++export const intentOptions = ['Educate', 'Inspire', 'Convert', 'Build community'] as const
++
++export const createEmptyOnboardingResponses = (): OnboardingFormState => ({
++  whoAndWhat: '',
++  audienceProblem: '',
++  quickWin: '',
++  bigDream: '',
++  voiceStyle: '',
++  contentFocus: ''
++})
+diff --git a/src/features/brandhub/hooks/useBrandHubOnboarding.ts b/src/features/brandhub/hooks/useBrandHubOnboarding.ts
+new file mode 100644
+index 00000000..12f752ee
+--- /dev/null
++++ b/src/features/brandhub/hooks/useBrandHubOnboarding.ts
+@@ -0,0 +1,178 @@
++import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
++import { createEmptyOnboardingResponses, onboardingPrompts } from '../constants/onboarding'
++import { persistOnboardingResponses, fetchOnboardingDocument } from '../services/onboardingService'
++import { OnboardingFormState } from '../types/brandHub'
++
++const SAVE_DEBOUNCE_MS = 1000
++
++interface UseBrandHubOnboardingArgs {
++  userId?: string
++}
++
++interface UseBrandHubOnboardingResult {
++  responses: OnboardingFormState
++  setResponse: (id: keyof OnboardingFormState, value: string) => void
++  hasCompleted: boolean
++  setCompleted: (state: boolean) => void
++  activeQuestionIndex: number
++  setActiveQuestionIndex: (index: number) => void
++  resetInterview: () => void
++  isLoading: boolean
++  completedCount: number
++  isQuestionnaireComplete: boolean
++}
++
++export const useBrandHubOnboarding = (
++  { userId }: UseBrandHubOnboardingArgs
++): UseBrandHubOnboardingResult => {
++  const [responses, setResponses] = useState<OnboardingFormState>(createEmptyOnboardingResponses)
++  const [hasCompleted, setHasCompleted] = useState(false)
++  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
++  const [isLoading, setIsLoading] = useState(false)
++  const saveTimerRef = useRef<number | null>(null)
++  const latestResponsesRef = useRef(responses)
++  const latestCompletionRef = useRef(hasCompleted)
++  const isMountedRef = useRef(true)
++
++  useEffect(() => {
++    return () => {
++      isMountedRef.current = false
++    }
++  }, [])
++
++  const resetInterview = useCallback(() => {
++    setResponses(createEmptyOnboardingResponses())
++    setHasCompleted(false)
++    setActiveQuestionIndex(0)
++    setIsLoading(false)
++  }, [])
++
++  useEffect(() => {
++    latestResponsesRef.current = responses
++  }, [responses])
++
++  useEffect(() => {
++    latestCompletionRef.current = hasCompleted
++  }, [hasCompleted])
++
++  useEffect(() => {
++    if (!userId) {
++      resetInterview()
++      return
++    }
++
++    let cancelled = false
++
++    const loadOnboarding = async () => {
++      setIsLoading(true)
++      try {
++        const document = await fetchOnboardingDocument(userId)
++        if (cancelled || !document?.onboarding) {
++          return
++        }
++
++        if (document.onboarding.responses) {
++          setResponses((prev) => ({ ...prev, ...document.onboarding!.responses }))
++        }
++
++        if (document.onboarding.status === 'completed') {
++          setHasCompleted(true)
++        }
++      } catch (error) {
++        console.error('Failed to load onboarding responses:', error)
++      } finally {
++        if (!cancelled) {
++          setIsLoading(false)
++        }
++      }
++    }
++
++    void loadOnboarding()
++
++    return () => {
++      cancelled = true
++    }
++  }, [resetInterview, userId])
++
++  const enqueueSave = useCallback(() => {
++    if (!userId) {
++      return
++    }
++
++    if (typeof window === 'undefined') {
++      void persistOnboardingResponses(userId, latestResponsesRef.current, latestCompletionRef.current)
++      return
++    }
++
++    if (saveTimerRef.current) {
++      window.clearTimeout(saveTimerRef.current)
++    }
++
++    saveTimerRef.current = window.setTimeout(() => {
++      void persistOnboardingResponses(
++        userId,
++        latestResponsesRef.current,
++        latestCompletionRef.current
++      )
++    }, SAVE_DEBOUNCE_MS)
++  }, [userId])
++
++  useEffect(() => {
++    enqueueSave()
++
++    return () => {
++      if (saveTimerRef.current) {
++        if (typeof window !== 'undefined') {
++          window.clearTimeout(saveTimerRef.current)
++        }
++        saveTimerRef.current = null
++      }
++    }
++  }, [responses, hasCompleted, enqueueSave])
++
++  useEffect(() => {
++    return () => {
++      if (saveTimerRef.current) {
++        if (typeof window !== 'undefined') {
++          window.clearTimeout(saveTimerRef.current)
++        }
++        saveTimerRef.current = null
++      }
++      if (userId) {
++        void persistOnboardingResponses(userId, latestResponsesRef.current, latestCompletionRef.current)
++      }
++    }
++  }, [userId])
++
++  const setResponse = useCallback((id: keyof OnboardingFormState, value: string) => {
++    setResponses((prev) => ({ ...prev, [id]: value }))
++  }, [])
++
++  const setCompleted = useCallback((state: boolean) => {
++    setHasCompleted(state)
++  }, [])
++
++  const completedCount = useMemo(
++    () =>
++      onboardingPrompts.filter((prompt) => (responses[prompt.id] ?? '').trim().length > 0).length,
++    [responses]
++  )
++
++  const isQuestionnaireComplete = useMemo(
++    () => completedCount === onboardingPrompts.length,
++    [completedCount]
++  )
++
++  return {
++    responses,
++    setResponse,
++    hasCompleted,
++    setCompleted,
++    activeQuestionIndex,
++    setActiveQuestionIndex,
++    resetInterview,
++    isLoading,
++    completedCount,
++    isQuestionnaireComplete
++  }
++}
+diff --git a/src/features/brandhub/hooks/useBrandVoices.ts b/src/features/brandhub/hooks/useBrandVoices.ts
+new file mode 100644
+index 00000000..f6544241
+--- /dev/null
++++ b/src/features/brandhub/hooks/useBrandVoices.ts
+@@ -0,0 +1,60 @@
++import { useCallback, useEffect, useRef, useState } from 'react'
++import { BrandVoice } from '../types/brandHub'
++import { listBrandVoices } from '../services/brandVoiceService'
++
++interface UseBrandVoicesResult {
++  brandVoices: BrandVoice[]
++  isLoading: boolean
++  error: string | null
++  refresh: () => void
++}
++
++export const useBrandVoices = (): UseBrandVoicesResult => {
++  const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([])
++  const [isLoading, setIsLoading] = useState(true)
++  const [error, setError] = useState<string | null>(null)
++  const isMountedRef = useRef(true)
++
++  useEffect(() => {
++    return () => {
++      isMountedRef.current = false
++    }
++  }, [])
++
++  const loadBrandVoices = useCallback(async () => {
++    setIsLoading(true)
++    setError(null)
++
++    try {
++      const voices = await listBrandVoices()
++      if (!isMountedRef.current) {
++        return
++      }
++      setBrandVoices(voices)
++    } catch (err) {
++      console.error('Failed to load brand voices:', err)
++      if (isMountedRef.current) {
++        setError('Unable to load brand voices right now. Please try again.')
++      }
++    } finally {
++      if (isMountedRef.current) {
++        setIsLoading(false)
++      }
++    }
++  }, [])
++
++  useEffect(() => {
++    void loadBrandVoices()
++  }, [loadBrandVoices])
++
++  const refresh = useCallback(() => {
++    void loadBrandVoices()
++  }, [loadBrandVoices])
++
++  return {
++    brandVoices,
++    isLoading,
++    error,
++    refresh
++  }
++}
+diff --git a/src/features/brandhub/hooks/useSpeechTranscription.ts b/src/features/brandhub/hooks/useSpeechTranscription.ts
+new file mode 100644
+index 00000000..4cc95b37
+--- /dev/null
++++ b/src/features/brandhub/hooks/useSpeechTranscription.ts
+@@ -0,0 +1,197 @@
++import { useCallback, useEffect, useRef, useState } from 'react'
++import {
++  SpeechRecognitionConstructor,
++  SpeechRecognitionErrorEventLike,
++  SpeechRecognitionEventLike,
++  SpeechRecognitionInstance
++} from '../types/speech'
++
++type UseSpeechTranscriptionOptions = {
++  transcript: string
++  onTranscriptChange: (value: string) => void
++  language?: string
++}
++
++type UseSpeechTranscriptionResult = {
++  liveTranscript: string
++  updateTranscript: (value: string) => void
++  clearTranscript: () => void
++  isRecording: boolean
++  startRecording: () => Promise<void>
++  stopRecording: () => void
++  elapsedSeconds: number
++  recordingError: string | null
++}
++
++interface WindowWithSpeechRecognition extends Window {
++  SpeechRecognition?: SpeechRecognitionConstructor
++  webkitSpeechRecognition?: SpeechRecognitionConstructor
++}
++
++const getSpeechRecognitionClass = (): SpeechRecognitionConstructor | undefined => {
++  if (typeof window === 'undefined') {
++    return undefined
++  }
++
++  const globalWindow = window as WindowWithSpeechRecognition
++  return globalWindow.SpeechRecognition ?? globalWindow.webkitSpeechRecognition ?? undefined
++}
++
++export const useSpeechTranscription = (
++  options: UseSpeechTranscriptionOptions
++): UseSpeechTranscriptionResult => {
++  const { transcript, onTranscriptChange, language = 'en-US' } = options
++  const [liveTranscript, setLiveTranscript] = useState(transcript)
++  const [isRecording, setIsRecording] = useState(false)
++  const [elapsedSeconds, setElapsedSeconds] = useState(0)
++  const [recordingError, setRecordingError] = useState<string | null>(null)
++  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
++  const timerIntervalRef = useRef<number | null>(null)
++
++  useEffect(() => {
++    setLiveTranscript(transcript)
++    setElapsedSeconds(0)
++    setRecordingError(null)
++  }, [transcript])
++
++  const stopInterval = useCallback(() => {
++    if (timerIntervalRef.current && typeof window !== 'undefined') {
++      window.clearInterval(timerIntervalRef.current)
++    }
++    timerIntervalRef.current = null
++  }, [])
++
++  const stopRecognition = useCallback(() => {
++    if (recognitionRef.current) {
++      try {
++        recognitionRef.current.onresult = null
++        recognitionRef.current.onerror = null
++        recognitionRef.current.onend = null
++        recognitionRef.current.stop()
++      } catch (error) {
++        // Stopping an inactive recognition instance can throw; ignore.
++      }
++      recognitionRef.current = null
++    }
++  }, [])
++
++  const stopRecording = useCallback(() => {
++    stopInterval()
++    stopRecognition()
++    setIsRecording(false)
++    onTranscriptChange(liveTranscript.trim())
++  }, [liveTranscript, onTranscriptChange, stopInterval, stopRecognition])
++
++  useEffect(() => {
++    return () => {
++      stopInterval()
++      stopRecognition()
++    }
++  }, [stopInterval, stopRecognition])
++
++  const updateTranscript = useCallback(
++    (value: string) => {
++      setLiveTranscript(value)
++      onTranscriptChange(value)
++    },
++    [onTranscriptChange]
++  )
++
++  const clearTranscript = useCallback(() => {
++    updateTranscript('')
++  }, [updateTranscript])
++
++  const startRecording = useCallback(async () => {
++    if (isRecording) {
++      return
++    }
++
++    if (typeof window === 'undefined') {
++      setRecordingError('Live transcription is unavailable in this environment.')
++      return
++    }
++
++    const speechRecognitionClass = getSpeechRecognitionClass()
++
++    if (!speechRecognitionClass) {
++      setRecordingError(
++        'Live transcription is not supported in this browser. You can type your answer below.'
++      )
++      return
++    }
++
++    try {
++      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
++        await navigator.mediaDevices.getUserMedia({ audio: true })
++      }
++    } catch (error) {
++      setRecordingError('Microphone permission is required to capture your answers.')
++      return
++    }
++
++    setRecordingError(null)
++
++    const recognition = new speechRecognitionClass()
++    recognition.continuous = true
++    recognition.interimResults = true
++    recognition.lang = language
++
++    recognition.onresult = (event: SpeechRecognitionEventLike) => {
++      const aggregatedTranscript = Array.from({ length: event.results.length })
++        .map((_, index) => event.results[index]?.[0]?.transcript?.trim?.() ?? '')
++        .join(' ')
++        .trim()
++
++      setLiveTranscript(aggregatedTranscript)
++      onTranscriptChange(aggregatedTranscript)
++    }
++
++    recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
++      if (event.error === 'no-speech') {
++        setRecordingError('We could not detect audio. Try speaking closer to the microphone.')
++      } else if (event.error === 'not-allowed') {
++        setRecordingError('Microphone access is blocked. Update your browser permissions to record.')
++      } else {
++        setRecordingError(
++          event.message ?? 'Something interrupted the recording. You can continue typing your response.'
++        )
++      }
++      setIsRecording(false)
++      stopInterval()
++    }
++
++    recognition.onend = () => {
++      stopInterval()
++      recognitionRef.current = null
++      setIsRecording(false)
++    }
++
++    try {
++      recognition.start()
++      recognitionRef.current = recognition
++      setIsRecording(true)
++      setElapsedSeconds(0)
++      stopInterval()
++      if (typeof window !== 'undefined') {
++        timerIntervalRef.current = window.setInterval(() => {
++          setElapsedSeconds((prev) => prev + 1)
++        }, 1000)
++      }
++    } catch (error) {
++      setRecordingError('We were unable to start recording. Try refreshing or typing your response.')
++      recognitionRef.current = null
++      setIsRecording(false)
++    }
++  }, [isRecording, language, onTranscriptChange, stopInterval])
++
++  return {
++    liveTranscript,
++    updateTranscript,
++    clearTranscript,
++    isRecording,
++    startRecording,
++    stopRecording,
++    elapsedSeconds,
++    recordingError
++  }
++}
+diff --git a/src/features/brandhub/services/brandVoiceService.ts b/src/features/brandhub/services/brandVoiceService.ts
+new file mode 100644
+index 00000000..d508a5c9
+--- /dev/null
++++ b/src/features/brandhub/services/brandVoiceService.ts
+@@ -0,0 +1,36 @@
++import { BrandVoice } from '../types/brandHub'
++import { mapApiBrandVoice } from '../utils/brandVoiceMapping'
++
++interface BrandVoiceResponse {
++  success?: boolean
++  voices?: unknown
++}
++
++const parseVoicesPayload = (payload: unknown): BrandVoice[] => {
++  if (!payload || !Array.isArray(payload)) {
++    return []
++  }
++
++  return payload
++    .map((voice) => mapApiBrandVoice(voice))
++    .sort((a, b) => b.sortTime - a.sortTime)
++    .map(({ voice }) => voice)
++}
++
++export const listBrandVoices = async (): Promise<BrandVoice[]> => {
++  const response = await fetch('/api/brand-voices/list')
++
++  if (!response.ok) {
++    throw new Error(`Request failed with status ${response.status}`)
++  }
++
++  const data: BrandVoiceResponse | null = await response
++    .json()
++    .catch(() => null)
++
++  if (!data?.success) {
++    return []
++  }
++
++  return parseVoicesPayload(data.voices)
++}
+diff --git a/src/features/brandhub/services/onboardingService.ts b/src/features/brandhub/services/onboardingService.ts
+new file mode 100644
+index 00000000..37f07594
+--- /dev/null
++++ b/src/features/brandhub/services/onboardingService.ts
+@@ -0,0 +1,33 @@
++import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
++import { db } from '../../../config/firebase'
++import { OnboardingDocument, OnboardingFormState } from '../types/brandHub'
++
++const getOnboardingDocRef = (userId: string) => doc(db, 'users', userId)
++
++export const fetchOnboardingDocument = async (userId: string): Promise<OnboardingDocument | null> => {
++  const snapshot = await getDoc(getOnboardingDocRef(userId))
++  if (!snapshot.exists()) {
++    return null
++  }
++  return snapshot.data() as OnboardingDocument
++}
++
++export const persistOnboardingResponses = async (
++  userId: string,
++  responses: OnboardingFormState,
++  completed: boolean
++): Promise<void> => {
++  const onboardingPayload = {
++    responses,
++    status: completed ? 'completed' : 'in-progress',
++    updatedAt: serverTimestamp()
++  }
++
++  const dataToWrite = {
++    onboarding: completed
++      ? { ...onboardingPayload, completedAt: serverTimestamp() }
++      : onboardingPayload
++  }
++
++  await setDoc(getOnboardingDocRef(userId), dataToWrite, { merge: true })
++}
+diff --git a/src/features/brandhub/types/brandHub.ts b/src/features/brandhub/types/brandHub.ts
+new file mode 100644
+index 00000000..fc412a23
+--- /dev/null
++++ b/src/features/brandhub/types/brandHub.ts
+@@ -0,0 +1,68 @@
++export type BrandVoiceStatus = 'Live' | 'Draft' | 'Exploring'
++
++export interface BrandVoice {
++  id: string
++  name: string
++  status: BrandVoiceStatus
++  persona: string
++  summary: string
++  platform: string
++  audience: string
++  lastUpdated: string
++  pillars: string[]
++}
++
++export interface CreatorVideo {
++  id: string
++  title: string
++  duration: string
++  performance: string
++  postedAt: string
++}
++
++export interface OnboardingFormState {
++  whoAndWhat: string
++  audienceProblem: string
++  quickWin: string
++  bigDream: string
++  voiceStyle: string
++  contentFocus: string
++}
++
++export type TabKey = 'voices' | 'onboarding' | 'blueprint'
++
++export interface OnboardingPrompt {
++  id: keyof OnboardingFormState
++  title: string
++  prompt: string
++  helper?: string
++}
++
++export interface ApiBrandVoice {
++  id: string
++  creatorId?: string
++  name?: string
++  description?: string
++  tone?: string
++  voice?: string
++  targetAudience?: string
++  keywords?: unknown
++  platforms?: unknown
++  created?: unknown
++  isDefault?: boolean
++  isShared?: boolean
++}
++
++export interface ResolvedBrandVoice {
++  voice: BrandVoice
++  sortTime: number
++}
++
++export interface OnboardingDocument {
++  onboarding?: {
++    responses?: Partial<OnboardingFormState>
++    status?: string
++    updatedAt?: unknown
++    completedAt?: unknown
++  }
++}
+diff --git a/src/features/brandhub/types/speech.ts b/src/features/brandhub/types/speech.ts
+new file mode 100644
+index 00000000..48385abd
+--- /dev/null
++++ b/src/features/brandhub/types/speech.ts
+@@ -0,0 +1,38 @@
++export type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
++
++export interface SpeechRecognitionInstance {
++  continuous: boolean
++  interimResults: boolean
++  lang: string
++  onresult: ((event: SpeechRecognitionEventLike) => void) | null
++  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null
++  onend: (() => void) | null
++  start: () => void
++  stop: () => void
++  abort?: () => void
++}
++
++export interface SpeechRecognitionAlternativeLike {
++  transcript: string
++}
++
++export interface SpeechRecognitionResultLike {
++  [index: number]: SpeechRecognitionAlternativeLike | undefined
++  length: number
++  isFinal: boolean
++}
++
++export interface SpeechRecognitionResultListLike {
++  length: number
++  item: (index: number) => SpeechRecognitionResultLike
++  [index: number]: SpeechRecognitionResultLike
++}
++
++export interface SpeechRecognitionEventLike extends Event {
++  results: SpeechRecognitionResultListLike
++}
++
++export interface SpeechRecognitionErrorEventLike extends Event {
++  error: string
++  message?: string
++}
+diff --git a/src/features/brandhub/utils/blueprint.ts b/src/features/brandhub/utils/blueprint.ts
+new file mode 100644
+index 00000000..551fb933
+--- /dev/null
++++ b/src/features/brandhub/utils/blueprint.ts
+@@ -0,0 +1,104 @@
++import { OnboardingFormState } from '../types/brandHub'
++
++interface ContentPillar {
++  title: string
++  description: string
++}
++
++interface QaPrompt {
++  question: string
++  answer: string
++}
++
++interface IntentGuidance {
++  intent: string
++  guidance: string
++}
++
++const withFallback = (value: string, fallback: string) => value || fallback
++
++export const buildContentPillars = (responses: OnboardingFormState): ContentPillar[] => {
++  const whoAndWhat = withFallback(responses.whoAndWhat, 'your role and who you serve')
++  const audienceProblem = withFallback(
++    responses.audienceProblem,
++    'the biggest challenge your audience is wrestling with'
++  )
++  const quickWin = withFallback(responses.quickWin, 'a quick win they crave')
++  const bigDream = withFallback(responses.bigDream, 'the vision they want to step into')
++  const voiceStyle = withFallback(responses.voiceStyle, 'your guiding style')
++  const contentFocus = withFallback(responses.contentFocus, 'your core content pillars')
++
++  return [
++    {
++      title: 'Momentum Builders',
++      description: `Deliver bite-sized guidance that gives people ${quickWin} even on the busiest days.`
++    },
++    {
++      title: 'Problem Solvers',
++      description: `Bring your unique style (“${voiceStyle}”) into ${contentFocus} breakdowns that tackle ${audienceProblem} head-on.`
++    },
++    {
++      title: 'Vision Casting',
++      description: `Show how today’s message moves them from ${audienceProblem} toward ${bigDream} with ${whoAndWhat} leading the way.`
++    }
++  ]
++}
++
++export const buildQaPrompts = (responses: OnboardingFormState): QaPrompt[] => {
++  const audienceProblem = withFallback(
++    responses.audienceProblem,
++    'the biggest challenge your audience is wrestling with'
++  )
++  const quickWin = withFallback(responses.quickWin, 'a quick win they crave')
++  const bigDream = withFallback(responses.bigDream, 'the vision they want to step into')
++  const contentFocus = withFallback(responses.contentFocus, 'your core content pillars')
++  const voiceStyle = withFallback(responses.voiceStyle, 'your guiding style')
++
++  return [
++    {
++      question: 'What belief are we reinforcing this week?',
++      answer: `Remind listeners that even when ${audienceProblem}, small steps toward ${quickWin} keep momentum alive.`
++    },
++    {
++      question: 'How do we invite them into the bigger vision?',
++      answer: `Connect today’s takeaway to the ${bigDream} you’re championing and point them to next actions inside ${contentFocus}, delivered in that “${voiceStyle}” voice.`
++    }
++  ]
++}
++
++export const buildIntentPlaybook = (selectedIntents: string[]): IntentGuidance[] =>
++  selectedIntents.map((intent) => {
++    switch (intent) {
++      case 'Educate':
++        return {
++          intent,
++          guidance:
++            'Show them the process. Use stepwise tutorials and annotated screen recordings to demystify your method.'
++        }
++      case 'Inspire':
++        return {
++          intent,
++          guidance:
++            'Spotlight transformation stories and personal reflections that humanize the journey and spark ambition.'
++        }
++      case 'Convert':
++        return {
++          intent,
++          guidance:
++            'Pair social proof with a clear next step. Close with "here is how to work with us" clarity every time.'
++        }
++      case 'Build community':
++        return {
++          intent,
++          guidance:
++            'Invite dialogue. Pose a thoughtful question and feature responses in next week’s recap clip.'
++        }
++      default:
++        return {
++          intent,
++          guidance: 'Document the behind-the-scenes process and narrate why it matters right now.'
++        }
++    }
++  })
++
++export type { ContentPillar, IntentGuidance, QaPrompt }
+diff --git a/src/features/brandhub/utils/brandVoiceMapping.ts b/src/features/brandhub/utils/brandVoiceMapping.ts
+new file mode 100644
+index 00000000..d8cbd0aa
+--- /dev/null
++++ b/src/features/brandhub/utils/brandVoiceMapping.ts
+@@ -0,0 +1,122 @@
++import { ApiBrandVoice, BrandVoice, ResolvedBrandVoice } from '../types/brandHub'
++
++const parseDateLike = (value: unknown): Date | null => {
++  if (!value) {
++    return null
++  }
++
++  if (value instanceof Date) {
++    return value
++  }
++
++  if (typeof value === 'string') {
++    const parsed = new Date(value)
++    return Number.isNaN(parsed.getTime()) ? null : parsed
++  }
++
++  if (typeof value === 'number') {
++    return new Date(value)
++  }
++
++  if (typeof value === 'object') {
++    const maybeDate = value as { toDate?: () => Date; seconds?: number; nanoseconds?: number }
++    if (typeof maybeDate.toDate === 'function') {
++      try {
++        return maybeDate.toDate()
++      } catch (error) {
++        console.warn('parseFirestoreDate: failed to convert via toDate()', error)
++      }
++    }
++
++    if (typeof maybeDate.seconds === 'number') {
++      const milliseconds = maybeDate.seconds * 1000 + (maybeDate.nanoseconds ?? 0) / 1_000_000
++      return new Date(milliseconds)
++    }
++  }
++
++  return null
++}
++
++const formatUpdatedLabel = (value: unknown): { label: string; sortTime: number } => {
++  const date = parseDateLike(value)
++  if (!date) {
++    return { label: 'Updated recently', sortTime: 0 }
++  }
++
++  const now = Date.now()
++  const diffMs = now - date.getTime()
++
++  if (diffMs < 0) {
++    return { label: 'Updated recently', sortTime: date.getTime() }
++  }
++
++  const hours = Math.floor(diffMs / (1000 * 60 * 60))
++  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
++
++  let label: string
++  if (days === 0) {
++    if (hours <= 0) {
++      label = 'Updated just now'
++    } else if (hours === 1) {
++      label = 'Updated 1 hour ago'
++    } else {
++      label = `Updated ${hours} hours ago`
++    }
++  } else if (days === 1) {
++    label = 'Updated 1 day ago'
++  } else if (days < 7) {
++    label = `Updated ${days} days ago`
++  } else {
++    label = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
++  }
++
++  return { label, sortTime: date.getTime() }
++}
++
++const derivePillarsFromVoice = (voice: ApiBrandVoice): string[] => {
++  if (Array.isArray(voice.keywords)) {
++    const keywords = (voice.keywords as unknown[])
++      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
++    if (keywords.length > 0) {
++      return keywords.slice(0, 4)
++    }
++  }
++
++  if (typeof voice.tone === 'string' && voice.tone.trim().length > 0) {
++    return [voice.tone.trim()]
++  }
++
++  return ['Templates ready']
++}
++
++export const mapApiBrandVoice = (voice: ApiBrandVoice): ResolvedBrandVoice => {
++  const displayName = voice.name?.trim() || 'Brand voice workspace'
++  const persona = voice.voice?.trim() || `${displayName} — Voice DNA`
++  const summary = voice.description?.trim() || voice.voice?.trim() || 'Templates and tonal cues ready for script generation.'
++  const platforms = Array.isArray(voice.platforms)
++    ? (voice.platforms as unknown[]).filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
++    : []
++  const platformLabel = platforms.length > 0 ? platforms.join(' · ') : 'Multi-platform'
++  const audience = voice.targetAudience?.trim() || 'General audience'
++  const { label: updatedLabel, sortTime } = formatUpdatedLabel(voice.created)
++  const status: BrandVoice['status'] = voice.isDefault
++    ? 'Live'
++    : voice.isShared
++      ? 'Exploring'
++      : 'Draft'
++
++  return {
++    voice: {
++      id: voice.id,
++      name: displayName,
++      status,
++      persona,
++      summary,
++      platform: platformLabel,
++      audience,
++      lastUpdated: updatedLabel,
++      pillars: derivePillarsFromVoice(voice)
++    },
++    sortTime
++  }
++}
+diff --git a/src/features/brandhub/utils/time.ts b/src/features/brandhub/utils/time.ts
+new file mode 100644
+index 00000000..514a3491
+--- /dev/null
++++ b/src/features/brandhub/utils/time.ts
+@@ -0,0 +1,7 @@
++export const formatTime = (seconds: number) => {
++  const mins = Math.floor(seconds / 60)
++    .toString()
++    .padStart(2, '0')
++  const secs = (seconds % 60).toString().padStart(2, '0')
++  return `${mins}:${secs}`
++}
+diff --git a/src/hooks/use-script-generation.ts b/src/hooks/use-script-generation.ts
+index 9122d706..00ddc893 100644
+--- a/src/hooks/use-script-generation.ts
++++ b/src/hooks/use-script-generation.ts
+@@ -32,8 +32,12 @@ function nextIndex(key: string, length: number): number {
+   } catch { return 0; }
+ }
+ 
+-async function fetchVoiceTemplates(creatorId: string): Promise<{ templates: VoiceTemplates; style: VoiceStyle }> {
+-  const res = await fetch(`/api/brand-voices/templates?creatorId=${encodeURIComponent(creatorId)}`);
++async function fetchVoiceTemplates(brandVoiceId: string): Promise<{ templates: VoiceTemplates; style: VoiceStyle }> {
++  const params = new URLSearchParams({
++    creatorId: brandVoiceId,
++    brandVoiceId,
++  });
++  const res = await fetch(`/api/brand-voices/templates?${params.toString()}`);
+   const data = await res.json().catch(() => ({}));
+   if (!res.ok || !data?.success) return { templates: { hooks: [], bridges: [], ctas: [], nuggets: [] }, style: null };
+   return { templates: data.templates as VoiceTemplates, style: (data.styleSignature as VoiceStyle) ?? null };
+@@ -57,23 +61,23 @@ export function useScriptGeneration() {
+   const [error, setError] = useState<string | null>(null);
+ 
+   const generateScript = useCallback(
+-    async (idea: string, length: "15" | "20" | "30" | "45" | "60" | "90" = "60", persona?: any) => {
+-      console.log("🚀 [useScriptGeneration] Starting script generation:", { idea, length, persona });
++    async (idea: string, length: "15" | "20" | "30" | "45" | "60" | "90" = "60", brandVoiceId?: any) => {
++      console.log("🚀 [useScriptGeneration] Starting script generation:", { idea, length, brandVoiceId });
+       setIsLoading(true);
+       setError(null);
+       
+       try {
+         console.log("🤖 [useScriptGeneration] Using server API for Gemini generation");
+         
+-        // If a brand voice (persona id) is provided, fetch templates + choose next templates in rotation
++        // If a brand voice is provided, fetch templates + choose next templates in rotation
+         let voiceBlock = '';
+-        if (persona && typeof persona === 'string') {
+-          const { templates, style } = await fetchVoiceTemplates(persona);
++        if (brandVoiceId && typeof brandVoiceId === 'string') {
++          const { templates, style } = await fetchVoiceTemplates(brandVoiceId);
+ 
+-          const hookIdx = nextIndex(`genC.templateIndex.${persona}.hook`, templates.hooks.length);
+-          const bridgeIdx = nextIndex(`genC.templateIndex.${persona}.bridge`, templates.bridges.length);
+-          const ctaIdx = nextIndex(`genC.templateIndex.${persona}.cta`, templates.ctas.length);
+-          const nuggetIdx = nextIndex(`genC.templateIndex.${persona}.nugget`, templates.nuggets.length);
++          const hookIdx = nextIndex(`genC.templateIndex.${brandVoiceId}.hook`, templates.hooks.length);
++          const bridgeIdx = nextIndex(`genC.templateIndex.${brandVoiceId}.bridge`, templates.bridges.length);
++          const ctaIdx = nextIndex(`genC.templateIndex.${brandVoiceId}.cta`, templates.ctas.length);
++          const nuggetIdx = nextIndex(`genC.templateIndex.${brandVoiceId}.nugget`, templates.nuggets.length);
+ 
+           const hook = templates.hooks[hookIdx]?.pattern;
+           const bridge = templates.bridges[bridgeIdx]?.pattern;
+diff --git a/src/pages/Write.tsx b/src/pages/Write.tsx
+index a8e50a03..5b3cb506 100644
+--- a/src/pages/Write.tsx
++++ b/src/pages/Write.tsx
+@@ -6,7 +6,7 @@ import { ScriptGenerator } from '../components/script/ScriptGenerator';
+ import { ScriptEditor } from '../components/script/ScriptEditor';
+ import { Button } from '../components/ui/Button';
+ import { useScriptGeneration } from '../hooks/use-script-generation';
+-import type { AIGenerationRequest, AIGenerationResponse, Script, BrandPersona } from '../types';
++import type { AIGenerationRequest, AIGenerationResponse, Script, BrandVoice } from '../types';
+ import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME, resolveDefaultBrandVoiceId } from '../constants/brand-voices';
+ import { onAuthStateChanged } from 'firebase/auth';
+ import { auth } from '../config/firebase';
+@@ -127,8 +127,8 @@ export const Write: React.FC = () => {
+   const { generateScript, isLoading, error } = useScriptGeneration();
+   const [view, setView] = useState<'generate' | 'edit'>('generate');
+   const [generatedScript, setGeneratedScript] = useState<Script | null>(null);
+-  const [personas, setPersonas] = useState<BrandPersona[]>([]);
+-  const [defaultPersonaId, setDefaultPersonaId] = useState<string>(DEFAULT_BRAND_VOICE_ID);
++  const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([]);
++  const [defaultBrandVoiceId, setDefaultBrandVoiceId] = useState<string>(DEFAULT_BRAND_VOICE_ID);
+   const [generationState, setGenerationState] = useState<GenerationState>({
+     isGenerating: false,
+     progress: 0,
+@@ -145,19 +145,19 @@ export const Write: React.FC = () => {
+     }
+   ) => {
+     const { request, scriptContent, mappedLength, components, title } = params;
+-    const personaDetails = request.persona ? personas.find(p => p.id === request.persona) : undefined;
++    const brandVoiceDetails = request.brandVoiceId ? brandVoices.find(p => p.id === request.brandVoiceId) : undefined;
+ 
+     const payload = {
+       title,
+       content: scriptContent,
+       summary: scriptContent.slice(0, 200),
+       approach: 'speed-write' as const,
+-      voice: personaDetails
++      voice: brandVoiceDetails
+         ? {
+-            id: personaDetails.id,
+-            name: personaDetails.name,
+-            badges: Array.isArray(personaDetails.keywords)
+-              ? personaDetails.keywords.slice(0, 3)
++            id: brandVoiceDetails.id,
++            name: brandVoiceDetails.name,
++            badges: Array.isArray(brandVoiceDetails.keywords)
++              ? brandVoiceDetails.keywords.slice(0, 3)
+               : []
+           }
+         : undefined,
+@@ -266,7 +266,7 @@ export const Write: React.FC = () => {
+       console.error('❌ [Write] Persisting script failed', err);
+       return null;
+     }
+-  }, [personas]);
++  }, [brandVoices]);
+ 
+   const simulateGeneration = async (request: AIGenerationRequest): Promise<Script> => {
+     const stages = [
+@@ -355,7 +355,7 @@ ${request.prompt.toLowerCase().includes('skincare') ?
+       const result = await generateScript(
+         request.prompt,
+         mappedLength,
+-        request.persona
++        request.brandVoiceId
+       );
+ 
+       console.log("📋 [Write] Generate script result:", result);
+@@ -426,11 +426,12 @@ ${result.script.wta}`;
+         const res = await fetch('/api/brand-voices/list');
+         const data = await res.json().catch(() => null);
+         if (isMounted && res.ok && data?.success && Array.isArray(data.voices)) {
+-          // Map to BrandPersona
+-          const mapped: BrandPersona[] = data.voices.map((v: any) => {
++          // Map to BrandVoice
++          const mapped: BrandVoice[] = data.voices.map((v: any) => {
+             const isDefault = v.isDefault === true || v.id === DEFAULT_BRAND_VOICE_ID;
+             return {
+               id: v.id,
++              creatorId: v.creatorId,
+               name: isDefault ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
+               description: v.description || '',
+               tone: v.tone || 'Varied',
+@@ -440,10 +441,11 @@ ${result.script.wta}`;
+               platforms: v.platforms || ['tiktok'],
+               created: v.created ? new Date(v.created._seconds ? v.created._seconds * 1000 : v.created) : new Date(),
+               isDefault,
++              isShared: v.isShared ?? false,
+             };
+           });
+-          setPersonas(mapped);
+-          setDefaultPersonaId(resolveDefaultBrandVoiceId(mapped));
++          setBrandVoices(mapped);
++          setDefaultBrandVoiceId(resolveDefaultBrandVoiceId(mapped));
+         } else {
+           // Silent fallback
+         }
+@@ -519,8 +521,8 @@ ${result.script.wta}`;
+             <ScriptGenerator
+               onGenerate={handleGenerate}
+               isLoading={isLoading}
+-              personas={personas}
+-              defaultPersonaId={defaultPersonaId}
++              brandVoices={brandVoices}
++              defaultBrandVoiceId={defaultBrandVoiceId}
+             />
+             
+             <TrendingIdeas
+diff --git a/src/test/test-utils.tsx b/src/test/test-utils.tsx
+index 4e4a3e0a..dd580854 100644
+--- a/src/test/test-utils.tsx
++++ b/src/test/test-utils.tsx
+@@ -103,7 +103,12 @@ export const createMockScript = (overrides = {}) => ({
+   length: 'short' as const,
+   style: 'engaging' as const,
+   aiModel: 'gpt-4',
+-  persona: 'casual',
++  brandVoiceId: 'brand-voice-1',
++  voice: {
++    id: 'brand-voice-1',
++    name: 'Test Voice',
++    badges: ['engaging']
++  },
+   wordCount: 50,
+   estimatedDuration: 15,
+   insights: [],
+diff --git a/src/types/index.ts b/src/types/index.ts
+index e45b46e1..f998bec0 100644
+--- a/src/types/index.ts
++++ b/src/types/index.ts
+@@ -74,7 +74,12 @@ export interface Script {
+   length: 'short' | 'medium' | 'long'; // 15s, 30s, 60s+
+   style: 'engaging' | 'educational' | 'promotional' | 'storytelling';
+   aiModel?: string;
+-  persona?: string;
++  brandVoiceId?: string;
++  voice?: {
++    id: string;
++    name: string;
++    badges?: string[];
++  };
+   wordCount: number;
+   estimatedDuration: number;
+   insights: ScriptInsight[];
+@@ -95,7 +100,7 @@ export interface AIGenerationRequest {
+   length: 'short' | 'medium' | 'long';
+   style: 'engaging' | 'educational' | 'promotional' | 'storytelling' | string;
+   platform: Platform;
+-  persona?: string;
++  brandVoiceId?: string;
+   additionalSettings?: Record<string, any>;
+ }
+ 
+@@ -108,8 +113,9 @@ export interface AIGenerationResponse {
+   error?: string;
+ }
+ 
+-export interface BrandPersona {
++export interface BrandVoice {
+   id: string;
++  creatorId?: string;
+   name: string;
+   description: string;
+   tone: string;
+@@ -120,13 +126,14 @@ export interface BrandPersona {
+   examples?: string[];
+   created: Date;
+   isDefault?: boolean;
++  isShared?: boolean;
+ }
+ 
+ export interface Activity {
+   id: string;
+   type: 'created' | 'updated' | 'deleted' | 'generated' | 'imported';
+   description: string;
+-  entityType: ContentType | 'collection' | 'persona';
++  entityType: ContentType | 'collection' | 'brand-voice';
+   entityId: string;
+   timestamp: Date;
+   user: User;
+@@ -233,7 +240,7 @@ export interface AppState {
+   scripts: Script[];
+   contentLibrary: ContentItem[];
+   activities: Activity[];
+-  brandPersonas: BrandPersona[];
++  brandVoices: BrandVoice[];
+   loading: LoadingState;
+   errors: ErrorState;
+ }

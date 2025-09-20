@@ -16,7 +16,7 @@ import ShuffleIcon from '@atlaskit/icon/glyph/app-switcher';
 import TimerIcon from '@atlaskit/icon/glyph/stopwatch';
 import { Button } from './Button';
 import { ShinyButton } from '@/components/ui/ShinyButton';
-import type { BrandPersona } from '@/types';
+import type { BrandVoice } from '@/types';
 import { DEFAULT_BRAND_VOICE_NAME } from '@/constants/brand-voices';
 
 export interface FloatingToolbarProps {
@@ -39,7 +39,7 @@ export interface FloatingToolbarProps {
   /** Callback for share action (removed from toolbar) */
   onShare?: () => void;
   /** Available brand voices to choose from */
-  brandVoices?: BrandPersona[];
+  brandVoices?: BrandVoice[];
   /** Currently selected brand voice id */
   selectedBrandVoiceId?: string;
   /** Change handler for brand voice selection */
@@ -491,7 +491,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                         color: token('color.text.subtle'),
                         marginBottom: token('space.050')
                       }}>
-                        Select persona
+                        Select brand voice
                       </label>
                       <select
                         id="brand-voice-select"
@@ -515,7 +515,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     </div>
                   ) : (
                     <div style={{ padding: `${token('space.100')}` }}>
-                      <div className="button-description">No personas found. Create a brand voice to use here.</div>
+                      <div className="button-description">No brand voices found. Create one to use here.</div>
                     </div>
                   )}
                 </>

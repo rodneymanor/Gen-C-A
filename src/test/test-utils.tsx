@@ -103,7 +103,12 @@ export const createMockScript = (overrides = {}) => ({
   length: 'short' as const,
   style: 'engaging' as const,
   aiModel: 'gpt-4',
-  persona: 'casual',
+  brandVoiceId: 'brand-voice-1',
+  voice: {
+    id: 'brand-voice-1',
+    name: 'Test Voice',
+    badges: ['engaging']
+  },
   wordCount: 50,
   estimatedDuration: 15,
   insights: [],

@@ -3,14 +3,14 @@ import { css } from '@emotion/react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { TextArea } from '../ui/TextArea';
-import type { AIGenerationRequest, BrandPersona } from '../../types';
+import type { AIGenerationRequest, BrandVoice } from '../../types';
 import { DEFAULT_BRAND_VOICE_ID } from '../../constants/brand-voices';
 
 export interface ScriptGeneratorProps {
   onGenerate?: (request: AIGenerationRequest) => void;
   isLoading?: boolean;
-  personas?: BrandPersona[];
-  defaultPersonaId?: string;
+  brandVoices?: BrandVoice[];
+  defaultBrandVoiceId?: string;
 }
 
 const generatorStyles = css`
@@ -136,7 +136,7 @@ const brandVoiceSectionStyles = css`
     }
   }
   
-  .persona-preview {
+  .brand-voice-preview {
     margin-top: var(--space-3);
     padding: var(--space-3);
     background: var(--color-primary-50);
@@ -196,8 +196,8 @@ const promptSuggestions = [
 export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   onGenerate,
   isLoading = false,
-  personas = [],
-  defaultPersonaId = DEFAULT_BRAND_VOICE_ID
+  brandVoices = [],
+  defaultBrandVoiceId = DEFAULT_BRAND_VOICE_ID
 }) => {
   const [formData, setFormData] = useState({
     prompt: '',
@@ -205,18 +205,33 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
     // Keep defaults for request payload, but no UI controls
     style: 'engaging',
     platform: 'tiktok' as const,
-    persona: ''
+    brandVoiceId: '',
+    brandVoiceCreatorId: ''
   });
 
   React.useEffect(() => {
-    if (formData.persona) return;
-    if (!defaultPersonaId) return;
-    const found = personas.find(p => p.id === defaultPersonaId);
+    if (formData.brandVoiceId) return;
+    if (!defaultBrandVoiceId) return;
+    const found = brandVoices.find(p => p.id === defaultBrandVoiceId);
     if (!found) return;
-    setFormData(prev => ({ ...prev, persona: defaultPersonaId }));
-  }, [defaultPersonaId, personas, formData.persona]);
+    setFormData(prev => ({
+      ...prev,
+      brandVoiceId: defaultBrandVoiceId,
+      brandVoiceCreatorId: found.creatorId || ''
+    }));
+  }, [defaultBrandVoiceId, brandVoices, formData.brandVoiceId]);
 
   const handleInputChange = (field: string, value: any) => {
+    if (field === 'brandVoiceId') {
+      const selectedVoice = brandVoices.find(voice => voice.id === value);
+      setFormData(prev => ({
+        ...prev,
+        brandVoiceId: value,
+        brandVoiceCreatorId: selectedVoice?.creatorId || ''
+      }));
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -239,7 +254,8 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
       length: formData.length as 'short' | 'medium' | 'long',
       style: formData.style,
       platform: formData.platform,
-      persona: formData.persona || undefined,
+      brandVoiceId: formData.brandVoiceId || undefined,
+      brandVoiceCreatorId: formData.brandVoiceCreatorId || undefined,
       additionalSettings: {}
     };
     
@@ -248,7 +264,7 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
     console.log("✅ [ScriptGenerator] onGenerate call completed");
   };
 
-  const selectedPersona = personas.find(p => p.id === formData.persona);
+  const selectedBrandVoice = brandVoices.find(p => p.id === formData.brandVoiceId);
 
   return (
     <Card appearance="elevated" spacing="comfortable" css={generatorStyles}>
@@ -357,21 +373,21 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
               <span className="brand-icon" aria-hidden="true">👥</span>
               <h3>Brand Voice</h3>
             </div>
-            
+
             <div>
-              <label htmlFor="persona" style={{ 
-                display: 'block', 
-                marginBottom: 'var(--space-2)', 
-                fontSize: 'var(--font-size-body-small)', 
+              <label htmlFor="brand-voice" style={{
+                display: 'block',
+                marginBottom: 'var(--space-2)',
+                fontSize: 'var(--font-size-body-small)',
                 fontWeight: 'var(--font-weight-medium)',
                 color: 'var(--color-neutral-700)'
               }}>
-                Persona
+                Voice profile
               </label>
               <select
-                id="persona"
-                value={formData.persona}
-                onChange={(e) => handleInputChange('persona', e.target.value)}
+                id="brand-voice"
+                value={formData.brandVoiceId}
+                onChange={(e) => handleInputChange('brandVoiceId', e.target.value)}
                 style={{
                   width: '100%',
                   padding: 'var(--space-3) var(--space-4)',
@@ -382,29 +398,29 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
                   minHeight: '40px'
                 }}
               >
-                <option value="">Select persona (optional)</option>
-                {personas.map(persona => (
-                  <option key={persona.id} value={persona.id}>
-                    {persona.name}
+                <option value="">Select brand voice (optional)</option>
+                {brandVoices.map(voice => (
+                  <option key={voice.id} value={voice.id}>
+                    {voice.name}
                   </option>
                 ))}
               </select>
             </div>
 
-            {selectedPersona && (
-              <div className="persona-preview">
+            {selectedBrandVoice && (
+              <div className="brand-voice-preview">
                 <p className="preview-text">
                   <span className="preview-icon" aria-hidden="true">✨</span>
-                  This will create content that matches your "{selectedPersona.name}" brand personality
+                  This will create content that matches your "{selectedBrandVoice.name}" brand voice
                 </p>
               </div>
             )}
 
-            {!selectedPersona && (
-              <div className="persona-preview">
+            {!selectedBrandVoice && (
+              <div className="brand-voice-preview">
                 <p className="preview-text">
                   <span className="preview-icon" aria-hidden="true">🎯</span>
-                  Select a persona to match your brand voice, or we'll use a generic style
+                  Select a brand voice to guide the script, or we'll use the default style
                 </p>
               </div>
             )}

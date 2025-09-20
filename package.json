@@ -42,6 +42,7 @@
     "sub-agent:watch": "npm run sub-agent watch",
     "sub-agent:validate": "npm run sub-agent validate",
     "sub-agent:status": "npm run sub-agent status",
+    "migrate:brand-voices": "node ./scripts/migrate-brand-voices.js",
     "format": "prettier \"**/*.{js,jsx,ts,tsx,css,md,json}\" --write",
     "format:check": "prettier \"**/*.{js,jsx,ts,tsx,css,md,json}\" --check",
     "storybook": "storybook dev -p 6006",

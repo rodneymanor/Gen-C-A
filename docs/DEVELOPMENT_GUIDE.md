@@ -847,11 +847,11 @@ This project supports marking a brand voice as globally shared and default acros
 - API endpoints and behavior
   - POST /api/brand-voices/update-meta
     - Secured via x-internal-secret header (INTERNAL_API_SECRET).
-    - Body: { creatorId, displayName?: string, isShared?: boolean, isDefault?: boolean }.
-    - Firestore: stores overrides in brandVoiceMeta/{creatorId}; if isDefault: true, unsets previous defaults.
-    - Offline: persists to data/brand-voice-meta.json and ensures only one default.
+    - Body: { creatorId, brandVoiceId, displayName?, isShared?, isDefault?, templates?, styleSignature? }.
+    - Firestore: patches brandVoiceLibrary/{creatorId}/brandVoices/{voiceId}; if isDefault: true, the handler clears the flag on sibling voices.
+    - Offline: skips when Firestore is unavailable.
   - GET /api/brand-voices/list
-    - Applies overrides, returns isShared and isDefault; sorts default first.
+    - Reads from the collection group brandVoiceLibrary/*/brandVoices; sorts default voices first.
 
 Notes
 - Overrides only change the presented name and flags; the underlying creator doc (id/handle) stays intact.

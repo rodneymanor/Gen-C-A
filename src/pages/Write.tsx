@@ -6,7 +6,7 @@ import { ScriptGenerator } from '../components/script/ScriptGenerator';
 import { ScriptEditor } from '../components/script/ScriptEditor';
 import { Button } from '../components/ui/Button';
 import { useScriptGeneration } from '../hooks/use-script-generation';
-import type { AIGenerationRequest, AIGenerationResponse, Script, BrandPersona } from '../types';
+import type { AIGenerationRequest, AIGenerationResponse, Script, BrandVoice } from '../types';
 import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME, resolveDefaultBrandVoiceId } from '../constants/brand-voices';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -127,8 +127,8 @@ export const Write: React.FC = () => {
   const { generateScript, isLoading, error } = useScriptGeneration();
   const [view, setView] = useState<'generate' | 'edit'>('generate');
   const [generatedScript, setGeneratedScript] = useState<Script | null>(null);
-  const [personas, setPersonas] = useState<BrandPersona[]>([]);
-  const [defaultPersonaId, setDefaultPersonaId] = useState<string>(DEFAULT_BRAND_VOICE_ID);
+  const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([]);
+  const [defaultBrandVoiceId, setDefaultBrandVoiceId] = useState<string>(DEFAULT_BRAND_VOICE_ID);
   const [generationState, setGenerationState] = useState<GenerationState>({
     isGenerating: false,
     progress: 0,
@@ -145,19 +145,19 @@ export const Write: React.FC = () => {
     }
   ) => {
     const { request, scriptContent, mappedLength, components, title } = params;
-    const personaDetails = request.persona ? personas.find(p => p.id === request.persona) : undefined;
+    const brandVoiceDetails = request.brandVoiceId ? brandVoices.find(p => p.id === request.brandVoiceId) : undefined;
 
     const payload = {
       title,
       content: scriptContent,
       summary: scriptContent.slice(0, 200),
       approach: 'speed-write' as const,
-      voice: personaDetails
+      voice: brandVoiceDetails
         ? {
-            id: personaDetails.id,
-            name: personaDetails.name,
-            badges: Array.isArray(personaDetails.keywords)
-              ? personaDetails.keywords.slice(0, 3)
+            id: brandVoiceDetails.id,
+            name: brandVoiceDetails.name,
+            badges: Array.isArray(brandVoiceDetails.keywords)
+              ? brandVoiceDetails.keywords.slice(0, 3)
               : []
           }
         : undefined,
@@ -266,7 +266,7 @@ export const Write: React.FC = () => {
       console.error('❌ [Write] Persisting script failed', err);
       return null;
     }
-  }, [personas]);
+  }, [brandVoices]);
 
   const simulateGeneration = async (request: AIGenerationRequest): Promise<Script> => {
     const stages = [
@@ -352,11 +352,12 @@ ${request.prompt.toLowerCase().includes('skincare') ?
       console.log("📏 [Write] Length mapping:", { original: request.length, mapped: mappedLength });
       
       console.log("🔄 [Write] Calling generateScript...");
-      const result = await generateScript(
-        request.prompt,
-        mappedLength,
-        request.persona
-      );
+      const result = await generateScript({
+        idea: request.prompt,
+        length: mappedLength,
+        brandVoiceId: request.brandVoiceId,
+        brandVoiceCreatorId: request.brandVoiceCreatorId
+      });
 
       console.log("📋 [Write] Generate script result:", result);
 
@@ -426,11 +427,12 @@ ${result.script.wta}`;
         const res = await fetch('/api/brand-voices/list');
         const data = await res.json().catch(() => null);
         if (isMounted && res.ok && data?.success && Array.isArray(data.voices)) {
-          // Map to BrandPersona
-          const mapped: BrandPersona[] = data.voices.map((v: any) => {
+          // Map to BrandVoice
+          const mapped: BrandVoice[] = data.voices.map((v: any) => {
             const isDefault = v.isDefault === true || v.id === DEFAULT_BRAND_VOICE_ID;
             return {
               id: v.id,
+              creatorId: v.creatorId,
               name: isDefault ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
               description: v.description || '',
               tone: v.tone || 'Varied',
@@ -440,10 +442,11 @@ ${result.script.wta}`;
               platforms: v.platforms || ['tiktok'],
               created: v.created ? new Date(v.created._seconds ? v.created._seconds * 1000 : v.created) : new Date(),
               isDefault,
+              isShared: v.isShared ?? false,
             };
           });
-          setPersonas(mapped);
-          setDefaultPersonaId(resolveDefaultBrandVoiceId(mapped));
+          setBrandVoices(mapped);
+          setDefaultBrandVoiceId(resolveDefaultBrandVoiceId(mapped));
         } else {
           // Silent fallback
         }
@@ -519,8 +522,8 @@ ${result.script.wta}`;
             <ScriptGenerator
               onGenerate={handleGenerate}
               isLoading={isLoading}
-              personas={personas}
-              defaultPersonaId={defaultPersonaId}
+              brandVoices={brandVoices}
+              defaultBrandVoiceId={defaultBrandVoiceId}
             />
             
             <TrendingIdeas
