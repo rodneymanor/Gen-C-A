@@ -99,6 +99,7 @@ async function setupRoutes() {
     // Import other API route handlers
     const { handleTikTokUserFeed } = await import('./src/api-routes/videos/tiktok-user-feed.js');
     const { handleVideoTranscribe } = await import('./src/api-routes/videos/transcribe.js');
+    const { handleVideoScrape } = await import('./src/api-routes/videos/scrape-url.js');
     const { handleVideoWorkflow } = await import('./src/api-routes/videos/orchestrate.js');
     const { handleVoiceAnalyzePatterns } = await import('./src/api-routes/voice.js');
     const { handleSaveCreatorAnalysis } = await import('./src/api-routes/creator-analysis.js');
@@ -133,6 +134,7 @@ async function setupRoutes() {
     app.post('/api/tiktok/user-feed', handleTikTokUserFeed);
 
     app.post('/api/video/transcribe-from-url', handleVideoTranscribe);
+    app.post('/api/video/scrape-url', handleVideoScrape);
     app.post('/api/video/orchestrate', handleVideoWorkflow);
 
     app.post('/api/voice/analyze-patterns', handleVoiceAnalyzePatterns);

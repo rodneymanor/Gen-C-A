@@ -606,7 +606,7 @@ export const TikTokAnalysisTest: React.FC = () => {
   // Advanced controls for Step 3
   const [advOpen, setAdvOpen] = useState<boolean>(false);
   const [analysisModel, setAnalysisModel] = useState<string>('gemini-1.5-flash');
-  const [analysisMaxTokens, setAnalysisMaxTokens] = useState<number>(6000);
+  const [analysisMaxTokens, setAnalysisMaxTokens] = useState<number>(8000);
   const [analysisTemperature, setAnalysisTemperature] = useState<number>(0.2);
 
   // Step states
@@ -1037,7 +1037,7 @@ export const TikTokAnalysisTest: React.FC = () => {
     try {
       console.log('🚀 Step 3: Analyzing voice patterns (batched merge)...');
       const allTranscripts: string[] = step2.data.transcripts.slice(0, VIDEO_LIMIT);
-      const BATCH_SIZE = 10; // keep within model token limits
+      const BATCH_SIZE = 5; // Reduced from 10 to prevent timeouts and parsing issues
 
       const chunk = (arr: any[], size: number) => {
         const out: any[][] = [];
@@ -1129,7 +1129,9 @@ OUTPUT FORMAT:
         return composedPrompt;
       };
 
-      const analyzeBatch = async (batchTranscripts: string[]) => {
+      const analyzeBatch = async (batchTranscripts: string[], retryCount = 0): Promise<any> => {
+        const MAX_RETRIES = 2;
+        
         // Helper: robust JSON parse with fallback extraction
         const tryParseJson = (text: string): any | null => {
           if (!text) return null;
@@ -1152,34 +1154,78 @@ OUTPUT FORMAT:
           }
           return null;
         };
-        const composedPrompt = buildPrompt(batchTranscripts);
-        const response = await fetch('/api/voice/analyze-patterns', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: composedPrompt,
-            responseType: 'json',
-            temperature: analysisTemperature,
-            maxTokens: analysisMaxTokens,
-            model: analysisModel,
-            systemPrompt: 'You are a strict JSON generator. Return ONLY valid JSON matching the schema. No markdown, no commentary, no code fences.'
-          })
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || `API returned ${response.status}`);
-        const parsed = tryParseJson(result?.content || '');
-        if (!parsed) {
-          console.warn('Failed to parse JSON content for batch');
+        
+        try {
+          const composedPrompt = buildPrompt(batchTranscripts);
+          console.log(`📊 Batch prompt length: ${Math.round(composedPrompt.length / 1000)}k chars`);
+          
+          const response = await fetch('/api/voice/analyze-patterns', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: composedPrompt,
+              responseType: 'json',
+              temperature: analysisTemperature,
+              maxTokens: analysisMaxTokens,
+              model: analysisModel,
+              systemPrompt: 'You are a strict JSON generator. Return ONLY valid JSON matching the schema. No markdown, no commentary, no code fences.'
+            })
+          });
+          
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || `API returned ${response.status}`);
+          }
+          
+          const parsed = tryParseJson(result?.content || '');
+          if (!parsed) {
+            console.warn(`Failed to parse JSON content for batch (attempt ${retryCount + 1})`);
+            console.log('Response length:', result.content?.length);
+            console.log('Response preview:', result.content?.substring(0, 200));
+            
+            // Retry with simpler approach if parsing fails
+            if (retryCount < MAX_RETRIES) {
+              console.log(`🔄 Retrying batch analysis (attempt ${retryCount + 2}/${MAX_RETRIES + 1})`);
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+              return analyzeBatch(batchTranscripts, retryCount + 1);
+            }
+            
+            throw new Error(`Failed to parse JSON content after ${MAX_RETRIES + 1} attempts. The response might be malformed or truncated.`);
+          }
+          
+          return parsed;
+          
+        } catch (error) {
+          console.error(`Batch analysis error (attempt ${retryCount + 1}):`, error);
+          
+          // Retry on network errors or timeouts
+          if (retryCount < MAX_RETRIES && 
+              (error instanceof TypeError || // Network errors
+               (error instanceof Error && error.message.includes('timeout')) ||
+               (error instanceof Error && error.message.includes('503')) ||
+               (error instanceof Error && error.message.includes('502')))) {
+            console.log(`🔄 Retrying batch analysis due to network error (attempt ${retryCount + 2}/${MAX_RETRIES + 1})`);
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+            return analyzeBatch(batchTranscripts, retryCount + 1);
+          }
+          
+          throw error;
         }
-        return parsed;
       };
 
       const batchResults: any[] = [];
       for (let b = 0; b < batches.length; b++) {
         console.log(`🧩 Analyzing batch ${b + 1}/${batches.length} (${batches[b].length} transcripts)`);
-        const r = await analyzeBatch(batches[b]);
-        if (!r) throw new Error('Empty analysis result for a batch');
-        batchResults.push(r);
+        
+        try {
+          const r = await analyzeBatch(batches[b]);
+          if (!r) throw new Error('Empty analysis result for a batch');
+          batchResults.push(r);
+          console.log(`✅ Batch ${b + 1}/${batches.length} completed successfully`);
+        } catch (error) {
+          console.error(`❌ Batch ${b + 1}/${batches.length} failed:`, error);
+          throw new Error(`Batch ${b + 1} analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}. Try reducing the batch size or check your network connection.`);
+        }
       }
 
       const combined: any = {

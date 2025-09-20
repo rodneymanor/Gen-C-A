@@ -54,7 +54,7 @@ async function migrateBrandVoices() {
 
       const now = new Date();
 
-      await voiceRef.set({
+      const voicePayload = {
         creatorId,
         brandVoiceId,
         creatorHandle,
@@ -80,7 +80,15 @@ async function migrateBrandVoices() {
         isShared: voiceData.isShared === true || existing.isShared === true,
         createdAt: existing.createdAt || voiceData.createdAt || creatorData.analysisDate || now,
         updatedAt: now,
-      }, { merge: true });
+      };
+
+      Object.keys(voicePayload).forEach((key) => {
+        if (voicePayload[key] === undefined) {
+          delete voicePayload[key];
+        }
+      });
+
+      await voiceRef.set(voicePayload, { merge: true });
 
       const analysesRef = getAnalysesCollectionRef(db, creatorId, brandVoiceId);
       const legacyAnalysisId = voiceData.latestAnalysisId || `legacy-${voiceDoc.id}`;
@@ -96,6 +104,10 @@ async function migrateBrandVoices() {
         source: 'legacy-migration',
       });
 
+      Object.keys(legacyRecord).forEach((key) => {
+        if (legacyRecord[key] === undefined) delete legacyRecord[key];
+      });
+
       await analysesRef.doc(legacyAnalysisId).set(legacyRecord, { merge: true });
 
       migratedVoices += 1;
@@ -109,4 +121,3 @@ migrateBrandVoices().catch((error) => {
   console.error('[migration] Failed to migrate brand voices:', error);
   process.exit(1);
 });
-

@@ -79,8 +79,16 @@ export function mergeTemplates(existingTemplates = {}, incomingTemplates = {}, s
       if (!item || typeof item.pattern !== 'string') continue;
       const normalized = item.pattern.trim().toLowerCase();
       if (normalized.length === 0) continue;
+      const cleaned = {
+        pattern: item.pattern.trim(),
+        variables: Array.isArray(item.variables)
+          ? Array.from(new Set(item.variables.filter((value) => typeof value === 'string' && value.trim().length > 0))).map((value) => value.trim())
+          : [],
+        structure: typeof item.structure === 'string' && item.structure.trim().length > 0 ? item.structure.trim() : undefined,
+      };
+      if (item.lastSeenIn) cleaned.lastSeenIn = item.lastSeenIn;
       seen.add(normalized);
-      items.push({ ...item });
+      items.push(cleaned);
     }
 
     for (const item of incoming) {
@@ -89,15 +97,23 @@ export function mergeTemplates(existingTemplates = {}, incomingTemplates = {}, s
       if (normalized.length === 0 || seen.has(normalized)) continue;
       const entry = {
         pattern: item.pattern.trim(),
-        variables: Array.isArray(item.variables) ? Array.from(new Set(item.variables.filter(Boolean))) : [],
-        structure: item.structure,
+        variables: Array.isArray(item.variables)
+          ? Array.from(new Set(item.variables.filter((value) => typeof value === 'string' && value.trim().length > 0))).map((value) => value.trim())
+          : [],
+        structure: typeof item.structure === 'string' && item.structure.trim().length > 0 ? item.structure.trim() : undefined,
       };
       if (sourceId) entry.lastSeenIn = sourceId;
       items.push(entry);
       seen.add(normalized);
     }
 
-    merged[key] = items;
+    merged[key] = items.map((item) => {
+      const copy = { ...item };
+      Object.keys(copy).forEach((field) => {
+        if (copy[field] === undefined) delete copy[field];
+      });
+      return copy;
+    });
   }
 
   return merged;
@@ -138,7 +154,14 @@ export function mergeTranscriptCollections(existingTranscripts = [], incomingTra
     }
   }
 
-  return Array.from(mergedMap.values());
+  return Array.from(mergedMap.values()).map((item) => {
+    if (!item || typeof item !== 'object') return item;
+    const copy = { ...item };
+    Object.keys(copy).forEach((key) => {
+      if (copy[key] === undefined) delete copy[key];
+    });
+    return copy;
+  });
 }
 
 export function mergeVideoMeta(existingMeta = [], incomingMeta = []) {
@@ -162,7 +185,14 @@ export function mergeVideoMeta(existingMeta = [], incomingMeta = []) {
     }
   }
 
-  return Array.from(mergedMap.values());
+  return Array.from(mergedMap.values()).map((item) => {
+    if (!item || typeof item !== 'object') return item;
+    const copy = { ...item };
+    Object.keys(copy).forEach((key) => {
+      if (copy[key] === undefined) delete copy[key];
+    });
+    return copy;
+  });
 }
 
 export function mergeStyleSignature(existingSignature = {}, incomingSignature = {}) {
@@ -207,4 +237,3 @@ export function buildAnalysisRecord(analysisId, payload) {
     source: payload?.source || 'analysis-service',
   };
 }
-

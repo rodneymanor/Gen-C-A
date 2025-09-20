@@ -29,6 +29,7 @@ import { handleInstagramUserId } from './src/api-routes/videos/instagram-user-id
 // Import converted TikTok routes
 import { handleTikTokUserFeed } from './src/api-routes/videos/tiktok-user-feed.js';
 import { handleVideoTranscribe } from './src/api-routes/videos/transcribe.js';
+import { handleVideoScrape } from './src/api-routes/videos/scrape-url.js';
 import { handleVoiceAnalyzePatterns } from './src/api-routes/voice.js';
 import { handleSaveCreatorAnalysis } from './src/api-routes/creator-analysis.js';
 import { handleListAnalyzedVideoIds } from './src/api-routes/creator-lookup.js';
@@ -72,6 +73,7 @@ app.get('/api/health', handleHealthCheck);
 // TikTok API Routes
 app.post('/api/tiktok/user-feed', handleTikTokUserFeed);
 app.post('/api/video/transcribe-from-url', handleVideoTranscribe);
+app.post('/api/video/scrape-url', handleVideoScrape);
 
 // Voice analysis route
 app.post('/api/voice/analyze-patterns', handleVoiceAnalyzePatterns);
