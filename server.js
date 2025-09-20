@@ -7,10 +7,21 @@
  * It imports and executes the Next.js-style API routes.
  */
 
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname } from 'path';
+
+const envCandidates = ['.env.local', '.env'];
+for (const candidate of envCandidates) {
+  const envPath = path.resolve(process.cwd(), candidate);
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

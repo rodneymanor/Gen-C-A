@@ -894,8 +894,6 @@ export const TikTokAnalysisTest: React.FC = () => {
         return null;
       };
 
-      const preferAudioOnly = false;
-
       const worker = async (workerId: number) => {
         while (nextIndex < videos.length) {
           const i = nextIndex;
@@ -919,51 +917,15 @@ export const TikTokAnalysisTest: React.FC = () => {
             continue;
           }
 
-          console.log(
-            `🎬 [W${workerId}] ${scrapeSourceUrl ? 'Scraping +' : ''} transcribing video ${i + 1}/${videos.length}: ${video.id}`
-          );
+          console.log(`🎬 [W${workerId}] Transcribing video ${i + 1}/${videos.length}: ${video.id}`);
 
           try {
-            let transcriptionUrl: string | null = fallbackTranscriptionUrl;
-            let scrapedMeta: Partial<TranscribedVideoMeta> = {};
-
-            if (scrapeSourceUrl) {
-              try {
-                const scrapeResponse = await fetch('/api/video/scrape-url', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ url: scrapeSourceUrl, options: { preferAudioOnly } })
-                });
-
-                const scrapeText = await scrapeResponse.text();
-                let scrapeJson: any = null;
-                if (scrapeText && scrapeText.trim().length) {
-                  try {
-                    scrapeJson = JSON.parse(scrapeText);
-                  } catch (jsonError) {
-                    console.warn(`⚠️ [W${workerId}] Failed to parse scrape response for ${video.id}:`, jsonError);
-                  }
-                }
-
-                const scrapedResult = scrapeJson?.result;
-
-                if (scrapeResponse.ok && scrapeJson?.success && scrapedResult?.downloadUrl) {
-                  transcriptionUrl = scrapedResult.audioUrl || scrapedResult.downloadUrl || transcriptionUrl;
-                  scrapedMeta = {
-                    url: transcriptionUrl ?? undefined,
-                    title: scrapedResult?.title ?? scrapedResult?.description,
-                    sourceUrl: scrapeSourceUrl,
-                    platform: scrapedResult?.platform as PlatformType | undefined,
-                    thumbnailUrl: scrapedResult?.thumbnailUrl ?? null,
-                  };
-                } else {
-                  const scrapeErrorMessage = scrapeJson?.error || scrapedResult?.error || scrapeResponse.statusText;
-                  console.warn(`⚠️ [W${workerId}] Video ${i + 1} scraping failed:`, scrapeErrorMessage);
-                }
-              } catch (scrapeErr) {
-                console.warn(`⚠️ [W${workerId}] Error scraping video ${i + 1}:`, scrapeErr);
-              }
-            }
+            const transcriptionUrl: string | null = fallbackTranscriptionUrl;
+            const scrapedMeta: Partial<TranscribedVideoMeta> = {
+              url: transcriptionUrl ?? undefined,
+              sourceUrl: typeof scrapeSourceUrl === 'string' ? scrapeSourceUrl : undefined,
+              platform: (video.platform as PlatformType | undefined) ?? undefined,
+            };
 
             if (!transcriptionUrl) {
               console.warn(`⚠️ [W${workerId}] No transcription URL available for video ${video.id}, skipping.`);

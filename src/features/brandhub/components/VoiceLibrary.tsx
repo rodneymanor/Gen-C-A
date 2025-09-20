@@ -112,6 +112,12 @@ const voiceCardStyles = css`
     color: var(--color-neutral-600);
     font-weight: var(--font-weight-medium);
   }
+
+  .voice-actions {
+    margin-top: auto;
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-3);
+  }
 `
 
 type VoiceLibraryProps = {
@@ -227,6 +233,7 @@ export const VoiceLibrary: React.FC<VoiceLibraryProps> = ({
                 <span>{voice.lastUpdated}</span>
               </div>
               <CardFooter
+                className="voice-actions"
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',

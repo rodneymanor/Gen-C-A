@@ -62,13 +62,16 @@ a:hover {
 }
 
 /* Focus styles */
-.focus-visible {
+:focus {
   outline: none;
 }
 
-.focus-visible:focus-visible {
-  box-shadow: var(--focus-ring);
-  outline: none;
+:focus-visible,
+.focus-visible:focus-visible,
+.force-focus-visible {
+  outline: var(--focus-ring-primary, 2px solid var(--color-primary-500));
+  outline-offset: var(--focus-visible-offset, 2px);
+  box-shadow: none;
 }
 
 /* Screen reader only content */

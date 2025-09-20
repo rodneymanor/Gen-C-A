@@ -76,9 +76,9 @@ const getInputStyles = (
   }
   
   &:focus {
-    outline: none;
-    border-color: var(--input-border-focus); /* Bloom Blue focus */
-    /* REMOVED: box-shadow for flat design - only border change */
+    outline: var(--focus-ring-primary, 2px solid var(--color-primary-500));
+    outline-offset: var(--focus-visible-offset, 2px);
+    border-color: var(--input-border-focus);
   }
   
   &:hover:not(:focus):not(:disabled) {
@@ -97,8 +97,9 @@ const getInputStyles = (
     background: var(--color-error-50);
     
     &:focus {
+      outline: var(--focus-ring-error-enhanced, 2px solid var(--color-error-400));
+      outline-offset: var(--focus-visible-offset, 2px);
       border-color: var(--color-error-400);
-      /* REMOVED: box-shadow for flat design - only border change */
     }
   `}
 `;

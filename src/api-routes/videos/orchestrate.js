@@ -60,19 +60,6 @@ function pickBestUrl(video) {
   return primary || null;
 }
 
-// Call the internal scraper endpoint as a fallback to obtain a usable media URL.
-async function scrapeDownloadUrl(baseUrl, targetUrl) {
-  if (!targetUrl) return null;
-  const scrapeEndpoint = `${baseUrl}/api/video/scrape-url`;
-  try {
-    const result = await postJson(scrapeEndpoint, { url: targetUrl });
-    return result?.result?.audioUrl || result?.result?.downloadUrl || null;
-  } catch (error) {
-    console.warn(`⚠️ Scrape endpoint failed for ${targetUrl}:`, error?.message || error);
-    return null;
-  }
-}
-
 export async function handleVideoWorkflow(req, res) {
   const requestId = Math.random().toString(36).slice(2, 8);
   const start = Date.now();
@@ -84,7 +71,6 @@ export async function handleVideoWorkflow(req, res) {
       fetchPayload = {},
       fetchLimit = 5,
       transcribeEndpoint = "/api/video/transcribe-from-url",
-      preferScraper = false,
       // New: Voice analysis configuration
       enableVoiceAnalysis = false,
       voiceAnalysisEndpoint = "/api/voice/analyze-patterns",
@@ -114,12 +100,7 @@ export async function handleVideoWorkflow(req, res) {
       const stepLabel = `${identifier} (${index + 1}/${limitedVideos.length})`;
       console.log(`🎯 [${requestId}] Preparing transcription for ${stepLabel}`);
 
-      let directUrl = pickBestUrl(video);
-
-      if (!directUrl && preferScraper) {
-        const canonicalUrl = video?.shareUrl || video?.permalink || video?.url;
-        directUrl = await scrapeDownloadUrl(baseUrl, canonicalUrl);
-      }
+      const directUrl = pickBestUrl(video);
 
       if (!directUrl) {
         console.warn(`⚠️ [${requestId}] No usable URL for ${stepLabel}, skipping.`);

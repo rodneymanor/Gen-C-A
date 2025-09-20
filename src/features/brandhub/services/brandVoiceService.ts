@@ -11,10 +11,22 @@ const parseVoicesPayload = (payload: unknown): BrandVoice[] => {
     return []
   }
 
+  const seenIds = new Set<string>()
+
   return payload
     .map((voice) => mapApiBrandVoice(voice))
     .sort((a, b) => b.sortTime - a.sortTime)
-    .map(({ voice }) => voice)
+    .reduce<BrandVoice[]>((acc, { voice }) => {
+      const key = typeof voice.id === 'string' && voice.id.length > 0 ? voice.id : null
+      if (key) {
+        if (seenIds.has(key)) {
+          return acc
+        }
+        seenIds.add(key)
+      }
+      acc.push(voice)
+      return acc
+    }, [])
 }
 
 export const listBrandVoices = async (): Promise<BrandVoice[]> => {

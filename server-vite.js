@@ -5,12 +5,20 @@
  * Handles both the Vite dev server and API routes in a single process
  */
 
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
 import express from 'express';
 import ViteExpress from 'vite-express';
 import cors from 'cors';
-import path from 'path';
 
-// Environment variables are loaded via Node's --env-file flag in the dev script.
+const envCandidates = ['.env.local', '.env'];
+for (const candidate of envCandidates) {
+  const envPath = path.resolve(process.cwd(), candidate);
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+  }
+}
 
 const app = express();
 

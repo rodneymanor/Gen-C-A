@@ -95,11 +95,21 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
+    console.log("📝 [Create Persona API] Token received", {
+      tokenPresent: Boolean(token),
+      tokenPreview: token ? `${token.substring(0, 6)}...${token.substring(token.length - 6)}` : null,
+    });
+
     const authResult = await authenticateWithFirebaseToken(token);
 
     if (authResult instanceof NextResponse) {
       return authResult;
     }
+
+    console.log("📝 [Create Persona API] Authenticated user", {
+      uid: authResult.user.uid,
+      email: authResult.user.email ?? null,
+    });
 
     const body: CreatePersonaRequest = await request.json();
     const { name, description, platform, username, analysis, tags = [], creationStatus, videoUrls } = body;
