@@ -853,12 +853,9 @@ export const BrandHub: React.FC = () => {
 
     try {
       const worker = async () => {
-        while (true) {
+        while (nextIndex < videos.length) {
           const currentIndex = nextIndex
           nextIndex += 1
-          if (currentIndex >= videos.length) {
-            return
-          }
 
           const video = videos[currentIndex]
           const scrapeSourceUrl = resolveScrapeSourceUrl(video)

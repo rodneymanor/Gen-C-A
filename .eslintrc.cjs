@@ -72,6 +72,15 @@ module.exports = {
     ],
     '@typescript-eslint/no-var-requires': 'warn',
     '@typescript-eslint/no-restricted-types': 'warn',
+    'max-lines': [
+      'warn',
+      {
+        max: 500,
+        skipBlankLines: true,
+        skipComments: true,
+      },
+    ],
+    complexity: ['warn', 15],
   },
   overrides: [
     {
