@@ -301,7 +301,7 @@ const userMenuStyles = (isCollapsed: boolean) => css`
 
   .dropdown-menu {
     position: absolute;
-    top: -50px;
+    bottom: calc(100% + var(--space-2));
     right: 0;
     background: var(--color-neutral-0);
     border: 1px solid var(--color-neutral-200);
@@ -511,7 +511,7 @@ const UserMenu: React.FC<{ user: User; isCollapsed: boolean }> = ({ user, isColl
             </>
           )}
           <button className="dropdown-item" onClick={handleLogout} role="menuitem">
-            Sign Out
+            Log out
           </button>
         </div>
       )}

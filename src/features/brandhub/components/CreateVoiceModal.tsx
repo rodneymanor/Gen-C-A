@@ -7,6 +7,7 @@ import { BasicModal } from '../../../components/ui/BasicModal'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { platformOptions } from '../constants/brandVoices'
+import { PlatformType, VoiceWorkflowState, WorkflowStatus } from '../types/voiceWorkflow'
 
 const modalBodyStyles = css`
   display: grid;
@@ -208,21 +209,6 @@ const intentChipStyles = (isActive: boolean) => css`
   }
 `
 
-type WorkflowStatus = 'pending' | 'running' | 'success' | 'error'
-
-interface WorkflowStepState {
-  status: WorkflowStatus
-  message?: string
-  data?: any
-}
-
-interface VoiceWorkflowState {
-  step1: WorkflowStepState
-  step2: WorkflowStepState
-  step3: WorkflowStepState
-  step5: WorkflowStepState
-}
-
 type CreateVoiceModalProps = {
   open: boolean
   onClose: () => void
@@ -235,7 +221,7 @@ type CreateVoiceModalProps = {
     postedAt: string
   }>
   displayHandle: string
-  onFetchVideos: (input: string, platform: 'tiktok' | 'instagram') => Promise<void>
+  onFetchVideos: (input: string, platform: PlatformType) => Promise<void>
   onAnalyzeVideos: () => Promise<void>
   onCreatePersona: () => Promise<void>
 }
