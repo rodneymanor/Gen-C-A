@@ -28,10 +28,77 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = 4000;
+const BACKEND_PROXY_TARGET =
+  process.env.BACKEND_INTERNAL_URL ||
+  process.env.BACKEND_URL ||
+  process.env.BACKEND_DEV_URL ||
+  'http://localhost:5001';
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+async function forwardToBackend(req, res, pathOverride) {
+  const base = BACKEND_PROXY_TARGET.replace(/\/$/, '');
+  const targetPath = pathOverride || req.originalUrl;
+  const targetUrl = new URL(targetPath, `${base}/`);
+
+  if (pathOverride) {
+    const query = req.query || {};
+    Object.entries(query).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value.forEach((entry) => {
+          if (entry != null) targetUrl.searchParams.append(key, String(entry));
+        });
+      } else if (value != null) {
+        targetUrl.searchParams.set(key, String(value));
+      }
+    });
+  }
+
+  const headers = {};
+  ['authorization', 'x-api-key', 'x-user-id', 'content-type'].forEach((key) => {
+    const value = req.headers[key];
+    if (typeof value === 'string') {
+      headers[key] = value;
+    }
+  });
+
+  const method = (req.method || 'GET').toUpperCase();
+  let body;
+  if (!['GET', 'HEAD'].includes(method)) {
+    if (req.body && typeof req.body === 'object') {
+      body = JSON.stringify(req.body);
+      if (!headers['content-type']) headers['content-type'] = 'application/json';
+    } else if (typeof req.body === 'string') {
+      body = req.body;
+      if (!headers['content-type']) headers['content-type'] = 'application/json';
+    }
+  }
+
+  const response = await fetch(targetUrl.toString(), {
+    method,
+    headers,
+    body,
+  });
+
+  const text = await response.text();
+  try {
+    const data = text ? JSON.parse(text) : null;
+    res.status(response.status).json(data);
+  } catch {
+    res.status(response.status).send(text);
+  }
+}
+
+const forwardHandler = (pathOverride) => async (req, res) => {
+  try {
+    await forwardToBackend(req, res, pathOverride);
+  } catch (error) {
+    console.error('[dev server proxy] error:', error);
+    res.status(502).json({ success: false, error: 'Failed to reach backend service.' });
+  }
+};
 
 // Mock NextRequest/NextResponse for compatibility
 class MockNextRequest {
@@ -117,21 +184,6 @@ async function setupRoutes() {
     const { handleListAnalyzedVideoIds } = await import('./src/api-routes/creator-lookup.js');
     const { handleListBrandVoices, handleGetBrandVoiceTemplates, handleUpdateBrandVoiceMeta } = await import('./src/api-routes/brand-voices.js');
     const { handleGetNotes, handleCreateNote, handleGetNoteById, handleUpdateNote, handleDeleteNote } = await import('./src/api-routes/notes.js');
-    const {
-      handleCENotesGet,
-      handleCENotesPost,
-      handleCENotesPut,
-      handleCENotesDelete,
-      handleCECollectionsGet,
-      handleCECollectionsPost,
-      handleCECollectionsAddVideo,
-      handleContentInboxPost,
-      handleIdeaInboxTextPost,
-      handleIdeaInboxVideoPost,
-      handleYouTubeTranscriptGet,
-      handleYouTubeTranscriptPost,
-    } = await import('./src/api-routes/chrome-extension.js');
-
     // Main transcription endpoint (replaces the complex follow workflow)
     app.post('/api/creators/follow', handleCreatorTranscription);
     app.post('/api/creators/transcribe', handleCreatorTranscription);
@@ -162,24 +214,10 @@ async function setupRoutes() {
     app.put('/api/notes/:id', handleUpdateNote);
     app.delete('/api/notes/:id', handleDeleteNote);
 
-    // Chrome Extension routes
-    app.get('/api/chrome-extension/notes', handleCENotesGet);
-    app.post('/api/chrome-extension/notes', handleCENotesPost);
-    app.put('/api/chrome-extension/notes', handleCENotesPut);
-    app.delete('/api/chrome-extension/notes', handleCENotesDelete);
-
-    app.get('/api/chrome-extension/collections', handleCECollectionsGet);
-    app.post('/api/chrome-extension/collections', handleCECollectionsPost);
-    app.post('/api/chrome-extension/collections/add-video', handleCECollectionsAddVideo);
-
-    app.post('/api/content-inbox/items', handleContentInboxPost);
-    app.post('/api/idea-inbox/items', handleContentInboxPost);
-
-    app.post('/api/chrome-extension/idea-inbox/text', handleIdeaInboxTextPost);
-    app.post('/api/chrome-extension/idea-inbox/video', handleIdeaInboxVideoPost);
-
-    app.get('/api/chrome-extension/youtube-transcript', handleYouTubeTranscriptGet);
-    app.post('/api/chrome-extension/youtube-transcript', handleYouTubeTranscriptPost);
+    // Chrome Extension routes (proxy to backend)
+    app.use('/api/chrome-extension', forwardHandler());
+    app.post('/api/content-inbox/items', forwardHandler('/api/chrome-extension/content-inbox'));
+    app.post('/api/idea-inbox/items', forwardHandler('/api/chrome-extension/idea-inbox/text'));
 
     // Persona routes - TODO: Convert from Next.js format if needed
     // app.post('/api/personas/generate-metadata', handlePersonaMetadata);

@@ -21,6 +21,11 @@ for (const candidate of envCandidates) {
 }
 
 const app = express();
+const BACKEND_PROXY_TARGET =
+  process.env.BACKEND_INTERNAL_URL ||
+  process.env.BACKEND_URL ||
+  process.env.BACKEND_DEV_URL ||
+  'http://localhost:5001';
 
 // Middleware
 app.use(cors());
@@ -28,6 +33,68 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Serve documentation markdown files at /docs/*
 app.use('/docs', express.static(path.join(process.cwd(), 'docs')));
+
+async function forwardToBackend(req, res, pathOverride) {
+  const base = BACKEND_PROXY_TARGET.replace(/\/$/, '');
+  const targetPath = pathOverride || req.originalUrl;
+  const targetUrl = new URL(targetPath, `${base}/`);
+
+  if (pathOverride) {
+    const query = req.query || {};
+    Object.entries(query).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value.forEach((entry) => {
+          if (entry != null) targetUrl.searchParams.append(key, String(entry));
+        });
+      } else if (value != null) {
+        targetUrl.searchParams.set(key, String(value));
+      }
+    });
+  }
+
+  const headers = {};
+  ['authorization', 'x-api-key', 'x-user-id', 'content-type'].forEach((key) => {
+    const value = req.headers[key];
+    if (typeof value === 'string') {
+      headers[key] = value;
+    }
+  });
+
+  const method = (req.method || 'GET').toUpperCase();
+  let body;
+  if (!['GET', 'HEAD'].includes(method)) {
+    if (req.body && typeof req.body === 'object') {
+      body = JSON.stringify(req.body);
+      if (!headers['content-type']) headers['content-type'] = 'application/json';
+    } else if (typeof req.body === 'string') {
+      body = req.body;
+      if (!headers['content-type']) headers['content-type'] = 'application/json';
+    }
+  }
+
+  const response = await fetch(targetUrl.toString(), {
+    method,
+    headers,
+    body,
+  });
+
+  const text = await response.text();
+  try {
+    const data = text ? JSON.parse(text) : null;
+    res.status(response.status).json(data);
+  } catch {
+    res.status(response.status).send(text);
+  }
+}
+
+const forwardHandler = (pathOverride) => async (req, res, next) => {
+  try {
+    await forwardToBackend(req, res, pathOverride);
+  } catch (error) {
+    console.error('[vite dev proxy] error:', error);
+    res.status(502).json({ success: false, error: 'Failed to reach backend service.' });
+  }
+};
 
 // Import existing creator routes
 import { handleCreatorTranscription, handleHealthCheck } from './src/api-routes/creators.js';
@@ -44,20 +111,6 @@ import { handleListAnalyzedVideoIds } from './src/api-routes/creator-lookup.js';
 import { handleListBrandVoices, handleGetBrandVoiceTemplates, handleDeleteBrandVoice, handleUpdateBrandVoiceMeta } from './src/api-routes/brand-voices.js';
 import { handleGetScripts, handleCreateScript, handleGetScriptById, handleUpdateScript, handleDeleteScript } from './src/api-routes/scripts.js';
 import { handleGetNotes, handleCreateNote, handleGetNoteById, handleUpdateNote, handleDeleteNote } from './src/api-routes/notes.js';
-import {
-  handleCENotesGet,
-  handleCENotesPost,
-  handleCENotesPut,
-  handleCENotesDelete,
-  handleCECollectionsGet,
-  handleCECollectionsPost,
-  handleCECollectionsAddVideo,
-  handleContentInboxPost,
-  handleIdeaInboxTextPost,
-  handleIdeaInboxVideoPost,
-  handleYouTubeTranscriptGet,
-  handleYouTubeTranscriptPost,
-} from './src/api-routes/chrome-extension.js';
 import {
   handleGetCollections,
   handleCreateCollection,
@@ -117,27 +170,10 @@ app.delete('/api/collections/delete', handleDeleteCollection);
 app.patch('/api/collections/update', handleUpdateCollection);
 app.post('/api/videos/add-to-collection', handleAddVideoToCollection);
 
-// Chrome Extension: Notes CRUD
-app.get('/api/chrome-extension/notes', handleCENotesGet);
-app.post('/api/chrome-extension/notes', handleCENotesPost);
-app.put('/api/chrome-extension/notes', handleCENotesPut);
-app.delete('/api/chrome-extension/notes', handleCENotesDelete);
-
-// Chrome Extension: Collections proxy and add-video
-app.get('/api/chrome-extension/collections', handleCECollectionsGet);
-app.post('/api/chrome-extension/collections', handleCECollectionsPost);
-app.post('/api/chrome-extension/collections/add-video', handleCECollectionsAddVideo);
-
-// Content Inbox + Idea Inbox
-app.post('/api/content-inbox/items', handleContentInboxPost);
-// Alias routes for compatibility
-app.post('/api/idea-inbox/items', handleContentInboxPost);
-app.post('/api/chrome-extension/idea-inbox/text', handleIdeaInboxTextPost);
-app.post('/api/chrome-extension/idea-inbox/video', handleIdeaInboxVideoPost);
-
-// YouTube transcript for extension
-app.get('/api/chrome-extension/youtube-transcript', handleYouTubeTranscriptGet);
-app.post('/api/chrome-extension/youtube-transcript', handleYouTubeTranscriptPost);
+// Chrome Extension endpoints (proxy to backend)
+app.use('/api/chrome-extension', forwardHandler());
+app.post('/api/content-inbox/items', forwardHandler('/api/chrome-extension/content-inbox'));
+app.post('/api/idea-inbox/items', forwardHandler('/api/chrome-extension/idea-inbox/text'));
 
 // Hemingway Editor AI Actions (adapter for api/ai-action.ts)
 app.post('/api/ai-action', async (req, res) => {

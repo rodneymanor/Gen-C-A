@@ -8,12 +8,6 @@ import { handleInstagramUserId } from '../src/api-routes/videos/instagram-user-i
 import { handleTikTokUserFeed } from '../src/api-routes/videos/tiktok-user-feed.js';
 import { handleVideoTranscribe } from '../src/api-routes/videos/transcribe.js';
 import { handleVoiceAnalyzePatterns } from '../src/api-routes/voice.js';
-import {
-  handleCENotesGet,
-  handleCENotesPost,
-  handleCENotesPut,
-  handleCENotesDelete,
-} from '../src/api-routes/chrome-extension.js';
 import { handleDeleteVideo } from '../src/api-routes/collections.js';
 import creatorSaveAnalysisHandler from './creator/save-analysis';
 import creatorAnalyzedVideoIdsHandler from './creator/analyzed-video-ids';
@@ -33,6 +27,69 @@ import collectionsDeleteHandler from './collections/delete';
 import collectionsUpdateHandler from './collections/update';
 import videosCollectionHandler from './videos/collection';
 import videosAddToCollectionHandler from './videos/add-to-collection';
+
+const backendBase =
+  process.env.BACKEND_INTERNAL_URL ||
+  process.env.BACKEND_URL ||
+  process.env.BACKEND_DEV_URL ||
+  process.env.VITE_BACKEND_URL ||
+  'http://localhost:5001';
+
+async function proxyToBackend(
+  req: VercelRequest,
+  res: VercelResponse,
+  targetPath: string,
+) {
+  const base = backendBase.replace(/\/$/, '');
+  const urlObj = new URL(`${base}${targetPath}`);
+  const query = req.query as Record<string, unknown> | undefined;
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (Array.isArray(value)) {
+        value.forEach((entry) => {
+          if (entry != null) urlObj.searchParams.append(key, String(entry));
+        });
+      } else if (value != null) {
+        urlObj.searchParams.set(key, String(value));
+      }
+    }
+  }
+
+  const headers: Record<string, string> = {};
+  const forwardHeaders = ['authorization', 'x-api-key', 'x-user-id', 'content-type'];
+  for (const header of forwardHeaders) {
+    const value = req.headers[header];
+    if (typeof value === 'string') {
+      headers[header] = value;
+    }
+  }
+
+  const method = (req.method || 'GET').toUpperCase();
+  let body: BodyInit | undefined;
+  if (!['GET', 'HEAD'].includes(method)) {
+    if (req.body && typeof req.body === 'object') {
+      body = JSON.stringify(req.body);
+      if (!headers['content-type']) headers['content-type'] = 'application/json';
+    } else if (typeof req.body === 'string') {
+      body = req.body;
+      if (!headers['content-type']) headers['content-type'] = 'application/json';
+    }
+  }
+
+  const response = await fetch(urlObj.toString(), {
+    method,
+    headers,
+    body,
+  });
+
+  const text = await response.text();
+  try {
+    const data = text ? JSON.parse(text) : null;
+    return res.status(response.status).json(data as any);
+  } catch {
+    return res.status(response.status).send(text);
+  }
+}
 
 function aiAction(text: string, actionType: string, option?: string) {
   const extractTheme = (t: string) => {
@@ -118,18 +175,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return notesIdHandler(req, res);
     }
 
-    // Chrome extension notes
-    if (path === '/api/chrome-extension/notes' && req.method === 'GET') {
-      return handleCENotesGet(req as any, res as any);
+    // Chrome extension endpoints
+    if (path.startsWith('/api/chrome-extension/')) {
+      return proxyToBackend(req, res, path);
     }
-    if (path === '/api/chrome-extension/notes' && req.method === 'POST') {
-      return handleCENotesPost(req as any, res as any);
+
+    if (path === '/api/content-inbox/items') {
+      return proxyToBackend(req, res, '/api/chrome-extension/content-inbox');
     }
-    if (path === '/api/chrome-extension/notes' && req.method === 'PUT') {
-      return handleCENotesPut(req as any, res as any);
-    }
-    if (path === '/api/chrome-extension/notes' && req.method === 'DELETE') {
-      return handleCENotesDelete(req as any, res as any);
+
+    if (path === '/api/idea-inbox/items') {
+      return proxyToBackend(req, res, '/api/chrome-extension/idea-inbox/text');
     }
 
     // Collections + Videos
