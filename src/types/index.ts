@@ -5,7 +5,7 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
-  role: 'creator' | 'admin' | 'super_admin' | 'team_member';
+  role: 'creator' | 'admin' | 'super_admin' | 'team_member' | 'coach';
   plan: 'free' | 'premium' | 'enterprise';
   preferences: UserPreferences;
 }

@@ -10,6 +10,10 @@ import {
   ChromeExtensionNotesServiceError,
   getChromeExtensionNotesService,
 } from '../services/chrome-extension/chrome-extension-notes-service.js';
+import {
+  ChromeExtensionCollectionsServiceError,
+  getChromeExtensionCollectionsService,
+} from '../services/chrome-extension/chrome-extension-collections-service.js';
 
 const TEST_MODE_API_KEY = 'test-internal-secret-123';
 
@@ -123,6 +127,21 @@ function sendChromeExtensionNotesError(res, error, fallbackMessage, logContext) 
   if (error instanceof ChromeExtensionNotesServiceError) {
     console.warn(`${logContext} service error: ${error.message}`);
     return res.status(error.statusCode).json({ success: false, error: error.message });
+  }
+
+  const details = error instanceof Error ? error.message : String(error);
+  console.error(`${logContext} unexpected error:`, details);
+  return res.status(500).json({ success: false, error: fallbackMessage });
+}
+
+function sendChromeExtensionCollectionsError(res, error, fallbackMessage, logContext) {
+  if (
+    error instanceof ChromeExtensionCollectionsServiceError ||
+    error instanceof CollectionsServiceError
+  ) {
+    const statusCode = error.statusCode || 500;
+    console.warn(`${logContext} service error: ${error.message}`);
+    return res.status(statusCode).json({ success: false, error: error.message });
   }
 
   const details = error instanceof Error ? error.message : String(error);
@@ -448,160 +467,32 @@ export async function handleCECollectionsAddVideo(req, res) {
     if (!user) return res.status(401).json({ success: false, error: 'Unauthorized' });
     const db = ensureDb();
     const { videoUrl, collectionTitle, title } = req.body || {};
-    if (!videoUrl || !collectionTitle) return res.status(400).json({ success: false, error: 'videoUrl and collectionTitle are required' });
-
-    // Resolve or create collection by title for this user
-    const normalizedUrl = String(videoUrl).trim();
-    const normalizedCollectionTitle = String(collectionTitle).trim();
-    const providedTitle = title ? String(title).trim() : '';
-    const now = new Date();
-    let collectionId;
-    let collectionOwnerId = user.uid;
-
-    if (db) {
-      const snap = await db
-        .collection('collections')
-        .where('userId', '==', user.uid)
-        .where('title', '==', normalizedCollectionTitle)
-        .limit(1)
-        .get();
-      if (!snap.empty) {
-        const doc = snap.docs[0];
-        const data = doc.data() || {};
-        collectionId = doc.id;
-        collectionOwnerId = data.userId || user.uid;
-      } else {
-        const docRef = await db.collection('collections').add({
-          title: normalizedCollectionTitle,
-          description: '',
-          userId: user.uid,
-          videoCount: 0,
-          createdAt: now,
-          updatedAt: now,
-        });
-        collectionId = docRef.id;
-        collectionOwnerId = user.uid;
-      }
-
-      const platform = guessPlatformFromUrl(normalizedUrl);
-      const videoDoc = {
-        url: normalizedUrl,
-        title: providedTitle || generateVideoTitleFromUrl(normalizedUrl),
-        platform,
-        thumbnailUrl: getDefaultThumbnailForPlatform(platform),
-        author: 'Unknown Creator',
-        transcript: 'Transcript not available',
-        visualContext: 'Imported via Import Video',
-        fileSize: 0,
-        duration: 0,
-        userId: collectionOwnerId,
-        collectionId,
-        addedAt: now.toISOString(),
-        components: { hook: '', bridge: '', nugget: '', wta: '' },
-        contentMetadata: { hashtags: [], mentions: [], description: '' },
-        insights: { views: 0, likes: 0, comments: 0, saves: 0 },
-        metadata: { source: 'import' },
-      };
-      const ref = await db.collection('videos').add(videoDoc);
-
-      if (collectionId && collectionId !== 'all-videos') {
-        const collectionRef = db.collection('collections').doc(String(collectionId));
-        try {
-          await db.runTransaction(async (tx) => {
-            const snapDoc = await tx.get(collectionRef);
-            if (!snapDoc.exists) return;
-            const current = snapDoc.data()?.videoCount || 0;
-            tx.update(collectionRef, { videoCount: current + 1, updatedAt: now });
-          });
-        } catch (updateErr) {
-          console.warn('[chrome-ext collections add-video] failed to update count:', updateErr?.message || updateErr);
-        }
-      }
-
-      const jobId = createJobId();
-      return res.status(201).json({
-        success: true,
-        message: 'Video added to processing queue',
-        jobId,
-        collectionTitle: normalizedCollectionTitle,
-        collectionId,
-        videoUrl: normalizedUrl,
-        videoId: ref.id,
-      });
+    if (!videoUrl || !collectionTitle) {
+      return res
+        .status(400)
+        .json({ success: false, error: 'videoUrl and collectionTitle are required' });
     }
 
-    // JSON fallback: add to videos.json and update collection count
-    const collectionsFile = path.join(DATA_DIR, 'collections.json');
-    const collections = readArray(collectionsFile);
-    const existing = collections.find((c) => c.userId === user.uid && c.title === normalizedCollectionTitle);
-    if (existing) {
-      collectionId = existing.id;
-      collectionOwnerId = existing.userId || user.uid;
-    } else {
-      collectionId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-      const newCollection = {
-        id: collectionId,
-        title: normalizedCollectionTitle,
-        description: '',
-        userId: user.uid,
-        videoCount: 0,
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString(),
-      };
-      collections.push(newCollection);
-      writeArray(collectionsFile, collections);
-    }
+    const service = getChromeExtensionCollectionsService({ firestore: db, dataDir: DATA_DIR });
+    const result = await service.addVideo({
+      userId: String(user.uid),
+      videoUrl: String(videoUrl),
+      collectionTitle: String(collectionTitle),
+      title: title ? String(title) : undefined,
+    });
 
-    const videosFile = path.join(DATA_DIR, 'videos.json');
-    const videos = readArray(videosFile);
-    const videoId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-    const platform = guessPlatformFromUrl(normalizedUrl);
-    const fallbackVideo = {
-      id: videoId,
-      url: normalizedUrl,
-      title: providedTitle || generateVideoTitleFromUrl(normalizedUrl),
-      platform,
-      thumbnailUrl: getDefaultThumbnailForPlatform(platform),
-      author: 'Unknown Creator',
-      transcript: 'Transcript not available',
-      visualContext: 'Imported via Import Video',
-      fileSize: 0,
-      duration: 0,
-      userId: collectionOwnerId,
-      collectionId,
-      addedAt: now.toISOString(),
-      components: { hook: '', bridge: '', nugget: '', wta: '' },
-      contentMetadata: { hashtags: [], mentions: [], description: '' },
-      insights: { views: 0, likes: 0, comments: 0, saves: 0 },
-      metadata: { source: 'import' },
-    };
-    videos.unshift(fallbackVideo);
-    writeArray(videosFile, videos);
-
-    const collIndex = collections.findIndex((c) => c.id === collectionId);
-    if (collIndex !== -1) {
-      const current = collections[collIndex].videoCount || 0;
-      collections[collIndex] = {
-        ...collections[collIndex],
-        videoCount: current + 1,
-        updatedAt: now.toISOString(),
-      };
-      writeArray(collectionsFile, collections);
-    }
-
-    const jobId = createJobId();
     return res.status(201).json({
       success: true,
       message: 'Video added to processing queue',
-      jobId,
-      collectionTitle: normalizedCollectionTitle,
-      collectionId,
-      videoUrl: normalizedUrl,
-      videoId,
+      ...result,
     });
   } catch (e) {
-    console.error('[chrome-ext collections add-video] error:', e);
-    res.status(500).json({ success: false, error: 'Failed to add video to collection' });
+    sendChromeExtensionCollectionsError(
+      res,
+      e,
+      'Failed to add video to collection',
+      '[chrome-ext collections add-video]'
+    );
   }
 }
 
@@ -955,75 +846,23 @@ export async function handleYouTubeTranscriptPost(req, res) {
   try {
     const user = await resolveUser(req);
     if (!user) return res.status(401).json({ success: false, error: 'Unauthorized' });
-    const { url, saveAsNote = false, includeTimestamps = false } = req.body || {};
-    if (!url || !String(url).trim()) return res.status(400).json({ success: false, error: 'YouTube URL is required' });
-    const videoId = extractYouTubeId(String(url).trim());
-    if (!videoId) return res.status(400).json({ success: false, error: 'Invalid YouTube URL format' });
-
-    const segments = await fetchRapidApiTranscript(videoId);
-    if (!segments || !segments.length) {
-      return res.status(404).json({
-        success: false,
-        error:
-          'Transcript not available. This could be due to the video lacking captions or being private/restricted. Please try a different video.',
-      });
-    }
-
-    const transcript = formatSegmentsToTranscript(segments, includeTimestamps);
-    const metadata = { videoId, ...(await fetchYouTubeMetadata(videoId)) };
-
-    const response = { success: true, transcript, segments, metadata };
-    if (saveAsNote) {
-      const db = ensureDb();
-      const cleanTranscript = cleanTranscriptText(transcript);
-      const now = new Date();
-      const noteData = {
-        title: generateYouTubeTranscriptTitle(cleanTranscript, metadata.title),
-        content: cleanTranscript,
-        type: 'text',
-        tags: ['youtube', 'transcript', 'video'],
-        source: 'import',
-        starred: false,
-        metadata: {
-          ...metadata,
-          videoUrl: String(url).trim(),
-          domain: 'youtube.com',
-          transcriptLength: cleanTranscript.length,
-          segmentCount: segments.length,
-        },
-        createdAt: now,
-        updatedAt: now,
-        userId: user.uid,
-      };
-
-      if (db) {
-        const ref = await db.collection('notes').add(noteData);
-        response.note = {
-          id: ref.id,
-          ...noteData,
-          createdAt: now.toISOString(),
-          updatedAt: now.toISOString(),
-        };
-      } else {
-        const file = path.join(DATA_DIR, 'notes.json');
-        const arr = readArray(file);
-        const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-        const saved = { id, ...noteData, createdAt: now.toISOString(), updatedAt: now.toISOString() };
-        arr.unshift(saved);
-        writeArray(file, arr);
-        response.note = saved;
-      }
-
-      if (response.note && process.env.NEXT_PUBLIC_APP_URL) {
-        response.editUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/capture/notes/new?noteId=${response.note.id}`;
-      }
-    }
-
-    res.json(response);
+    const db = ensureDb();
+    const service = getChromeExtensionYouTubeService({ firestore: db, dataDir: DATA_DIR });
+    const result = await service.getTranscript({
+      userId: String(user.uid),
+      url: req.body?.url,
+      saveAsNote: req.body?.saveAsNote ?? false,
+      includeTimestamps: req.body?.includeTimestamps ?? false,
+      contentNotesPath: process.env.CONTENT_NOTES_PATH,
+    });
+    res.json(result);
   } catch (e) {
-    console.error('[chrome-ext youtube-transcript POST] error:', e);
-    const message = e instanceof Error ? e.message : 'Failed to extract transcript';
-    res.status(500).json({ success: false, error: message });
+    sendChromeExtensionYouTubeError(
+      res,
+      e,
+      'Failed to extract transcript',
+      '[chrome-ext youtube-transcript POST]'
+    );
   }
 }
 
@@ -1031,25 +870,22 @@ export async function handleYouTubeTranscriptGet(req, res) {
   try {
     const user = await resolveUser(req);
     if (!user) return res.status(401).json({ success: false, error: 'Unauthorized' });
-    const url = req.query.url;
-    const includeTimestamps = String(req.query.includeTimestamps) === 'true';
-    if (!url) return res.status(400).json({ success: false, error: 'YouTube URL is required' });
-    const videoId = extractYouTubeId(String(url));
-    if (!videoId) return res.status(400).json({ success: false, error: 'Invalid YouTube URL format' });
-    const segments = await fetchRapidApiTranscript(videoId);
-    if (!segments || !segments.length) {
-      return res.status(404).json({
-        success: false,
-        error:
-          'Transcript not available. This could be due to the video lacking captions or being private/restricted. Please try a different video.',
-      });
-    }
-    const transcript = formatSegmentsToTranscript(segments, includeTimestamps);
-    const metadata = { videoId, ...(await fetchYouTubeMetadata(videoId)) };
-    res.json({ success: true, transcript, segments, metadata });
+    const db = ensureDb();
+    const service = getChromeExtensionYouTubeService({ firestore: db, dataDir: DATA_DIR });
+    const result = await service.getTranscript({
+      userId: String(user.uid),
+      url: req.query.url,
+      includeTimestamps: String(req.query.includeTimestamps) === 'true',
+      saveAsNote: false,
+      contentNotesPath: process.env.CONTENT_NOTES_PATH,
+    });
+    res.json(result);
   } catch (e) {
-    console.error('[chrome-ext youtube-transcript GET] error:', e);
-    const message = e instanceof Error ? e.message : 'Failed to extract transcript';
-    res.status(500).json({ success: false, error: message });
+    sendChromeExtensionYouTubeError(
+      res,
+      e,
+      'Failed to extract transcript',
+      '[chrome-ext youtube-transcript GET]'
+    );
   }
 }

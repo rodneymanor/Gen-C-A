@@ -41,7 +41,12 @@ The migration consolidates the current hybrid API setup (Express dev server, Ver
 1. **Service Extraction**
    - [x] Collections -> `CollectionsAdminService`
    - [x] Notes -> `NotesService`
-   - [ ] Remaining feature groups (scripts, voice, video, chrome extension, etc.)
+   - [x] Scripts -> `ScriptsService`
+   - [x] Voice analysis -> `VoiceService`
+   - [x] Video ingestion stack (scraper, transcription, orchestrator, TikTok, Instagram)
+   - [x] Brand voices -> `BrandVoicesService`
+   - [x] Creator analysis & lookup services
+   - [ ] Remaining Chrome extension + persona-specific handlers
 
 2. **Route Refactor**
    - [ ] Move Express/Vercel/Next routes into `apps/backend/src/routes`

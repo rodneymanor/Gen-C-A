@@ -1,76 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { NoteType } from "@/app/(main)/dashboard/idea-inbox/_components/types";
 import { authenticateApiKey } from "@/lib/api-key-auth";
-import { notesService } from "@/lib/services/notes-service";
-import { UnifiedVideoScraper, scrapeVideoUrl } from "@/lib/unified-video-scraper";
-
-interface VideoIdeaBody {
-  url: string;
-  title?: string;
-  noteType?: NoteType;
-}
+import { buildInternalUrl } from "@/lib/utils/url";
 
 export async function POST(request: NextRequest) {
   try {
     const authResult = await authenticateApiKey(request);
     if (authResult instanceof NextResponse) return authResult;
-    const userId = authResult.user.uid;
 
-    const { url, title, noteType }: VideoIdeaBody = await request.json();
-    if (!url) {
-      return NextResponse.json({ success: false, error: "url is required" }, { status: 400 });
-    }
+    const body = await request.json().catch(() => ({}));
+    const headers: HeadersInit = { "content-type": "application/json" };
+    const apiKey = request.headers.get("x-api-key");
+    const authHeader = request.headers.get("authorization");
+    if (apiKey) headers["x-api-key"] = apiKey;
+    if (authHeader) headers["authorization"] = authHeader;
 
-    const decodedUrl = decodeURIComponent(url);
-    const validation = UnifiedVideoScraper.validateUrlWithMessage(decodedUrl);
-    if (!validation.valid) {
-      return NextResponse.json({ success: false, error: validation.message }, { status: 400 });
-    }
-
-    // Only TikTok/Instagram for now (per product scope)
-    if (!["tiktok", "instagram", "tiktok_cdn", "instagram_cdn"].includes(validation.platform)) {
-      return NextResponse.json(
-        { success: false, error: "Only TikTok and Instagram URLs are supported" },
-        { status: 400 },
-      );
-    }
-
-    // Scrape metadata (no upload/processing here)
-    const videoData = await scrapeVideoUrl(decodedUrl).catch(() => null);
-
-    // Determine note type based on platform
-    let derivedNoteType = noteType;
-    if (!derivedNoteType) {
-      if (validation.platform.includes("tiktok")) {
-        derivedNoteType = NoteType.TIKTOK;
-      } else if (validation.platform.includes("instagram")) {
-        derivedNoteType = NoteType.INSTAGRAM;
-      } else {
-        derivedNoteType = NoteType.NOTE;
-      }
-    }
-
-    const noteId = await notesService.createNote(userId, {
-      title: (title ?? `Idea from ${validation.platform}`).trim(),
-      content: decodedUrl,
-      noteType: derivedNoteType,
-      type: "idea_inbox",
-      source: "inbox",
-      starred: false,
-      metadata: {
-        videoUrl: decodedUrl,
-        thumbnailUrl: (videoData as any)?.thumbnailUrl,
-        duration: (videoData as any)?.additionalMetadata?.duration,
-        viewCount: (videoData as any)?.metrics?.views,
-        publishedAt: (videoData as any)?.metadata?.publishedAt,
-      },
+    const response = await fetch(buildInternalUrl("/api/chrome-extension/idea-inbox/video"), {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body ?? {}),
     });
 
-    const note = await notesService.getNote(noteId, userId);
-    return NextResponse.json({ success: true, note }, { status: 201 });
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error("❌ [Chrome Idea Inbox Video] Error:", error);
+    console.error("❌ [Chrome Idea Inbox Video] proxy error:", error);
     return NextResponse.json({ success: false, error: "Failed to save video idea" }, { status: 500 });
   }
 }

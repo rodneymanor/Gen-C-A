@@ -27,6 +27,8 @@ export function getAdminDb(): Firestore | null {
           resolvedPath = path.join(process.cwd(), saPath);
         }
       }
+      const gaPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
       if (process.env.FIREBASE_SERVICE_ACCOUNT) {
         const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
         initializeApp({ credential: cert(serviceAccount as any), projectId: serviceAccount.project_id });
@@ -37,6 +39,10 @@ export function getAdminDb(): Firestore | null {
         // Also set GOOGLE_APPLICATION_CREDENTIALS for any underlying clients
         process.env.GOOGLE_APPLICATION_CREDENTIALS = resolvedPath;
         // console.log('[firebase-admin] initialized using local service account file:', resolvedPath);
+      } else if (gaPath && fs.existsSync(gaPath)) {
+        const serviceAccount = JSON.parse(fs.readFileSync(gaPath, 'utf8'));
+        initializeApp({ credential: cert(serviceAccount as any), projectId: serviceAccount.project_id });
+        // console.log('[firebase-admin] initialized using GOOGLE_APPLICATION_CREDENTIALS env');
       } else {
         // Fallback to application default credentials
         initializeApp({ credential: applicationDefault() });

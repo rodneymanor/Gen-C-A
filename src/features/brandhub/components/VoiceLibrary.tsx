@@ -128,6 +128,7 @@ type VoiceLibraryProps = {
   onCreateVoice: () => void
   onOpenVoice?: (voiceId: string) => void
   onSetActive?: (voiceId: string) => void
+  canManage?: boolean
 }
 
 export const VoiceLibrary: React.FC<VoiceLibraryProps> = ({
@@ -137,7 +138,8 @@ export const VoiceLibrary: React.FC<VoiceLibraryProps> = ({
   onRefresh,
   onCreateVoice,
   onOpenVoice,
-  onSetActive
+  onSetActive,
+  canManage = false
 }) => (
   <Card css={voiceLibraryStyles} appearance="raised">
     <CardHeader>
@@ -194,9 +196,15 @@ export const VoiceLibrary: React.FC<VoiceLibraryProps> = ({
             Run a creator analysis to capture templates, tonal cues, and publishing guidance in a
             dedicated workspace.
           </p>
-          <Button variant="primary" onClick={onCreateVoice}>
-            Create brand voice
-          </Button>
+          {canManage ? (
+            <Button variant="primary" onClick={onCreateVoice}>
+              Create brand voice
+            </Button>
+          ) : (
+            <p style={{ margin: 0, color: 'var(--color-neutral-500)', fontSize: 'var(--font-size-caption)' }}>
+              Ask a coach or admin to add a brand voice for your workspace.
+            </p>
+          )}
         </div>
       ) : (
         <div className="voice-grid">

@@ -1,59 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { NoteType } from "@/app/(main)/dashboard/idea-inbox/_components/types";
 import { authenticateApiKey } from "@/lib/api-key-auth";
-import { notesService } from "@/lib/services/notes-service";
-import { generateTitleFromContent } from "@/lib/transcript-title-generator";
-
-interface TextIdeaBody {
-  title?: string;
-  content?: string;
-  url?: string;
-  noteType?: NoteType;
-}
+import { buildInternalUrl } from "@/lib/utils/url";
 
 export async function POST(request: NextRequest) {
   try {
     const authResult = await authenticateApiKey(request);
     if (authResult instanceof NextResponse) return authResult;
 
-    const userId = authResult.user.uid;
-    const body: TextIdeaBody = await request.json();
-    const incomingTitle = (body.title ?? "").trim();
-    const resolvedContent = (body.content ?? body.url ?? "").trim();
-    const noteType = body.noteType ?? NoteType.NOTE;
+    const body = await request.json().catch(() => ({}));
+    const headers: HeadersInit = { "content-type": "application/json" };
+    const apiKey = request.headers.get("x-api-key");
+    const authHeader = request.headers.get("authorization");
+    if (apiKey) headers["x-api-key"] = apiKey;
+    if (authHeader) headers["authorization"] = authHeader;
 
-    if (!incomingTitle && !resolvedContent) {
-      return NextResponse.json(
-        { success: false, error: "At least one of title or content/url is required" },
-        { status: 400 },
-      );
-    }
-
-    // Auto-generate title if not provided
-    let finalTitle = incomingTitle;
-    if (!finalTitle && resolvedContent) {
-      finalTitle = generateTitleFromContent(resolvedContent);
-    }
-
-    // Fallback if content is too short or meaningless
-    if (!finalTitle || finalTitle === "Untitled Idea") {
-      finalTitle = "Saved from Extension";
-    }
-
-    const noteId = await notesService.createNote(userId, {
-      title: finalTitle,
-      content: resolvedContent,
-      noteType: noteType,
-      type: "idea_inbox",
-      source: "inbox",
-      starred: false,
+    const response = await fetch(buildInternalUrl("/api/chrome-extension/idea-inbox/text"), {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body ?? {}),
     });
 
-    const note = await notesService.getNote(noteId, userId);
-    return NextResponse.json({ success: true, note }, { status: 201 });
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error("❌ [Chrome Idea Inbox Text] Error:", error);
+    console.error("❌ [Chrome Idea Inbox Text] proxy error:", error);
     return NextResponse.json({ success: false, error: "Failed to create idea note" }, { status: 500 });
   }
 }

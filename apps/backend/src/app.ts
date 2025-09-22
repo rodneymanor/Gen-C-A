@@ -9,6 +9,9 @@ import { videoRouter } from './routes/video';
 import { tiktokRouter } from './routes/tiktok';
 import { instagramRouter } from './routes/instagram';
 import { voiceRouter } from './routes/voice';
+import { creatorRouter } from './routes/creator';
+import { creatorLookupRouter } from './routes/creator-lookup';
+import { brandVoicesRouter } from './routes/brand-voices';
 import { extensionRouter } from './routes/extension/index.js';
 import { keysRouter } from './routes/keys.js';
 
@@ -48,6 +51,9 @@ export function createApp() {
   app.use('/api/tiktok', tiktokRouter);
   app.use('/api/instagram', instagramRouter);
   app.use('/api/voice', voiceRouter);
+  app.use('/api/creator', creatorRouter);
+  app.use('/api/creator', creatorLookupRouter);
+  app.use('/api/brand-voices', brandVoicesRouter);
   app.use('/api/chrome-extension', extensionRouter);
 
   return app;

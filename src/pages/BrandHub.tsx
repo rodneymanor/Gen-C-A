@@ -127,7 +127,7 @@ export const BrandHub: React.FC = () => {
     () => Array.from(defaultIntentSelection)
   )
 
-  const { firebaseUser } = useAuth()
+  const { firebaseUser, currentUser } = useAuth()
   const { brandVoices, isLoading, error, refresh } = useBrandVoices()
   const {
     responses,
@@ -149,6 +149,12 @@ export const BrandHub: React.FC = () => {
     createPersona,
     reset: resetVoiceWorkflow
   } = useVoiceCreationWorkflow({ onVoiceSaved: refresh })
+
+  const canManageBrandVoices = useMemo(() => {
+    const role = currentUser?.role
+    if (!role) return false
+    return role === 'super_admin' || role === 'admin' || role === 'coach'
+  }, [currentUser?.role])
 
   const totalQuestions = onboardingPrompts.length
 
@@ -173,6 +179,9 @@ export const BrandHub: React.FC = () => {
   }
 
   const handleOpenCreateVoiceModal = () => {
+    if (!canManageBrandVoices) {
+      return
+    }
     resetVoiceWorkflow()
     setIsCreateVoiceModalOpen(true)
   }
@@ -220,13 +229,15 @@ export const BrandHub: React.FC = () => {
           <Button variant="secondary" onClick={() => setIsWorkflowSpotlightOpen(true)}>
             How voice creation works
           </Button>
-          <Button
-            variant="primary"
-            iconBefore={<AddIcon label="New" />}
-            onClick={handleOpenCreateVoiceModal}
-          >
-            New brand voice
-          </Button>
+          {canManageBrandVoices && (
+            <Button
+              variant="primary"
+              iconBefore={<AddIcon label="New" />}
+              onClick={handleOpenCreateVoiceModal}
+            >
+              New brand voice
+            </Button>
+          )}
         </div>
       </header>
 
@@ -252,6 +263,7 @@ export const BrandHub: React.FC = () => {
             error={error}
             onRefresh={refresh}
             onCreateVoice={handleOpenCreateVoiceModal}
+            canManage={canManageBrandVoices}
           />
         </div>
       )}
@@ -289,16 +301,18 @@ export const BrandHub: React.FC = () => {
         onComplete={handleCompleteOnboarding}
       />
 
-      <CreateVoiceModal
-        open={isCreateVoiceModalOpen}
-        onClose={handleCloseCreateVoiceModal}
-        workflow={workflow}
-        videos={videosForDisplay}
-        displayHandle={displayHandle}
-        onFetchVideos={fetchVideos}
-        onAnalyzeVideos={analyzeVideos}
-        onCreatePersona={createPersona}
-      />
+      {canManageBrandVoices && (
+        <CreateVoiceModal
+          open={isCreateVoiceModalOpen}
+          onClose={handleCloseCreateVoiceModal}
+          workflow={workflow}
+          videos={videosForDisplay}
+          displayHandle={displayHandle}
+          onFetchVideos={fetchVideos}
+          onAnalyzeVideos={analyzeVideos}
+          onCreatePersona={createPersona}
+        />
+      )}
 
       <WorkflowSpotlightModal
         open={isWorkflowSpotlightOpen}

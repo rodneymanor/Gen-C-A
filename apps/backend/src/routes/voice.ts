@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 
 import { getVoiceService, VoiceServiceError } from '../../../../src/services/voice/voice-service.js';
+import { registerAllMethods } from './utils/register-all-methods';
 
 function handleVoiceError(res: Response, error: unknown) {
   if (error instanceof VoiceServiceError) {
@@ -16,13 +17,16 @@ function handleVoiceError(res: Response, error: unknown) {
 
 export const voiceRouter = Router();
 
-voiceRouter.post('/analyze-patterns', async (req: Request, res: Response) => {
+async function analyzePatterns(req: Request, res: Response) {
   try {
-    const { creator = {}, ...options } = (req.body ?? {}) as Record<string, unknown>;
+    const source = (req.method.toUpperCase() === 'GET' ? req.query : req.body) ?? {};
+    const { creator = {}, ...options } = source as Record<string, unknown>;
     const service = getVoiceService();
     const result = await service.generate(options);
     res.json({ success: true, creator, ...result });
   } catch (error) {
     handleVoiceError(res, error);
   }
-});
+}
+
+registerAllMethods(voiceRouter, '/analyze-patterns', analyzePatterns);

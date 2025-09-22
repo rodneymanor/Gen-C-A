@@ -8,24 +8,31 @@ import { handleInstagramUserId } from '../src/api-routes/videos/instagram-user-i
 import { handleTikTokUserFeed } from '../src/api-routes/videos/tiktok-user-feed.js';
 import { handleVideoTranscribe } from '../src/api-routes/videos/transcribe.js';
 import { handleVoiceAnalyzePatterns } from '../src/api-routes/voice.js';
-import { handleSaveCreatorAnalysis } from '../src/api-routes/creator-analysis.js';
-import { handleListAnalyzedVideoIds } from '../src/api-routes/creator-lookup.js';
-import { handleListBrandVoices, handleGetBrandVoiceTemplates, handleDeleteBrandVoice, handleUpdateBrandVoiceMeta } from '../src/api-routes/brand-voices.js';
-import { handleGetScripts, handleCreateScript, handleGetScriptById, handleUpdateScript, handleDeleteScript } from '../src/api-routes/scripts.js';
-import {
-  handleGetNotes,
-  handleCreateNote,
-  handleGetNoteById,
-  handleUpdateNote,
-  handleDeleteNote,
-} from '../src/api-routes/notes.js';
 import {
   handleCENotesGet,
   handleCENotesPost,
   handleCENotesPut,
   handleCENotesDelete,
 } from '../src/api-routes/chrome-extension.js';
-import { handleGetCollections, handleCreateCollection, handleGetUserCollections, handleGetCollectionVideos, handleMoveVideo, handleCopyVideo, handleDeleteCollection, handleUpdateCollection, handleAddVideoToCollection, handleDeleteVideo } from '../src/api-routes/collections.js';
+import { handleDeleteVideo } from '../src/api-routes/collections.js';
+import creatorSaveAnalysisHandler from './creator/save-analysis';
+import creatorAnalyzedVideoIdsHandler from './creator/analyzed-video-ids';
+import brandVoicesListHandler from './brand-voices/list';
+import brandVoicesTemplatesHandler from './brand-voices/templates';
+import brandVoicesDeleteHandler from './brand-voices/delete';
+import brandVoicesUpdateMetaHandler from './brand-voices/update-meta';
+import scriptsIndexHandler from './scripts/index';
+import scriptsIdHandler from './scripts/[id]';
+import notesIndexHandler from './notes/index';
+import notesIdHandler from './notes/[id]';
+import collectionsIndexHandler from './collections/index';
+import collectionsUserCollectionsHandler from './collections/user-collections';
+import collectionsMoveVideoHandler from './collections/move-video';
+import collectionsCopyVideoHandler from './collections/copy-video';
+import collectionsDeleteHandler from './collections/delete';
+import collectionsUpdateHandler from './collections/update';
+import videosCollectionHandler from './videos/collection';
+import videosAddToCollectionHandler from './videos/add-to-collection';
 
 function aiAction(text: string, actionType: string, option?: string) {
   const extractTheme = (t: string) => {
@@ -72,35 +79,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Voice + Creator analysis
     if (path === '/api/voice/analyze-patterns' && req.method === 'POST') return handleVoiceAnalyzePatterns(req as any, res as any);
-    if (path === '/api/creator/save-analysis' && req.method === 'POST') return handleSaveCreatorAnalysis(req as any, res as any);
-    if (path === '/api/creator/analyzed-video-ids' && req.method === 'GET') return handleListAnalyzedVideoIds(req as any, res as any);
+    if (path === '/api/creator/save-analysis' && req.method === 'POST') return creatorSaveAnalysisHandler(req, res);
+    if (path === '/api/creator/analyzed-video-ids' && (req.method === 'GET' || req.method === 'POST')) {
+      return creatorAnalyzedVideoIdsHandler(req, res);
+    }
 
     // Brand voices
-    if (path === '/api/brand-voices/list' && req.method === 'GET') return handleListBrandVoices(req as any, res as any);
-    if (path === '/api/brand-voices/templates' && (req.method === 'GET' || req.method === 'POST')) return handleGetBrandVoiceTemplates(req as any, res as any);
-    if (path === '/api/brand-voices/delete' && req.method === 'POST') return handleDeleteBrandVoice(req as any, res as any);
-    if (path === '/api/brand-voices/update-meta' && req.method === 'POST') return handleUpdateBrandVoiceMeta(req as any, res as any);
+    if (path === '/api/brand-voices/list' && req.method === 'GET') return brandVoicesListHandler(req, res);
+    if (path === '/api/brand-voices/templates' && (req.method === 'GET' || req.method === 'POST')) {
+      return brandVoicesTemplatesHandler(req, res);
+    }
+    if (path === '/api/brand-voices/delete' && req.method === 'POST') return brandVoicesDeleteHandler(req, res);
+    if (path === '/api/brand-voices/update-meta' && req.method === 'POST') return brandVoicesUpdateMetaHandler(req, res);
 
     // Scripts
-    if (path === '/api/scripts' && req.method === 'GET') return handleGetScripts(req as any, res as any);
-    if (path === '/api/scripts' && req.method === 'POST') return handleCreateScript(req as any, res as any);
+    if (path === '/api/scripts') {
+      return scriptsIndexHandler(req, res);
+    }
     const scriptsIdMatch = path.match(/^\/api\/scripts\/([^/]+)$/);
     if (scriptsIdMatch) {
-      (req as any).params = { id: scriptsIdMatch[1] };
-      if (req.method === 'GET') return handleGetScriptById(req as any, res as any);
-      if (req.method === 'PUT') return handleUpdateScript(req as any, res as any);
-      if (req.method === 'DELETE') return handleDeleteScript(req as any, res as any);
+      const id = scriptsIdMatch[1];
+      (req as any).params = { id };
+      const query = ({ ...(req.query as Record<string, unknown>), id } as Record<string, unknown>);
+      (req as any).query = query;
+      return scriptsIdHandler(req, res);
     }
 
     // Notes
-    if (path === '/api/notes' && req.method === 'GET') return handleGetNotes(req as any, res as any);
-    if (path === '/api/notes' && req.method === 'POST') return handleCreateNote(req as any, res as any);
+    if (path === '/api/notes') {
+      return notesIndexHandler(req, res);
+    }
     const notesIdMatch = path.match(/^\/api\/notes\/([^/]+)$/);
     if (notesIdMatch) {
-      (req as any).params = { id: notesIdMatch[1] };
-      if (req.method === 'GET') return handleGetNoteById(req as any, res as any);
-      if (req.method === 'PUT') return handleUpdateNote(req as any, res as any);
-      if (req.method === 'DELETE') return handleDeleteNote(req as any, res as any);
+      const id = notesIdMatch[1];
+      (req as any).params = { id };
+      const query = ({ ...(req.query as Record<string, unknown>), id } as Record<string, unknown>);
+      (req as any).query = query;
+      return notesIdHandler(req, res);
     }
 
     // Chrome extension notes
@@ -118,15 +133,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Collections + Videos
-    if (path === '/api/collections' && req.method === 'GET') return handleGetCollections(req as any, res as any);
-    if (path === '/api/collections' && req.method === 'POST') return handleCreateCollection(req as any, res as any);
-    if (path === '/api/collections/user-collections') return handleGetUserCollections(req as any, res as any);
-    if (path === '/api/videos/collection' && req.method === 'POST') return handleGetCollectionVideos(req as any, res as any);
-    if (path === '/api/collections/move-video' && req.method === 'POST') return handleMoveVideo(req as any, res as any);
-    if (path === '/api/collections/copy-video' && req.method === 'POST') return handleCopyVideo(req as any, res as any);
-    if (path === '/api/collections/delete' && req.method === 'DELETE') return handleDeleteCollection(req as any, res as any);
-    if (path === '/api/collections/update' && req.method === 'PATCH') return handleUpdateCollection(req as any, res as any);
-    if (path === '/api/videos/add-to-collection' && req.method === 'POST') return handleAddVideoToCollection(req as any, res as any);
+    if (path === '/api/collections') {
+      return collectionsIndexHandler(req, res);
+    }
+    if (path === '/api/collections/user-collections') {
+      return collectionsUserCollectionsHandler(req, res);
+    }
+    if (path === '/api/videos/collection' && req.method === 'POST') {
+      return videosCollectionHandler(req, res);
+    }
+    if (path === '/api/collections/move-video' && req.method === 'POST') {
+      return collectionsMoveVideoHandler(req, res);
+    }
+    if (path === '/api/collections/copy-video' && req.method === 'POST') {
+      return collectionsCopyVideoHandler(req, res);
+    }
+    if (path === '/api/collections/delete' && req.method === 'DELETE') {
+      return collectionsDeleteHandler(req, res);
+    }
+    if (path === '/api/collections/update' && req.method === 'PATCH') {
+      return collectionsUpdateHandler(req, res);
+    }
+    if (path === '/api/videos/add-to-collection' && req.method === 'POST') {
+      return videosAddToCollectionHandler(req, res);
+    }
     if (path === '/api/videos/delete' && req.method === 'POST') return handleDeleteVideo(req as any, res as any);
 
     // AI action mock

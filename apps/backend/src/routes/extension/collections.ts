@@ -14,15 +14,16 @@ import {
   readArray,
   writeArray,
   getApiKeyFromRequest,
-  guessPlatformFromUrl,
-  generateVideoTitleFromUrl,
-  getDefaultThumbnailForPlatform,
-  createJobId,
 } from './utils.js';
+import {
+  ChromeExtensionCollectionsServiceError,
+  getChromeExtensionCollectionsService,
+} from '../../../../../src/services/chrome-extension/chrome-extension-collections-service.js';
 
 function sendCollectionsError(res: Response, error: unknown, fallback: string) {
-  if (error instanceof CollectionsServiceError) {
-    res.status(error.statusCode).json({ success: false, error: error.message });
+  if (error instanceof CollectionsServiceError || error instanceof ChromeExtensionCollectionsServiceError) {
+    const statusCode = (error as CollectionsServiceError | ChromeExtensionCollectionsServiceError).statusCode;
+    res.status(statusCode).json({ success: false, error: error.message });
     return;
   }
   const message = error instanceof Error ? error.message : String(error);
@@ -244,114 +245,18 @@ collectionsRouter.post('/add-video', async (req: Request, res: Response) => {
       return;
     }
 
-    if (!db) {
-      const collectionsFile = path.join(DATA_DIR, 'collections.json');
-      const videosFile = path.join(DATA_DIR, 'videos.json');
-      const collections = readArray(collectionsFile);
-      const now = new Date();
-      let collectionId = collections.find(
-        (c: any) => c.userId === user.uid && c.title === String(collectionTitle).trim(),
-      )?.id;
-      if (!collectionId) {
-        collectionId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-        collections.push({
-          id: collectionId,
-          title: String(collectionTitle).trim(),
-          description: '',
-          userId: user.uid,
-          videoCount: 0,
-          createdAt: now.toISOString(),
-          updatedAt: now.toISOString(),
-        });
-        writeArray(collectionsFile, collections);
-      }
-
-      const videos = readArray(videosFile);
-      const videoId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-      const platform = guessPlatformFromUrl(String(videoUrl));
-      const fallbackVideo = {
-        id: videoId,
-        url: String(videoUrl).trim(),
-        title: title ? String(title).trim() : generateVideoTitleFromUrl(videoUrl),
-        platform,
-        thumbnailUrl: getDefaultThumbnailForPlatform(platform),
-        author: 'Unknown Creator',
-        transcript: 'Transcript not available',
-        visualContext: 'Imported via Import Video',
-        fileSize: 0,
-        duration: 0,
-        userId: user.uid,
-        collectionId,
-        addedAt: now.toISOString(),
-        components: { hook: '', bridge: '', nugget: '', wta: '' },
-        contentMetadata: { hashtags: [], mentions: [], description: '' },
-        insights: { views: 0, likes: 0, comments: 0, saves: 0 },
-        metadata: { source: 'import' },
-      };
-      videos.unshift(fallbackVideo);
-      writeArray(videosFile, videos);
-
-      const collIndex = collections.findIndex((c: any) => c.id === collectionId);
-      if (collIndex !== -1) {
-        const current = collections[collIndex].videoCount || 0;
-        collections[collIndex] = {
-          ...collections[collIndex],
-          videoCount: current + 1,
-          updatedAt: now.toISOString(),
-        };
-        writeArray(collectionsFile, collections);
-      }
-
-      const jobId = createJobId();
-      res.status(201).json({
-        success: true,
-        message: 'Video added to processing queue',
-        jobId,
-        collectionTitle: String(collectionTitle).trim(),
-        collectionId,
-        videoUrl,
-        videoId,
-      });
-      return;
-    }
-
-    const service = getCollectionsAdminService(db);
-    const normalizedTitle = String(collectionTitle).trim();
-    let collectionId: string | undefined;
-    const existing = await db
-      .collection('collections')
-      .where('userId', '==', user.uid)
-      .where('title', '==', normalizedTitle)
-      .limit(1)
-      .get();
-
-    if (!existing.empty) {
-      collectionId = existing.docs[0].id;
-    } else {
-      const created = await service.createCollection(user.uid, {
-        title: normalizedTitle,
-        description: '',
-      });
-      collectionId = created.id;
-    }
-
-    const result = await service.addVideoToCollection(user.uid, {
-      collectionId,
-      videoData: {
-        originalUrl: String(videoUrl).trim(),
-        platform: guessPlatformFromUrl(String(videoUrl)),
-        title: title ? String(title).trim() : undefined,
-      },
+    const service = getChromeExtensionCollectionsService({ firestore: db, dataDir: DATA_DIR });
+    const result = await service.addVideo({
+      userId: String(user.uid),
+      videoUrl: String(videoUrl),
+      collectionTitle: String(collectionTitle),
+      title: title ? String(title) : undefined,
     });
 
     res.status(201).json({
       success: true,
       message: 'Video added to processing queue',
-      jobId: createJobId(),
-      collectionTitle: normalizedTitle,
-      collectionId,
-      videoUrl,
-      videoId: result.videoId,
+      ...result,
     });
   } catch (error) {
     sendCollectionsError(res, error, 'Failed to add video to collection');
