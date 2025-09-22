@@ -1,20 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getDb } from "@/api-routes/utils/firebase-admin.js";
-import { verifyRequestAuth } from "@/app/api/scripts/utils";
-import type { NoteRecord } from "../utils";
-import { findNoteById, formatNoteDoc, resolveNoteDocRef } from "../utils";
+import { verifyRequestAuth } from "@/app/api/utils/auth";
+import { getNotesService, NotesServiceError } from "@/services/notes/notes-service.js";
+import type { NoteRecord } from "../types";
 
 interface NoteResponse {
   success: boolean;
   note?: NoteRecord;
   error?: string;
-}
-
-function stripUndefined<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
-  ) as T;
 }
 
 export async function GET(
@@ -40,26 +34,19 @@ export async function GET(
       );
     }
 
-    const note = await findNoteById(db, auth.uid, id);
-    if (!note) {
-      return NextResponse.json(
-        { success: false, error: "Not found" } satisfies NoteResponse,
-        { status: 404 },
-      );
-    }
-
-    const owner = typeof note.userId === "string" ? note.userId : undefined;
-    if (owner && owner !== auth.uid) {
-      return NextResponse.json(
-        { success: false, error: "Forbidden" } satisfies NoteResponse,
-        { status: 403 },
-      );
-    }
-
+    const service = getNotesService(db);
+    const note = await service.getNoteById(auth.uid, id);
     return NextResponse.json(
       { success: true, note } satisfies NoteResponse,
     );
   } catch (error) {
+    if (error instanceof NotesServiceError) {
+      console.warn("[notes] Service error while fetching note:", error.message);
+      return NextResponse.json(
+        { success: false, error: error.message } satisfies NoteResponse,
+        { status: error.statusCode },
+      );
+    }
     console.error("[notes] Failed to fetch note:", (error as Error)?.message);
     return NextResponse.json(
       { success: false, error: "Failed to load note." } satisfies NoteResponse,
@@ -102,49 +89,19 @@ export async function PUT(
       );
     }
 
-    const docRef = await resolveNoteDocRef(db, auth.uid, id);
-    if (!docRef) {
-      return NextResponse.json(
-        { success: false, error: "Not found" } satisfies NoteResponse,
-        { status: 404 },
-      );
-    }
-
-    const snapshot = await docRef.get();
-    if (!snapshot.exists) {
-      return NextResponse.json(
-        { success: false, error: "Not found" } satisfies NoteResponse,
-        { status: 404 },
-      );
-    }
-
-    const data = snapshot.data() as Record<string, unknown> | undefined;
-    const owner = typeof data?.userId === "string" ? (data.userId as string) : undefined;
-    if (owner && owner !== auth.uid) {
-      return NextResponse.json(
-        { success: false, error: "Forbidden" } satisfies NoteResponse,
-        { status: 403 },
-      );
-    }
-
-    const normalized = stripUndefined({ ...body });
-    if (Array.isArray(body.tags)) {
-      normalized.tags = body.tags.map(String);
-    }
-    if (typeof body.starred === "boolean") {
-      normalized.starred = body.starred;
-    }
-
-    const nextUpdatedAt = new Date();
-    await docRef.set({ ...normalized, updatedAt: nextUpdatedAt }, { merge: true });
-
-    const updatedSnapshot = await docRef.get();
-    const note = formatNoteDoc(updatedSnapshot);
-
+    const service = getNotesService(db);
+    const note = await service.updateNote(auth.uid, id, body);
     return NextResponse.json(
       { success: true, note } satisfies NoteResponse,
     );
   } catch (error) {
+    if (error instanceof NotesServiceError) {
+      console.warn("[notes] Service error while updating note:", error.message);
+      return NextResponse.json(
+        { success: false, error: error.message } satisfies NoteResponse,
+        { status: error.statusCode },
+      );
+    }
     console.error("[notes] Failed to update note:", (error as Error)?.message);
     return NextResponse.json(
       { success: false, error: "Failed to update note." } satisfies NoteResponse,
@@ -176,37 +133,20 @@ export async function DELETE(
       );
     }
 
-    const docRef = await resolveNoteDocRef(db, auth.uid, id);
-    if (!docRef) {
-      return NextResponse.json(
-        { success: false, error: "Not found" } satisfies NoteResponse,
-        { status: 404 },
-      );
-    }
-
-    const snapshot = await docRef.get();
-    if (!snapshot.exists) {
-      return NextResponse.json(
-        { success: false, error: "Not found" } satisfies NoteResponse,
-        { status: 404 },
-      );
-    }
-
-    const data = snapshot.data() as Record<string, unknown> | undefined;
-    const owner = typeof data?.userId === "string" ? (data.userId as string) : undefined;
-    if (owner && owner !== auth.uid) {
-      return NextResponse.json(
-        { success: false, error: "Forbidden" } satisfies NoteResponse,
-        { status: 403 },
-      );
-    }
-
-    await docRef.delete();
+    const service = getNotesService(db);
+    await service.deleteNote(auth.uid, id);
 
     return NextResponse.json(
       { success: true } satisfies NoteResponse,
     );
   } catch (error) {
+    if (error instanceof NotesServiceError) {
+      console.warn("[notes] Service error while deleting note:", error.message);
+      return NextResponse.json(
+        { success: false, error: error.message } satisfies NoteResponse,
+        { status: error.statusCode },
+      );
+    }
     console.error("[notes] Failed to delete note:", (error as Error)?.message);
     return NextResponse.json(
       { success: false, error: "Failed to delete note." } satisfies NoteResponse,

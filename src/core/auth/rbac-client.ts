@@ -120,6 +120,16 @@ export const RbacClient = {
     if (!res.ok) throw new Error(`Failed to add video (${res.status})`);
     return res.json();
   },
+
+  async deleteVideo(userId: string, videoId: string): Promise<any> {
+    const res = await fetch(`/api/videos/delete`, {
+      method: 'POST',
+      headers: jsonHeaders(userId),
+      body: JSON.stringify({ videoId }),
+    });
+    if (!res.ok) throw new Error(`Failed to delete video (${res.status})`);
+    return res.json();
+  },
 };
 
 export default RbacClient;

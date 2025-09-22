@@ -1,4 +1,9 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  GoogleGenerativeAI,
+  HarmBlockThreshold,
+  HarmCategory,
+  type SafetySetting,
+} from "@google/generative-ai";
 
 export interface GeminiRequest {
   prompt: string;
@@ -52,26 +57,31 @@ export class GeminiService {
       }
 
       // Safety settings to allow more content types
-      const safetySettings = [
+      const safetySettings: SafetySetting[] = [
         {
-          category: "HARM_CATEGORY_HARASSMENT",
-          threshold: "BLOCK_NONE",
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
         },
         {
-          category: "HARM_CATEGORY_HATE_SPEECH",
-          threshold: "BLOCK_NONE",
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
         },
         {
-          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-          threshold: "BLOCK_NONE",
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
         },
         {
-          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-          threshold: "BLOCK_NONE",
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
         },
       ];
 
-      const model = new GoogleGenerativeAI(process.env.GEMINI_API_KEY).getGenerativeModel({
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('GEMINI_API_KEY is not configured');
+      }
+
+      const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({
         model: modelName,
         generationConfig,
         systemInstruction: request.systemPrompt,
@@ -114,26 +124,31 @@ export class GeminiService {
       console.log("🎤 [Gemini] Starting audio transcription...");
 
       // Safety settings to allow more content types
-      const safetySettings = [
+      const safetySettings: SafetySetting[] = [
         {
-          category: "HARM_CATEGORY_HARASSMENT",
-          threshold: "BLOCK_NONE",
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
         },
         {
-          category: "HARM_CATEGORY_HATE_SPEECH",
-          threshold: "BLOCK_NONE",
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
         },
         {
-          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-          threshold: "BLOCK_NONE",
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
         },
         {
-          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-          threshold: "BLOCK_NONE",
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
         },
       ];
 
-      const model = new GoogleGenerativeAI(process.env.GEMINI_API_KEY).getGenerativeModel({
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('GEMINI_API_KEY is not configured');
+      }
+
+      const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({
         model: "gemini-1.5-flash",
         safetySettings,
       });

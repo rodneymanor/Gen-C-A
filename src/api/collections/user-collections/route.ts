@@ -3,9 +3,25 @@
  * Get collections for the authenticated user using extracted services
  */
 
-import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, createSuccessResponse, createErrorResponse } from '@/services/api-middleware';
-import { getServices } from '@/services/service-container';
+import { getAdminDb } from '@/lib/firebase-admin';
+import { CollectionsServiceError, getCollectionsAdminService } from '@/services/collections/collections-admin-service.js';
+
+function getCollectionsService() {
+  const db = getAdminDb();
+  if (!db) {
+    throw new CollectionsServiceError('Database not available', 500);
+  }
+  return getCollectionsAdminService(db);
+}
+
+function handleCollectionsError(error: unknown, code: string, fallbackMessage: string) {
+  if (error instanceof CollectionsServiceError) {
+    return createErrorResponse(error.message, error.statusCode, code);
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return createErrorResponse(fallbackMessage, 500, code, message);
+}
 
 /**
  * GET /api/collections/user-collections
@@ -14,14 +30,13 @@ import { getServices } from '@/services/service-container';
 export const GET = requireAuth(async (request, context) => {
   try {
     const { userId, rbacContext } = context;
-    const { rbacService } = getServices();
 
     console.log("📚 [User Collections API] GET request received for user:", userId);
 
-    // Get collections using the extracted RBAC service
-    const result = await rbacService.getUserCollections(userId);
+    const service = getCollectionsService();
+    const result = await service.listCollections(userId);
 
-    console.log("✅ [User Collections API] Successfully fetched", result.collections.length, "collections");
+    console.log("✅ [User Collections API] Successfully fetched", result.total, "collections");
 
     return createSuccessResponse({
       user: {
@@ -31,16 +46,10 @@ export const GET = requireAuth(async (request, context) => {
         accessibleCoaches: result.accessibleCoaches
       },
       collections: result.collections,
-      total: result.collections.length
+      total: result.total
     });
-    
-  } catch (error: any) {
+  } catch (error) {
     console.error("❌ [User Collections API] Error fetching collections:", error);
-    return createErrorResponse(
-      "Failed to fetch user collections",
-      500,
-      "collections/user-fetch-error",
-      error.message
-    );
+    return handleCollectionsError(error, 'collections/user-fetch-error', 'Failed to fetch user collections');
   }
 });

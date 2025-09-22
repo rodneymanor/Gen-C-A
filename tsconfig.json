@@ -33,8 +33,13 @@
     },
 
     /* Emotion */
-    "types": ["@emotion/react/types/css-prop", "node"]
+    "types": [
+      "@emotion/react/types/css-prop",
+      "node",
+      "vitest",
+      "vitest/globals",
+      "@testing-library/jest-dom"
+    ]
   },
-  "include": ["src", "src/**/*.d.ts"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "src/**/*.d.ts"]
 }

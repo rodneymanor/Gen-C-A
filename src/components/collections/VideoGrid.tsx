@@ -2,22 +2,46 @@ import React, { useState } from 'react';
 import { css } from '@emotion/react';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
 import { VideoGrid as Grid } from '../layout/Grid';
 import type { GridProps } from '../layout/Grid';
-import { formatDuration, getPlatformIcon, formatRelativeTime, formatViewCount } from '../../utils/format';
+import { formatDuration, formatRelativeTime, formatViewCount } from '../../utils/format';
 import type { ContentItem } from '../../types';
 import { token } from '@atlaskit/tokens';
 
 // Atlassian Design System Icons
 import VidPlayIcon from '@atlaskit/icon/glyph/vid-play';
-import CheckIcon from '@atlaskit/icon/glyph/check';
 import PersonIcon from '@atlaskit/icon/glyph/person';
 import CameraIcon from '@atlaskit/icon/glyph/camera';
-import StarIcon from '@atlaskit/icon/glyph/star';
-import StarFilledIcon from '@atlaskit/icon/glyph/star-filled';
 import MoreIcon from '@atlaskit/icon/glyph/more';
 import EyeIcon from '@atlaskit/icon/glyph/watch';
+import TrashIcon from '@atlaskit/icon/glyph/trash';
+import { Instagram } from 'lucide-react';
+
+const TikTokGlyph: React.FC<{ size?: number }> = ({ size = 18 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden
+  >
+    <path
+      d="M16.5 3h2.25c.08 1.08.57 2.05 1.34 2.79A5.62 5.62 0 0021 7.1v2.63c-1.9-.03-3.69-.65-5.17-1.74v5.7c0 3.14-2.54 5.68-5.68 5.68a5.68 5.68 0 01-5.68-5.68c0-2.58 1.76-4.8 4.12-5.45v2.63a2.06 2.06 0 00-1.05-.28 2.08 2.08 0 00-2.07 2.07 2.08 2.08 0 002.07 2.07c1.15 0 2.08-.93 2.08-2.07V3.6A17.35 17.35 0 0016.5 3z"
+      fill="#25F4EE"
+      transform="translate(-0.55,0.45)"
+    />
+    <path
+      d="M16.5 3h2.25c.08 1.08.57 2.05 1.34 2.79A5.62 5.62 0 0021 7.1v2.63c-1.9-.03-3.69-.65-5.17-1.74v5.7c0 3.14-2.54 5.68-5.68 5.68a5.68 5.68 0 01-5.68-5.68c0-2.58 1.76-4.8 4.12-5.45v2.63a2.06 2.06 0 00-1.05-.28 2.08 2.08 0 00-2.07 2.07 2.08 2.08 0 002.07 2.07c1.15 0 2.08-.93 2.08-2.07V3.6A17.35 17.35 0 0016.5 3z"
+      fill="#FE2C55"
+      transform="translate(0.45,-0.45)"
+    />
+    <path
+      d="M16.5 3h2.25c.08 1.08.57 2.05 1.34 2.79A5.62 5.62 0 0021 7.1v2.63c-1.9-.03-3.69-.65-5.17-1.74v5.7c0 3.14-2.54 5.68-5.68 5.68a5.68 5.68 0 01-5.68-5.68c0-2.58 1.76-4.8 4.12-5.45v2.63a2.06 2.06 0 00-1.05-.28 2.08 2.08 0 00-2.07 2.07 2.08 2.08 0 002.07 2.07c1.15 0 2.08-.93 2.08-2.07V3.6A17.35 17.35 0 0016.5 3z"
+      fill="white"
+    />
+  </svg>
+);
 
 export interface VideoGridProps {
   videos: ContentItem[];
@@ -25,9 +49,11 @@ export interface VideoGridProps {
   onVideoPlay?: (video: ContentItem) => void;
   onVideoFavorite?: (video: ContentItem) => void;
   onVideoContextMenu?: (video: ContentItem, event: React.MouseEvent | React.KeyboardEvent) => void;
+  onVideoDelete?: (video: ContentItem) => void;
   selectedVideos?: string[];
   favoriteVideos?: string[];
   showBulkActions?: boolean;
+  deletingVideoId?: string | null;
   columns?: GridProps['columns'];
 }
 
@@ -145,38 +171,10 @@ const viewCountStyles = css`
   gap: var(--space-1);
 `;
 
-const favoriteStarStyles = css`
-  position: absolute;
-  top: var(--space-2);
-  right: var(--space-10);
-  background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.9)')};
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--color-neutral-200);
-  border-radius: var(--radius-full);
-  padding: var(--space-2);
-  cursor: pointer;
-  transition: var(--transition-all);
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  &:hover {
-    background: var(--color-warning-50);
-    border-color: var(--color-warning-300);
-  }
-  
-  &.favorited {
-    background: var(--color-warning-100);
-    border-color: var(--color-warning-300);
-  }
-`;
 
 const contextMenuStyles = css`
   position: absolute;
   top: var(--space-2);
-  right: var(--space-2);
   background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.9)')};
   backdrop-filter: blur(4px);
   border: 1px solid var(--color-neutral-200);
@@ -210,37 +208,65 @@ const durationBadgeStyles = css`
   font-family: var(--font-family-mono);
 `;
 
-const platformBadgeStyles = css`
-  position: absolute;
-  top: var(--space-2);
-  left: var(--space-2);
-`;
-
-const checkboxStyles = css`
+const instagramBadgeStyles = css`
   position: absolute;
   top: var(--space-2);
   right: var(--space-2);
-  width: 20px;
-  height: 20px;
-  background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.9)')};
-  backdrop-filter: blur(4px);
-  border: 2px solid ${token('color.border', 'var(--color-neutral-300)')};
-  border-radius: var(--radius-small);
-  cursor: pointer;
-  transition: var(--transition-all);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  
+  background: linear-gradient(135deg, #f58529 0%, #dd2a7b 40%, #8134af 70%, #515bd4 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  border: 2px solid rgba(255, 255, 255, 0.72);
+  color: white;
+  z-index: 2;
+`;
+
+const tiktokBadgeStyles = css`
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f0f0f;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  border: 2px solid rgba(255, 255, 255, 0.72);
+  color: white;
+  z-index: 2;
+`;
+
+const deleteButtonStyles = css`
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.9)')};
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-full);
+  color: var(--color-error-600);
+  transition: var(--transition-all);
+  z-index: 2;
+
   &:hover {
-    border-color: var(--color-primary-500);
-    background: var(--color-primary-50);
+    background: var(--color-error-50);
+    border-color: var(--color-error-200);
+    color: var(--color-error-700);
   }
-  
-  &.checked {
-    background: var(--color-primary-500);
-    border-color: var(--color-primary-500);
-    color: white;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `;
 
@@ -288,35 +314,22 @@ const videoInfoStyles = css`
       flex-shrink: 0;
     }
   }
-  
-  .video-tags {
-    margin-top: var(--space-3);
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    
-    .tag {
-      background: var(--color-neutral-100);
-      color: var(--color-neutral-700);
-      padding: var(--space-1) var(--space-2);
-      border-radius: var(--radius-full);
-      font-size: var(--font-size-caption);
-      font-weight: var(--font-weight-medium);
-    }
-  }
 `;
 
 const VideoCard: React.FC<{
   video: ContentItem;
   isSelected: boolean;
-  isFavorited: boolean;
   onSelect?: (video: ContentItem) => void;
   onPlay?: (video: ContentItem) => void;
-  onFavorite?: (video: ContentItem) => void;
   onContextMenu?: (video: ContentItem, event: React.MouseEvent | React.KeyboardEvent) => void;
-  showCheckbox?: boolean;
-}> = ({ video, isSelected, isFavorited, onSelect, onPlay, onFavorite, onContextMenu, showCheckbox = false }) => {
+  onDelete?: (video: ContentItem) => void;
+  isDeleteBusy?: boolean;
+}> = ({ video, isSelected, onSelect, onPlay, onContextMenu, onDelete, isDeleteBusy }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const platform = String(video.platform || '').toLowerCase();
+  const isInstagram = platform === 'instagram';
+  const isTiktok = platform === 'tiktok';
+  const hasRightBadge = isInstagram || isTiktok;
 
   return (
     <Card
@@ -369,26 +382,20 @@ const VideoCard: React.FC<{
             <VidPlayIcon label="" size="medium" primaryColor={token('color.icon.inverse')} />
           </div>
         </div>
-        
-        {/* Platform badge */}
-        {video.platform && (
-          <div css={platformBadgeStyles}>
-            <Badge
-              variant="neutral"
-              size="small"
-              icon={getPlatformIcon(video.platform)}
-              className="platform-badge-overlay"
-              style={{
-                background: token('color.background.neutral', 'rgba(255, 255, 255, 0.9)'),
-                backdropFilter: 'blur(4px)',
-                border: `1px solid ${token('color.border', 'rgba(255, 255, 255, 0.5)')}`
-              }}
-            >
-              {video.platform}
-            </Badge>
-          </div>
-        )}
-        
+
+        <button
+          css={deleteButtonStyles}
+          type="button"
+          aria-label={`Delete ${video.title}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.(video);
+          }}
+          disabled={isDeleteBusy}
+        >
+          <TrashIcon label="" size="small" primaryColor="currentColor" />
+        </button>
+
         {/* View count */}
         {video.metadata?.views && (
           <div css={viewCountStyles}>
@@ -403,36 +410,26 @@ const VideoCard: React.FC<{
             ▶ {formatDuration(video.duration)}
           </div>
         )}
-        
-        {/* Favorite star */}
-        <div
-          css={favoriteStarStyles}
-          className={isFavorited ? 'favorited' : ''}
-          onClick={(e) => {
-            e.stopPropagation();
-            onFavorite?.(video);
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label={isFavorited ? `Remove ${video.title} from favorites` : `Add ${video.title} to favorites`}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onFavorite?.(video);
-            }
-          }}
-        >
-          {isFavorited ? (
-            <StarFilledIcon label="" size="small" primaryColor={token('color.icon.warning')} />
-          ) : (
-            <StarIcon label="" size="small" primaryColor={token('color.icon')} />
-          )}
-        </div>
-        
+
+        {isInstagram && (
+          <div css={instagramBadgeStyles} aria-label="Instagram video">
+            <Instagram size={18} strokeWidth={1.6} color="white" />
+          </div>
+        )}
+
+        {isTiktok && (
+          <div css={tiktokBadgeStyles} aria-label="TikTok video">
+            <TikTokGlyph size={18} />
+          </div>
+        )}
+
         {/* Context menu */}
         <div
           css={contextMenuStyles}
-          style={{ opacity: isHovered ? 1 : 0 }}
+          style={{
+            opacity: isHovered ? 1 : 0,
+            right: hasRightBadge ? 'calc(var(--space-2) + 44px)' : 'var(--space-2)'
+          }}
           onClick={(e) => {
             e.stopPropagation();
             onContextMenu?.(video, e);
@@ -450,22 +447,6 @@ const VideoCard: React.FC<{
           <MoreIcon label="" size="small" primaryColor={token('color.icon')} />
         </div>
         
-        {/* Selection checkbox */}
-        {showCheckbox && (
-          <div
-            css={checkboxStyles}
-            className={isSelected ? 'checked' : ''}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect?.(video);
-            }}
-            role="checkbox"
-            aria-checked={isSelected}
-            aria-label={`Select ${video.title}`}
-          >
-            {isSelected && <CheckIcon label="" size="small" primaryColor="white" />}
-          </div>
-        )}
       </div>
       
       <CardContent css={videoInfoStyles}>
@@ -487,20 +468,6 @@ const VideoCard: React.FC<{
           </span>
         </div>
         
-        {video.tags && video.tags.length > 0 && (
-          <div className="video-tags">
-            {video.tags.slice(0, 3).map(tag => (
-              <span key={tag} className="tag">
-                #{tag}
-              </span>
-            ))}
-            {video.tags.length > 3 && (
-              <span className="tag">
-                +{video.tags.length - 3} more
-              </span>
-            )}
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -510,11 +477,13 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   videos,
   onVideoSelect,
   onVideoPlay,
-  onVideoFavorite,
+  onVideoFavorite: _onVideoFavorite,
   onVideoContextMenu,
+  onVideoDelete,
   selectedVideos = [],
-  favoriteVideos = [],
-  showBulkActions = false,
+  favoriteVideos: _favoriteVideos = [],
+  showBulkActions: _showBulkActions = false,
+  deletingVideoId,
   columns
 }) => {
   if (videos.length === 0) {
@@ -554,12 +523,11 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
           key={video.id}
           video={video}
           isSelected={selectedVideos.includes(video.id)}
-          isFavorited={favoriteVideos.includes(video.id)}
           onSelect={onVideoSelect}
           onPlay={onVideoPlay}
-          onFavorite={onVideoFavorite}
           onContextMenu={onVideoContextMenu}
-          showCheckbox={showBulkActions}
+          onDelete={onVideoDelete}
+          isDeleteBusy={deletingVideoId === video.id}
         />
       ))}
     </Grid>

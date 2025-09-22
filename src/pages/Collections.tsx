@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { css } from '@emotion/react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -26,6 +26,7 @@ import CalendarIcon from '@atlaskit/icon/glyph/calendar';
 import StarFilledIcon from '@atlaskit/icon/glyph/star-filled';
 import CrossIcon from '@atlaskit/icon/glyph/cross';
 import NatureIcon from '@atlaskit/icon/glyph/emoji/nature';
+import TrashIcon from '@atlaskit/icon/glyph/trash';
 import { useDebugger, DEBUG_LEVELS } from '../utils/debugger';
 import { usePageLoad } from '../contexts/PageLoadContext';
 
@@ -518,23 +519,172 @@ const mapServerCollectionToUi = (c: any): Collection => {
   };
 };
 
-const mapServerVideoToContentItem = (v: any): ContentItem => ({
-  id: String(v.id),
-  title: v.title || 'Video',
-  description: v.caption || v.description || '',
-  type: 'video',
-  platform: (v.platform || 'other') as any,
-  thumbnail: v.thumbnailUrl || v.previewUrl || '',
-  // Prefer an embeddable iframe URL if provided by backend/CDN; else fall back to original
-  url: v.iframeUrl || v.embedUrl || v.originalUrl || v.url || '',
-  duration: v.duration || 0,
-  tags: v.hashtags || [],
-  creator: v.author || undefined,
-  created: v.addedAt ? new Date(v.addedAt) : new Date(),
-  updated: v.updatedAt ? new Date(v.updatedAt) : new Date(),
-  status: 'published',
-  metadata: { views: v.metrics?.views, likes: v.metrics?.likes, comments: v.metrics?.comments },
-});
+const coerceDate = (value: any): Date => {
+  if (!value) return new Date();
+  if (value instanceof Date) return value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  if (typeof value === 'object') {
+    if (typeof value.toDate === 'function') {
+      try { return value.toDate(); } catch {}
+    }
+    if (typeof value.seconds === 'number') {
+      return new Date(value.seconds * 1000 + (value.nanoseconds || 0) / 1_000_000);
+    }
+  }
+  return new Date();
+};
+
+const normalizePlatform = (platform?: string): ContentItem['platform'] => {
+  const normalized = (platform || '').toLowerCase();
+  switch (normalized) {
+    case 'tiktok':
+    case 'tik_tok':
+      return 'tiktok';
+    case 'instagram':
+    case 'ig':
+      return 'instagram';
+    case 'youtube':
+    case 'yt':
+      return 'youtube';
+    case 'twitter':
+    case 'x':
+      return 'twitter';
+    case 'linkedin':
+      return 'linkedin';
+    case 'facebook':
+      return 'facebook';
+    default:
+      return 'other';
+  }
+};
+
+const toStringArray = (value: any): string[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+const normalizeScriptComponents = (value: any) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .map(([key, content]) => ({
+        id: key,
+        type: key,
+        label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        content: String(content ?? ''),
+      }))
+      .filter((component) => component.content);
+  }
+  return [];
+};
+
+const mapServerVideoToContentItem = (v: any): ContentItem => {
+  const metrics = v.metrics || v.insights || v.metadata?.metrics || {};
+  const contentMetadata = v.contentMetadata || v.metadata?.contentMetadata || {};
+  const transcript = v.transcript || v.metadata?.transcript || contentMetadata?.transcript;
+  const scriptComponents = normalizeScriptComponents(
+    v.components || v.metadata?.scriptComponents || v.metadata?.components,
+  );
+
+  const tagSet = new Set<string>();
+  const pushTags = (items: string[]) => {
+    items.forEach((tag) => {
+      const cleaned = tag.replace(/^#/, '').trim();
+      if (cleaned) tagSet.add(cleaned);
+    });
+  };
+  pushTags(toStringArray(v.hashtags));
+  pushTags(toStringArray(contentMetadata?.hashtags));
+  pushTags(toStringArray(v.tags));
+
+  const thumbnail =
+    v.thumbnailUrl ||
+    v.thumbnail ||
+    v.previewUrl ||
+    v.cover ||
+    v.image ||
+    contentMetadata?.thumbnailUrl ||
+    contentMetadata?.thumbnail;
+
+  const bestUrl =
+    v.iframeUrl ||
+    v.embedUrl ||
+    v.streamUrl ||
+    v.cdnUrl ||
+    v.url ||
+    v.originalUrl ||
+    contentMetadata?.sourceUrl;
+
+  const createdAt = coerceDate(v.addedAt || v.createdAt || v.created || v.metadata?.createdAt);
+  const updatedAt = coerceDate(v.updatedAt || v.metadata?.updatedAt || v.addedAt);
+
+  const duration = typeof v.duration === 'number' ? v.duration : Number(v.duration) || undefined;
+
+  const metadata: Record<string, any> = {};
+  const assignIfNumber = (key: string, value: any) => {
+    if (typeof value === 'number' && !Number.isNaN(value)) {
+      metadata[key] = value;
+    }
+  };
+
+  assignIfNumber('views', metrics.views ?? metrics.viewCount ?? metrics.playCount);
+  assignIfNumber('likes', metrics.likes ?? metrics.favoriteCount);
+  assignIfNumber('comments', metrics.comments ?? metrics.commentCount);
+  assignIfNumber('saves', metrics.saves ?? metrics.saveCount);
+  assignIfNumber('shares', metrics.shares ?? metrics.shareCount);
+
+  if (transcript) metadata.transcript = transcript;
+  if (scriptComponents.length > 0) metadata.scriptComponents = scriptComponents;
+  if (Object.keys(metrics).length > 0) metadata.metrics = metrics;
+  if (contentMetadata && Object.keys(contentMetadata).length > 0) {
+    metadata.contentMetadata = contentMetadata;
+  }
+  if (v.analysis) metadata.analysis = v.analysis;
+  if (v.transcriptionStatus) metadata.transcriptionStatus = v.transcriptionStatus;
+  if (bestUrl) metadata.originalUrl = v.originalUrl || v.url || bestUrl;
+  if (thumbnail) metadata.thumbnailUrl = thumbnail;
+  if (v.platformId || v.videoId) metadata.platformId = v.platformId || v.videoId;
+
+  const resolvedId =
+    v.id ||
+    v.videoId ||
+    v.assetId ||
+    v.documentId ||
+    v.originalUrl ||
+    v.url ||
+    v.iframeUrl ||
+    v.embedUrl ||
+    thumbnail;
+
+  return {
+    id: String(resolvedId ?? `video-${Date.now()}`),
+    title: v.title || contentMetadata?.title || 'Video',
+    description: v.description || v.caption || contentMetadata?.description || '',
+    type: 'video',
+    platform: normalizePlatform(v.platform || contentMetadata?.platform || v.sourcePlatform),
+    thumbnail: thumbnail || '',
+    // Prefer an embeddable iframe URL if provided by backend/CDN; else fall back to original
+    url: bestUrl || '',
+    duration,
+    tags: Array.from(tagSet),
+    creator: v.author || v.creator || contentMetadata?.creator || v.metadata?.author || undefined,
+    created: createdAt,
+    updated: updatedAt,
+    status: (v.status as ContentItem['status']) || 'published',
+    metadata,
+  };
+};
 
 export const Collections: React.FC = () => {
   const debug = useDebugger('Collections', { level: DEBUG_LEVELS.DEBUG });
@@ -546,6 +696,8 @@ export const Collections: React.FC = () => {
   const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [videos, setVideos] = useState<ContentItem[]>([]);
+  const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
+  const [isDedupeBusy, setIsDedupeBusy] = useState(false);
   const [platformFilter, setPlatformFilter] = useState<'all' | 'tiktok' | 'instagram'>('all');
   const [selectedVideo, setSelectedVideo] = useState<ContentItem | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
@@ -569,6 +721,26 @@ export const Collections: React.FC = () => {
   const [createError, setCreateError] = useState('');
   const createTitleRef = useRef<HTMLInputElement | null>(null);
   const addUrlRef = useRef<HTMLInputElement | null>(null);
+
+  const adjustCollectionVideoCount = useCallback((collectionId: string | undefined, delta: number) => {
+    if (!collectionId || collectionId === 'all-videos' || delta === 0) return;
+    setCollections(prev => prev.map(collection =>
+      collection.id === collectionId
+        ? {
+            ...collection,
+            videoCount: Math.max(0, (collection.videoCount ?? 0) + delta),
+          }
+        : collection
+    ));
+
+    setSelectedCollection(prev => {
+      if (!prev || prev.id !== collectionId) return prev;
+      return {
+        ...prev,
+        videoCount: Math.max(0, (prev.videoCount ?? 0) + delta),
+      };
+    });
+  }, []);
 
   const safeCloseModal = (busy: boolean) => {
     if (busy) return;
@@ -747,6 +919,110 @@ export const Collections: React.FC = () => {
 
   const handlePlatformFilterToggle = (platform: 'tiktok' | 'instagram') => {
     setPlatformFilter(prev => (prev === platform ? 'all' : platform));
+  };
+
+  const handleDeleteVideo = async (video: ContentItem) => {
+    if (!userId) {
+      alert('Please sign in to manage videos.');
+      return;
+    }
+    if (!video?.id) return;
+    if (deletingVideoId) return;
+
+    const confirmed = window.confirm(`Delete "${video.title}" from this collection? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      setDeletingVideoId(video.id);
+      await RbacClient.deleteVideo(String(userId), video.id);
+
+      setVideos(prev => prev.filter(v => v.id !== video.id));
+      setSelectedVideos(prev => prev.filter(id => id !== video.id));
+      adjustCollectionVideoCount(selectedCollection?.id, -1);
+
+      if (selectedVideo?.id === video.id) {
+        setSelectedVideo(null);
+        setIsVideoModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Failed to delete video', error);
+      alert('Failed to delete the video. Please try again.');
+    } finally {
+      setDeletingVideoId(null);
+    }
+  };
+
+  const handleRemoveDuplicates = async () => {
+    if (!userId) {
+      alert('Please sign in to manage videos.');
+      return;
+    }
+    if (videos.length === 0) {
+      alert('No videos available to deduplicate.');
+      return;
+    }
+
+    const buckets = new Map<string, ContentItem[]>();
+    videos.forEach((video) => {
+      const key = (
+        video.metadata?.originalUrl ||
+        video.metadata?.contentMetadata?.sourceUrl ||
+        video.url ||
+        ''
+      ).trim().toLowerCase();
+      if (!key) return;
+      const group = buckets.get(key) || [];
+      group.push(video);
+      buckets.set(key, group);
+    });
+
+    const duplicates: ContentItem[] = [];
+    buckets.forEach((group) => {
+      if (group.length <= 1) return;
+      const sorted = [...group].sort((a, b) => b.created.getTime() - a.created.getTime());
+      duplicates.push(...sorted.slice(1));
+    });
+
+    if (duplicates.length === 0) {
+      alert('No duplicate videos found.');
+      return;
+    }
+
+    const confirmed = window.confirm(`Remove ${duplicates.length} duplicate video${duplicates.length === 1 ? '' : 's'}?`);
+    if (!confirmed) return;
+
+    setIsDedupeBusy(true);
+    const failed: string[] = [];
+    const deletedIds = new Set<string>();
+
+    for (const duplicate of duplicates) {
+      try {
+        await RbacClient.deleteVideo(String(userId), duplicate.id);
+        deletedIds.add(duplicate.id);
+      } catch (error) {
+        console.error('Failed to delete duplicate video', error);
+        failed.push(duplicate.title || duplicate.id);
+      }
+    }
+
+    if (deletedIds.size > 0) {
+      setVideos(prev => prev.filter(video => !deletedIds.has(video.id)));
+      setSelectedVideos(prev => prev.filter(id => !deletedIds.has(id)));
+      adjustCollectionVideoCount(selectedCollection?.id, -deletedIds.size);
+
+      if (selectedVideo && deletedIds.has(selectedVideo.id)) {
+        setSelectedVideo(null);
+        setIsVideoModalOpen(false);
+      }
+    }
+
+    setIsDedupeBusy(false);
+
+    if (failed.length > 0) {
+      alert(`Couldn't remove ${failed.length} duplicate${failed.length === 1 ? '' : 's'}: ${failed.join(', ')}`);
+    } else {
+      alert(`Removed ${deletedIds.size} duplicate video${deletedIds.size === 1 ? '' : 's'}.`);
+    }
   };
 
   // Load collections on mount if userId available
@@ -1064,6 +1340,15 @@ export const Collections: React.FC = () => {
               >
                 Newest
               </Button>
+              <Button
+                variant="danger"
+                size="small"
+                iconBefore={<TrashIcon label="" />}
+                onClick={handleRemoveDuplicates}
+                isDisabled={isDedupeBusy || deletingVideoId !== null || videos.length === 0}
+              >
+                {isDedupeBusy ? 'Removing…' : 'Remove Duplicates'}
+              </Button>
             </div>
           </div>
 
@@ -1071,8 +1356,9 @@ export const Collections: React.FC = () => {
             videos={filteredVideos}
             onVideoSelect={handleVideoSelect}
             onVideoPlay={handleVideoPlay}
+            onVideoDelete={handleDeleteVideo}
             selectedVideos={selectedVideos}
-            showBulkActions={true}
+            deletingVideoId={deletingVideoId}
             columns={{ sm: 1, md: 2, lg: 4 }}
           />
 

@@ -10,7 +10,6 @@ import {
 import {
   analyzeTranscripts,
   buildInitialWorkflowState,
-  createVoicePersona,
   fetchCreatorVideos,
   initialStepState,
   saveVoiceTemplates,
@@ -20,8 +19,7 @@ import {
 } from '../services/voiceCreationService'
 
 interface UseVoiceCreationWorkflowOptions {
-  onPersonaCreated?: () => void
-  getAuthToken?: () => Promise<string | null>
+  onVoiceSaved?: () => void
 }
 
 interface UseVoiceCreationWorkflowResult {
@@ -171,37 +169,6 @@ export const useVoiceCreationWorkflow = (
     }
   }, [context, videos, baseResult])
 
-  const resolveAuthToken = useCallback(async (): Promise<string | null> => {
-    if (options.getAuthToken) {
-      try {
-        const token = await options.getAuthToken()
-        if (token && typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('authToken', token)
-          } catch (storageError) {
-            console.warn('[BrandHub] Unable to persist auth token', storageError)
-          }
-        }
-        if (token) {
-          return token
-        }
-      } catch (tokenError) {
-        console.warn('[BrandHub] Failed to fetch auth token from provider', tokenError)
-      }
-    }
-
-    if (typeof window === 'undefined') {
-      return null
-    }
-
-    try {
-      return localStorage.getItem('authToken')
-    } catch (readError) {
-      console.warn('[BrandHub] Unable to read auth token from storage', readError)
-      return null
-    }
-  }, [options])
-
   const createPersonaHandler = useCallback(async () => {
     if (!context || !analysis) {
       throw new Error('Complete the analysis before creating a brand voice.')
@@ -210,35 +177,26 @@ export const useVoiceCreationWorkflow = (
     setWorkflow((prev) => ({ ...prev, step5: { status: 'running' } }))
 
     try {
-      await saveVoiceTemplates({
+      const saveResult = await saveVoiceTemplates({
         context,
         analysis,
         transcripts,
         videoMeta
       })
 
-      const token = await resolveAuthToken()
-      const result = await createVoicePersona({
-        context,
-        analysis,
-        transcripts,
-        videoMeta,
-        token
-      })
-
       setWorkflow((prev) => ({
         ...prev,
-        step5: { status: 'success', data: result }
+        step5: { status: 'success', data: saveResult }
       }))
 
-      options.onPersonaCreated?.()
+      options.onVoiceSaved?.()
     } catch (error) {
       console.error('[BrandHub] handleCreatePersona error', error)
       const message = error instanceof Error ? error.message : String(error)
       setWorkflow((prev) => ({ ...prev, step5: { status: 'error', message } }))
       throw error
     }
-  }, [analysis, context, transcripts, videoMeta, options, resolveAuthToken])
+  }, [analysis, context, transcripts, videoMeta, options])
 
   const videosForDisplay = useMemo<VoiceDisplayVideo[]>(() => videoDisplayMapper(videos), [videos])
 

@@ -18,8 +18,8 @@
   },
   "include": [
     "vite.config.ts",
-    "src/cli/**/*",
-    "src/config/**/*.ts",
-    "src/services/**/*.ts"
+    "scripts/**/*.ts",
+    "src/cli/**/*.ts",
+    "src/config/**/*.ts"
   ]
 }

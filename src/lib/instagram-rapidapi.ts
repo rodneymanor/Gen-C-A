@@ -1,6 +1,6 @@
 import { UnifiedVideoResult, ScraperOptions } from "@/lib/types-video-scraper";
 
-const INSTAGRAM_HOST = "instagram-scrapper-posts-reels-stories-downloader.p.rapidapi.com";
+const INSTAGRAM_HOST = "instagram-api-fast-reliable-data-scraper.p.rapidapi.com";
 
 export function extractInstagramShortcode(url: string): string | null {
   try {
@@ -19,7 +19,7 @@ export async function fetchInstagramRapidApiByShortcode(shortcode: string): Prom
     throw new Error("RAPIDAPI_KEY not configured");
   }
 
-  const endpoint = `https://${INSTAGRAM_HOST}/reel_by_shortcode?shortcode=${encodeURIComponent(shortcode)}`;
+  const endpoint = `https://${INSTAGRAM_HOST}/post?shortcode=${encodeURIComponent(shortcode)}`;
   const response = await fetch(endpoint, {
     method: "GET",
     headers: {
@@ -37,15 +37,13 @@ export async function fetchInstagramRapidApiByShortcode(shortcode: string): Prom
 }
 
 export function mapInstagramToUnified(data: any, shortcode: string, preferAudioOnly: boolean): UnifiedVideoResult {
-  const media = data?.data?.items?.[0]?.media ?? data?.data ?? data?.media ?? data;
+  const media = data;
   if (!media) {
     throw new Error("Instagram RapidAPI response did not include media");
   }
 
   const videoVersions = media.video_versions ?? media.video?.video_versions ?? [];
-  const audioUrl = preferAudioOnly
-    ? media.audio?.url ?? media.clip?.audio?.url ?? media.music?.play_url
-    : undefined;
+  const audioUrl = preferAudioOnly ? extractAudioUrlFromManifest(media.video_dash_manifest) : undefined;
 
   const bestVideo = Array.isArray(videoVersions) && videoVersions.length > 0 ? videoVersions[0] : undefined;
   const downloadUrl = preferAudioOnly && audioUrl ? audioUrl : bestVideo?.url;
@@ -81,10 +79,26 @@ export function mapInstagramToUnified(data: any, shortcode: string, preferAudioO
       media.owner?.full_name ??
       undefined,
     duration: media.video_duration ?? media.duration ?? undefined,
-    likeCount: media.like_count ?? media.likes ?? undefined,
-    viewCount: media.play_count ?? media.views ?? undefined,
+    likeCount: media.like_count ?? media.fb_like_count ?? media.likes ?? undefined,
+    viewCount: media.play_count ?? media.fb_play_count ?? media.views ?? undefined,
     shareCount: media.reshare_count ?? undefined,
     commentCount: media.comment_count ?? undefined,
     raw: { shortcode, data },
   };
+}
+
+function extractAudioUrlFromManifest(manifest?: string | null): string | undefined {
+  if (!manifest || typeof manifest !== "string") return undefined;
+
+  const audioMatch = manifest.match(
+    /<Representation[^>]*mimeType="audio\/mp4"[^>]*>[\s\S]*?<BaseURL>([^<]+)<\/BaseURL>/i,
+  );
+  if (!audioMatch || audioMatch.length < 2) {
+    return undefined;
+  }
+
+  return audioMatch[1]
+    .replace(/&amp;/g, "&")
+    .replace(/\\u0026/g, "&")
+    .trim();
 }

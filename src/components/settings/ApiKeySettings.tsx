@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { css } from '@emotion/react';
 import { token } from '@atlaskit/tokens';
-import Button, { ButtonGroup } from '@atlaskit/button';
+import Button from '@atlaskit/button';
 import DynamicTable from '@atlaskit/dynamic-table';
 import ModalDialog, { ModalTransition } from '@atlaskit/modal-dialog';
 import Form, { Field, ErrorMessage } from '@atlaskit/form';
@@ -9,84 +9,42 @@ import Textfield from '@atlaskit/textfield';
 import SectionMessage from '@atlaskit/section-message';
 import Lozenge from '@atlaskit/lozenge';
 import DropdownMenu, { DropdownItem, DropdownItemGroup } from '@atlaskit/dropdown-menu';
-import { User } from '../../types';
 
-// Icons
 import AddIcon from '@atlaskit/icon/glyph/add';
-import CopyIcon from '@atlaskit/icon/glyph/copy';
 import MoreIcon from '@atlaskit/icon/glyph/more';
 import TrashIcon from '@atlaskit/icon/glyph/trash';
-import EditIcon from '@atlaskit/icon/glyph/edit';
 
-interface ApiKeySettingsProps {
-  user: User;
+import { useAuth } from '@/contexts/AuthContext';
+
+interface ApiKeyStatus {
+  keyId: string;
+  status: 'active' | 'disabled';
+  createdAt?: string;
+  lastUsed?: string;
+  requestCount: number;
+  violations: number;
+  lockoutUntil?: string;
+  revokedAt?: string;
+  apiKey?: string;
 }
 
-interface ApiKey {
-  id: string;
-  name: string;
-  key: string;
-  created: Date;
-  lastUsed?: Date;
-  usage: number;
-  limit: number;
-  permissions: string[];
-  isActive: boolean;
+interface ApiKeyResponse {
+  success: boolean;
+  hasActiveKey: boolean;
+  activeKey: ApiKeyStatus | null;
+  keyHistory: ApiKeyStatus[];
+  limits: {
+    requestsPerMinute: number;
+    violationLockoutHours: number;
+    maxViolationsBeforeLockout: number;
+  };
 }
 
-// Mock API keys data
-const MOCK_API_KEYS: ApiKey[] = [
-  {
-    id: '1',
-    name: 'Production App',
-    key: 'genc_live_4f6h9k2m8n5q1r3s7t9v',
-    created: new Date('2024-08-15'),
-    lastUsed: new Date('2024-09-10'),
-    usage: 2847,
-    limit: 10000,
-    permissions: ['scripts:generate', 'content:read'],
-    isActive: true,
-  },
-  {
-    id: '2',
-    name: 'Development Testing',
-    key: 'genc_test_8a2c4e6g9h1j3k5m7n9p',
-    created: new Date('2024-08-20'),
-    lastUsed: new Date('2024-09-08'),
-    usage: 156,
-    limit: 1000,
-    permissions: ['scripts:generate'],
-    isActive: true,
-  },
-  {
-    id: '3',
-    name: 'Legacy Integration',
-    key: 'genc_live_1b3d5f7h9j2k4m6n8p0q',
-    created: new Date('2024-07-10'),
-    lastUsed: new Date('2024-08-25'),
-    usage: 9876,
-    limit: 10000,
-    permissions: ['scripts:generate', 'content:read', 'content:write'],
-    isActive: false,
-  },
-];
-
-// Component styles
 const sectionStyles = css`
   margin-bottom: ${token('space.400')};
-
   &:last-child {
     margin-bottom: 0;
   }
-`;
-
-const sectionTitleStyles = css`
-  font-size: ${token('font.size.300')};
-  font-weight: ${token('font.weight.semibold')};
-  color: ${token('color.text.medium')};
-  margin-bottom: ${token('space.300')};
-  padding-bottom: ${token('space.100')};
-  border-bottom: 2px solid ${token('color.border')};
 `;
 
 const sectionHeaderStyles = css`
@@ -94,417 +52,335 @@ const sectionHeaderStyles = css`
   justify-content: space-between;
   align-items: center;
   margin-bottom: ${token('space.300')};
-
   @media (max-width: 768px) {
     flex-direction: column;
-    gap: ${token('space.200')};
     align-items: stretch;
+    gap: ${token('space.200')};
   }
 `;
 
-const keyDisplayStyles = css`
-  display: flex;
-  align-items: center;
-  gap: ${token('space.150')};
-  font-family: ${token('font.family.code')};
-  font-size: ${token('font.size.100')};
-  
-  .key-text {
-    color: ${token('color.text.subtlest')};
-  }
-  
-  .copy-button {
-    opacity: 0.7;
-    transition: opacity 0.2s;
-    
-    &:hover {
-      opacity: 1;
-    }
-  }
-`;
-
-const usageBarStyles = css`
-  display: flex;
-  flex-direction: column;
-  gap: ${token('space.050')};
-  min-width: 120px;
-  
-  .usage-text {
-    font-size: ${token('font.size.075')};
-    color: ${token('color.text.subtlest')};
-  }
-  
-  .usage-bar {
-    height: 4px;
-    background: ${token('color.background.neutral')};
-    border-radius: ${token('border.radius.100')};
-    overflow: hidden;
-    
-    .usage-fill {
-      height: 100%;
-      background: ${token('color.background.brand.bold')};
-      transition: width 0.3s ease;
-      
-      &.high-usage {
-        background: ${token('color.background.warning.bold')};
-      }
-      
-      &.over-limit {
-        background: ${token('color.background.danger.bold')};
-      }
-    }
-  }
-`;
-
-export function ApiKeySettings({ user }: ApiKeySettingsProps) {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>(MOCK_API_KEYS);
+export function ApiKeySettings() {
+  const { firebaseUser } = useAuth();
+  const [status, setStatus] = useState<ApiKeyResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [showNewKey, setShowNewKey] = useState(false);
+  const [revoking, setRevoking] = useState(false);
 
-  // Utility functions
-  const maskApiKey = (key: string) => {
-    const prefix = key.split('_')[0] + '_' + key.split('_')[1] + '_';
-    const suffix = key.slice(-4);
-    return prefix + '••••••••••••' + suffix;
-  };
-
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    }).format(date);
-  };
-
-  const getUsagePercentage = (usage: number, limit: number) => {
-    return Math.min((usage / limit) * 100, 100);
-  };
-
-  const getUsageColor = (usage: number, limit: number) => {
-    const percentage = getUsagePercentage(usage, limit);
-    if (percentage >= 100) return 'over-limit';
-    if (percentage >= 80) return 'high-usage';
-    return '';
-  };
-
-  // Event handlers
-  const handleCopyApiKey = async (keyId: string, keyValue: string) => {
-    try {
-      await navigator.clipboard.writeText(keyValue);
-      setCopiedKeyId(keyId);
-      setTimeout(() => setCopiedKeyId(null), 2000);
-    } catch (error) {
-      console.error('Failed to copy API key:', error);
+  const fetchStatus = useCallback(async () => {
+    if (!firebaseUser) {
+      setLoading(false);
+      return;
     }
-  };
-
-  const handleCreateApiKey = async (data: { name: string; permissions: string[] }) => {
-    setIsLoading(true);
-    
     try {
-      // TODO: Call API to create new key
-      const newKey: ApiKey = {
-        id: Date.now().toString(),
-        name: data.name,
-        key: `genc_live_${Math.random().toString(36).substring(2, 18)}`,
-        created: new Date(),
-        usage: 0,
-        limit: user.plan === 'free' ? 1000 : user.plan === 'premium' ? 10000 : 50000,
-        permissions: ['scripts:generate'],
-        isActive: true,
-      };
-      
-      setApiKeys(prev => [...prev, newKey]);
-      setIsCreateModalOpen(false);
-      
-      // Show the full key once in a modal or notification
-      alert(`Your new API key: ${newKey.key}\n\nPlease copy this key now - you won't be able to see it again!`);
-    } catch (error) {
-      console.error('Failed to create API key:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteApiKey = async (keyId: string) => {
-    if (confirm('Are you sure you want to delete this API key? This action cannot be undone.')) {
-      setIsLoading(true);
-      try {
-        // TODO: Call API to delete key
-        setApiKeys(prev => prev.filter(key => key.id !== keyId));
-      } catch (error) {
-        console.error('Failed to delete API key:', error);
-      } finally {
-        setIsLoading(false);
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch('/api/keys', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        console.error('Failed to load API keys', await response.text());
+        setStatus(null);
+        return;
       }
-    }
-  };
-
-  const handleToggleApiKey = async (keyId: string) => {
-    setIsLoading(true);
-    try {
-      // TODO: Call API to toggle key status
-      setApiKeys(prev => prev.map(key => 
-        key.id === keyId ? { ...key, isActive: !key.isActive } : key
-      ));
+      const data = (await response.json()) as ApiKeyResponse;
+      setStatus(data);
     } catch (error) {
-      console.error('Failed to toggle API key:', error);
+      console.error('Failed to load API keys', error);
+      setStatus(null);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
+  }, [firebaseUser]);
 
-  // Table configuration
-  const head = {
-    cells: [
-      {
-        key: 'name',
-        content: 'Key Name',
-        isSortable: true,
-      },
-      {
-        key: 'key',
-        content: 'API Key',
-      },
-      {
-        key: 'created',
-        content: 'Created',
-        isSortable: true,
-      },
-      {
-        key: 'usage',
-        content: 'Usage',
-        isSortable: true,
-      },
-      {
-        key: 'status',
-        content: 'Status',
-      },
-      {
-        key: 'actions',
-        content: 'Actions',
-        width: 8,
-      },
-    ],
-  };
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
 
-  const rows = apiKeys.map(key => ({
-    key: key.id,
-    cells: [
-      {
-        key: 'name',
-        content: (
-          <div>
-            <div css={css`font-weight: ${token('font.weight.medium')};`}>
-              {key.name}
-            </div>
-            <div css={css`
-              font-size: ${token('font.size.075')};
-              color: ${token('color.text.subtlest')};
-            `}>
-              {key.permissions.join(', ')}
-            </div>
-          </div>
-        ),
-      },
-      {
-        key: 'key',
-        content: (
-          <div css={keyDisplayStyles}>
-            <span className="key-text">{maskApiKey(key.key)}</span>
-            <Button
-              appearance="subtle"
-              iconBefore={<CopyIcon size="small" label="Copy" />}
-              onClick={() => handleCopyApiKey(key.id, key.key)}
-              className="copy-button"
-            >
-              {copiedKeyId === key.id ? 'Copied!' : 'Copy'}
-            </Button>
-          </div>
-        ),
-      },
-      {
-        key: 'created',
-        content: (
-          <div>
-            <div>{formatDate(key.created)}</div>
-            {key.lastUsed && (
-              <div css={css`
-                font-size: ${token('font.size.075')};
-                color: ${token('color.text.subtlest')};
-              `}>
-                Last used: {formatDate(key.lastUsed)}
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: 'usage',
-        content: (
-          <div css={usageBarStyles}>
-            <div className="usage-text">
-              {key.usage.toLocaleString()} / {key.limit.toLocaleString()}
-            </div>
-            <div className="usage-bar">
-              <div
-                className={`usage-fill ${getUsageColor(key.usage, key.limit)}`}
-                style={{ width: `${getUsagePercentage(key.usage, key.limit)}%` }}
-              />
-            </div>
-          </div>
-        ),
-      },
-      {
-        key: 'status',
-        content: (
-          <Lozenge appearance={key.isActive ? 'success' : 'removed'}>
-            {key.isActive ? 'Active' : 'Disabled'}
-          </Lozenge>
-        ),
-      },
-      {
-        key: 'actions',
-        content: (
-          <DropdownMenu
-            trigger={({ triggerRef, ...props }) => (
-              <Button
-                {...props}
-                iconBefore={<MoreIcon size="small" label="More actions" />}
-                ref={triggerRef}
-                appearance="subtle"
-              />
-            )}
-          >
-            <DropdownItemGroup>
-              <DropdownItem onClick={() => handleToggleApiKey(key.id)}>
-                {key.isActive ? 'Disable' : 'Enable'}
-              </DropdownItem>
-              <DropdownItem onClick={() => console.log('Edit key:', key.id)}>
-                Edit
-              </DropdownItem>
-            </DropdownItemGroup>
-            <DropdownItemGroup>
-              <DropdownItem onClick={() => handleDeleteApiKey(key.id)}>
-                Delete
-              </DropdownItem>
-            </DropdownItemGroup>
-          </DropdownMenu>
-        ),
-      },
-    ],
-  }));
+  const handleCreate = useCallback(
+    async (formData: { name: string }) => {
+      if (!firebaseUser) return;
+      setIsSaving(true);
+      try {
+        const token = await firebaseUser.getIdToken();
+        const response = await fetch('/api/keys', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name: formData.name }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          const message = data?.message || data?.error || 'Failed to generate API key';
+          alert(message);
+          return;
+        }
+        setNewApiKey(data.apiKey as string);
+        setShowNewKey(true);
+        setIsCreateModalOpen(false);
+        await fetchStatus();
+      } catch (error) {
+        console.error('Failed to create API key', error);
+        alert('Failed to create API key. See console for details.');
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [firebaseUser, fetchStatus]
+  );
+
+  const handleRevoke = useCallback(async () => {
+    if (!firebaseUser) return;
+    setRevoking(true);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch('/api/keys', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const message = data?.message || data?.error || 'Failed to revoke API key';
+        alert(message);
+        return;
+      }
+      setNewApiKey(null);
+      setShowNewKey(false);
+      await fetchStatus();
+    } catch (error) {
+      console.error('Failed to revoke API key', error);
+      alert('Failed to revoke API key. See console for details.');
+    } finally {
+      setRevoking(false);
+    }
+  }, [firebaseUser, fetchStatus]);
+
+  const rows = useMemo(() => {
+    if (!status?.keyHistory?.length) return [];
+    return status.keyHistory.map((key) => ({
+      key: key.keyId,
+      cells: [
+        {
+          key: 'id',
+          content: <span css={css`font-family: ${token('font.family.code')};`}>{key.keyId}</span>,
+        },
+        {
+          key: 'created',
+          content: key.createdAt ? new Date(key.createdAt).toLocaleString() : '—',
+        },
+        {
+          key: 'status',
+          content: (
+            <Lozenge appearance={key.status === 'active' ? 'success' : 'removed'}>
+              {key.status === 'active' ? 'Active' : 'Disabled'}
+            </Lozenge>
+          ),
+        },
+        {
+          key: 'requests',
+          content: key.requestCount.toLocaleString(),
+        },
+        {
+          key: 'violations',
+          content: key.violations.toLocaleString(),
+        },
+      ],
+    }));
+  }, [status]);
+
+  if (loading) {
+    return <div css={css`padding: ${token('space.400')};`}>Loading API key status…</div>;
+  }
 
   return (
     <div>
-      {/* API Keys Section */}
       <div css={sectionStyles}>
         <div css={sectionHeaderStyles}>
-          <h3 css={sectionTitleStyles}>API Keys</h3>
+          <h3 css={css`font-size: ${token('font.size.300')}; font-weight: ${token('font.weight.semibold')};`}>
+            Chrome Extension API Key
+          </h3>
           <Button
             appearance="primary"
-            iconBefore={<AddIcon size="small" label="Add" />}
+            iconBefore={<AddIcon size="small" label="Generate" />}
             onClick={() => setIsCreateModalOpen(true)}
           >
-            Generate New Key
+            {status?.hasActiveKey ? 'Rotate Key' : 'Generate New Key'}
           </Button>
         </div>
 
         <SectionMessage appearance="info">
           <p>
-            API keys allow you to access Gen.C features programmatically. 
-            Keep your keys secure and never share them publicly.
+            API keys let you authenticate the Chrome extension and other integrations. Only one active key is allowed at a time.
           </p>
         </SectionMessage>
 
-        <div css={css`margin-top: ${token('space.300')};`}>
-          <DynamicTable
-            head={head}
-            rows={rows}
-            isLoading={isLoading}
-            loadingSpinnerSize="large"
-            emptyView={
-              <div css={css`
-                text-align: center;
-                padding: ${token('space.400')};
-                color: ${token('color.text.subtlest')};
-              `}>
-                <p>No API keys found.</p>
-                <p>Create your first API key to get started.</p>
-              </div>
-            }
-          />
-        </div>
-      </div>
-
-      {/* Usage Information */}
-      <div css={sectionStyles}>
-        <h3 css={sectionTitleStyles}>Usage Limits</h3>
-        <SectionMessage appearance="warning">
-          <p>
-            <strong>{user.plan || 'Free'} Plan Limits:</strong>
-          </p>
-          <ul>
-            <li>Script Generation: {user.plan === 'free' ? '1,000' : user.plan === 'premium' ? '10,000' : '50,000'} requests/month</li>
-            <li>Content Analysis: {user.plan === 'free' ? '500' : user.plan === 'premium' ? '5,000' : '25,000'} requests/month</li>
-            <li>Rate Limit: {user.plan === 'free' ? '10' : user.plan === 'premium' ? '100' : '1,000'} requests/minute</li>
-          </ul>
-          <p>
-            Upgrade your plan to increase these limits and access more features.
-          </p>
-        </SectionMessage>
-      </div>
-
-      {/* Create API Key Modal */}
-      <ModalTransition>
-        {isCreateModalOpen && (
-          <ModalDialog
-            heading="Generate New API Key"
-            onClose={() => setIsCreateModalOpen(false)}
-            actions={[
-              { text: 'Cancel', onClick: () => setIsCreateModalOpen(false) },
-              { 
-                text: 'Generate Key', 
-                appearance: 'primary',
-                isLoading,
-                onClick: () => {
-                  // This will be handled by the form submission
-                }
-              },
-            ]}
-          >
-            <Form
-              onSubmit={(data) => handleCreateApiKey(data as { name: string; permissions: string[] })}
-            >
-              {({ formProps }) => (
-                <form {...formProps}>
-                  <Field name="name" label="Key Name" isRequired>
-                    {({ fieldProps, error }) => (
-                      <>
-                        <Textfield
-                          {...fieldProps}
-                          placeholder="e.g., Production App, Development Testing"
-                        />
-                        {error && <ErrorMessage>{error}</ErrorMessage>}
-                      </>
-                    )}
-                  </Field>
-
-                  <div css={css`margin-top: ${token('space.200')};`}>
-                    <SectionMessage appearance="discovery">
-                      <p>
-                        <strong>Important:</strong> You'll only see the full API key once after creation. 
-                        Make sure to copy and store it securely.
-                      </p>
-                    </SectionMessage>
-                  </div>
-                </form>
-              )}
-            </Form>
-          </ModalDialog>
+        {newApiKey && (
+          <SectionMessage appearance="warning" css={css`margin-top: ${token('space.300')};`}>
+            <p><strong>Your new API key:</strong></p>
+            <div css={css`
+              display: flex;
+              align-items: center;
+              gap: ${token('space.200')};
+              margin-top: ${token('space.200')};
+              font-family: ${token('font.family.code')};
+              background: ${token('color.background.neutral')};
+              padding: ${token('space.150')};
+              border-radius: ${token('border.radius.100')};
+            `}>
+              <span>{showNewKey ? newApiKey : '••••••••••••••••••••••••••••••••'} </span>
+              <Button appearance="subtle" onClick={() => setShowNewKey((prev) => !prev)}>
+                {showNewKey ? 'Hide' : 'Show'}
+              </Button>
+              <Button
+                appearance="primary"
+                onClick={() => navigator.clipboard.writeText(newApiKey)}
+              >
+                Copy
+              </Button>
+            </div>
+            <p css={css`margin-top: ${token('space.200')};`}>
+              This key will only be shown once. Store it securely.
+            </p>
+          </SectionMessage>
         )}
-      </ModalTransition>
+
+        {status?.hasActiveKey ? (
+          <div css={css`
+            margin-top: ${token('space.300')};
+            padding: ${token('space.300')};
+            border: 1px solid ${token('color.border')};
+            border-radius: ${token('border.radius.200')};
+            background: ${token('color.background.neutral.subtlest')};
+          `}>
+            <h4 css={css`margin-bottom: ${token('space.200')};`}>Active key</h4>
+            <p><strong>Key ID:</strong> {status.activeKey?.keyId}</p>
+            <p><strong>Created:</strong> {status.activeKey?.createdAt ? new Date(status.activeKey.createdAt).toLocaleString() : '—'}</p>
+            <p><strong>Requests:</strong> {status.activeKey?.requestCount.toLocaleString() ?? 0}</p>
+            <p><strong>Violations:</strong> {status.activeKey?.violations.toLocaleString() ?? 0}</p>
+            <div css={css`margin-top: ${token('space.200')};`}>
+              <Button appearance="warning" onClick={handleRevoke} isLoading={revoking}>
+                Revoke API Key
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div css={css`
+            margin-top: ${token('space.300')};
+            padding: ${token('space.200')};
+            border: 1px dashed ${token('color.border')};
+            border-radius: ${token('border.radius.200')};
+            color: ${token('color.text.subtlest')};
+            text-align: center;
+          `}>
+            No active API key. Generate one to get started.
+          </div>
+        )}
+      </div>
+
+      <div css={sectionStyles}>
+        <h3 css={css`font-size: ${token('font.size.300')}; font-weight: ${token('font.weight.semibold')}; margin-bottom: ${token('space.200')};`}>
+          Key history
+        </h3>
+        <DynamicTable
+          head={{
+            cells: [
+              { key: 'id', content: 'Key ID' },
+              { key: 'created', content: 'Created' },
+              { key: 'status', content: 'Status' },
+              { key: 'requests', content: 'Requests' },
+              { key: 'violations', content: 'Violations' },
+            ],
+          }}
+          rows={rows}
+          isLoading={loading}
+          emptyView={
+            <div css={css`padding: ${token('space.300')}; text-align: center; color: ${token('color.text.subtlest')};`}>
+              No key history yet.
+            </div>
+          }
+        />
+      </div>
+
+      {/* Shared form content for modal and fallback */}
+      {(() => {
+        const form = (
+          <Form onSubmit={(data) => handleCreate(data as { name: string })}>
+            {({ formProps }) => (
+              <form {...formProps}>
+                <Field name="name" label="Key name" isRequired defaultValue="Chrome Extension">
+                  {({ fieldProps, error }) => (
+                    <>
+                      <Textfield {...fieldProps} placeholder="e.g. Chrome Extension" />
+                      {error && <ErrorMessage>{error}</ErrorMessage>}
+                    </>
+                  )}
+                </Field>
+
+                <div css={css`margin-top: ${token('space.200')};`}>
+                  <SectionMessage appearance="discovery">
+                    <p>You will only see the key once after creation. Copy it immediately and keep it secure.</p>
+                  </SectionMessage>
+                </div>
+
+                <div css={css`display: flex; justify-content: flex-end; gap: ${token('space.150')}; margin-top: ${token('space.300')};`}>
+                  <Button appearance="subtle" onClick={() => setIsCreateModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" appearance="primary" isLoading={isSaving}>
+                    Generate Key
+                  </Button>
+                </div>
+              </form>
+            )}
+          </Form>
+        );
+
+        return (
+          <>
+            <ModalTransition>
+              {isCreateModalOpen && (
+                <ModalDialog heading="Generate New API Key" onClose={() => setIsCreateModalOpen(false)}>
+                  {form}
+                </ModalDialog>
+              )}
+            </ModalTransition>
+
+            {/* Fallback dev overlay in case Atlaskit modal fails to render */}
+            {isCreateModalOpen && (
+              <div
+                data-testid="api-key-fallback-modal"
+                css={css`
+                  position: fixed;
+                  inset: 0;
+                  background: rgba(0,0,0,0.4);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  z-index: 9999;
+                `}
+                onClick={() => setIsCreateModalOpen(false)}
+              >
+                <div
+                  css={css`
+                    background: white;
+                    padding: ${token('space.300')};
+                    border-radius: ${token('border.radius.200')};
+                    width: min(560px, 90vw);
+                    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+                  `}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h4 css={css`margin-top: 0;`}>Generate New API Key</h4>
+                  {form}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }

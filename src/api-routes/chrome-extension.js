@@ -6,6 +6,10 @@
 import fs from 'fs';
 import path from 'path';
 import { getDb, verifyBearer, getCollectionRefByPath } from './utils/firebase-admin.js';
+import {
+  ChromeExtensionNotesServiceError,
+  getChromeExtensionNotesService,
+} from '../services/chrome-extension/chrome-extension-notes-service.js';
 
 const TEST_MODE_API_KEY = 'test-internal-secret-123';
 
@@ -111,6 +115,21 @@ function ensureDb() {
   return getDb();
 }
 
+function resolveChromeExtensionNotesService(db) {
+  return getChromeExtensionNotesService({ firestore: db });
+}
+
+function sendChromeExtensionNotesError(res, error, fallbackMessage, logContext) {
+  if (error instanceof ChromeExtensionNotesServiceError) {
+    console.warn(`${logContext} service error: ${error.message}`);
+    return res.status(error.statusCode).json({ success: false, error: error.message });
+  }
+
+  const details = error instanceof Error ? error.message : String(error);
+  console.error(`${logContext} unexpected error:`, details);
+  return res.status(500).json({ success: false, error: fallbackMessage });
+}
+
 // -----------------------------
 // Chrome Extension: Notes CRUD (chrome_extension_notes)
 // -----------------------------
@@ -118,235 +137,103 @@ function ensureDb() {
 export async function handleCENotesGet(req, res) {
   try {
     const user = await resolveUser(req);
-    if (!user) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const db = ensureDb();
+    const service = resolveChromeExtensionNotesService(db);
 
-    const noteId = req.query.noteId;
-    const limitRaw = req.query.limit;
-    const type = req.query.type;
-    const search = req.query.search;
-    const tagsParam = req.query.tags;
-    const limit = Math.min(Number(limitRaw) || 50, 100);
+    const noteId = req.query?.noteId;
+    const limitRaw = req.query?.limit;
+    const limitNumber = limitRaw !== undefined ? Number(limitRaw) : undefined;
+    const options = {
+      noteId,
+      type: req.query?.type,
+      search: req.query?.search,
+      tags: req.query?.tags,
+    };
 
-    if (noteId) {
-      if (db) {
-        const doc = await db.collection('chrome_extension_notes').doc(String(noteId)).get();
-        if (!doc.exists) return res.status(404).json({ success: false, error: 'Note not found' });
-        const data = doc.data();
-        if (data.userId !== user.uid) return res.status(403).json({ success: false, error: 'Unauthorized' });
-        return res.json({ success: true, note: { id: doc.id, ...data } });
-      }
-
-      const file = path.join(DATA_DIR, 'chrome_extension_notes.json');
-      const notes = readArray(file);
-      const found = notes.find((n) => String(n.id) === String(noteId) && n.userId === user.uid);
-      if (!found) return res.status(404).json({ success: false, error: 'Note not found' });
-      return res.json({ success: true, note: found });
+    if (Number.isFinite(limitNumber)) {
+      options.limit = limitNumber;
     }
 
-    if (db) {
-      let q = db
-        .collection('chrome_extension_notes')
-        .where('userId', '==', user.uid)
-        .orderBy('updatedAt', 'desc')
-        .limit(limit);
-      if (type) q = q.where('type', '==', String(type));
-      const snap = await q.get();
-      let notes = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-      if (search) {
-        const s = String(search).toLowerCase();
-        notes = notes.filter((n) => String(n.title || '').toLowerCase().includes(s) || String(n.content || '').toLowerCase().includes(s));
-      }
-      if (tagsParam) {
-        const tags = String(tagsParam)
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean);
-        if (tags.length) notes = notes.filter((n) => Array.isArray(n.tags) && tags.some((t) => n.tags.includes(t)));
-      }
-      return res.json({ success: true, notes, count: notes.length });
-    }
-
-    // JSON fallback
-    const file = path.join(DATA_DIR, 'chrome_extension_notes.json');
-    let notes = readArray(file);
-    if (type) notes = notes.filter((n) => n.type === String(type));
-    notes = notes.filter((n) => n.userId === user.uid).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, limit);
-    if (search) {
-      const s = String(search).toLowerCase();
-      notes = notes.filter((n) => String(n.title || '').toLowerCase().includes(s) || String(n.content || '').toLowerCase().includes(s));
-    }
-    if (tagsParam) {
-      const tags = String(tagsParam)
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
-      if (tags.length) notes = notes.filter((n) => Array.isArray(n.tags) && tags.some((t) => n.tags.includes(t)));
-    }
-    return res.json({ success: true, notes, count: notes.length });
-  } catch (e) {
-    console.error('[chrome-ext notes GET] error:', e);
-    res.status(500).json({ success: false, error: 'Failed to retrieve notes' });
+    const result = await service.listNotes(user.uid, options);
+    return res.json(result);
+  } catch (error) {
+    return sendChromeExtensionNotesError(
+      res,
+      error,
+      'Failed to retrieve notes',
+      '[chrome-ext notes GET]'
+    );
   }
 }
 
 export async function handleCENotesPost(req, res) {
   try {
     const user = await resolveUser(req);
-    if (!user) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const db = ensureDb();
+    const service = resolveChromeExtensionNotesService(db);
 
-    const { title, content, url, type = 'text', tags = [], metadata = {} } = req.body || {};
-    if (!title || !String(title).trim() || !content || !String(content).trim()) {
-      return res.status(400).json({ success: false, error: 'Title and content are required' });
-    }
-    const now = new Date().toISOString();
-    const sanitizedMetadata = metadata && typeof metadata === 'object' ? { ...metadata } : {};
-    if (url) {
-      try {
-        const domain = new URL(String(url)).hostname;
-        if (domain) sanitizedMetadata.domain = domain;
-      } catch {}
-    }
-    const note = {
-      title: String(title).trim(),
-      content: String(content).trim(),
-      url: url ? String(url).trim() : undefined,
-      type,
-      tags: Array.isArray(tags) ? tags.filter((t) => String(t).trim()) : [],
-      metadata: sanitizedMetadata,
-      createdAt: now,
-      updatedAt: now,
-      userId: user.uid,
-    };
-    if (db) {
-      const ref = await db.collection('chrome_extension_notes').add(note);
-      // Optional voice-note token tracking
-      try {
-        const vmeta = note?.metadata?.voiceMetadata || metadata?.voiceMetadata;
-        if (type === 'voice' && vmeta && vmeta.totalTokens) {
-          await db.collection('voice_note_token_usage').add({
-            userId: user.uid,
-            noteId: ref.id,
-            ...vmeta,
-            timestamp: now,
-            createdAt: now,
-          });
-          const ym = now.slice(0, 7);
-          const statsRef = db.collection('user_voice_stats').doc(`${user.uid}_${ym}`);
-          await db.runTransaction(async (tx) => {
-            const doc = await tx.get(statsRef);
-            if (doc.exists) {
-              const data = doc.data() || {};
-              tx.update(statsRef, {
-                totalTokens: (data.totalTokens || 0) + (vmeta.totalTokens || 0),
-                totalNotes: (data.totalNotes || 0) + 1,
-                totalAudioDuration: (data.totalAudioDuration || 0) + (vmeta.originalAudioDuration || 0),
-                lastUsedAt: now,
-              });
-            } else {
-              tx.set(statsRef, {
-                userId: user.uid,
-                month: ym,
-                totalTokens: vmeta.totalTokens || 0,
-                totalNotes: 1,
-                totalAudioDuration: vmeta.originalAudioDuration || 0,
-                firstUsedAt: now,
-                lastUsedAt: now,
-                createdAt: now,
-              });
-            }
-          });
-        }
-      } catch (trackErr) {
-        console.warn('[chrome-ext notes POST] token tracking failed:', trackErr?.message);
-      }
-
-      return res.json({ success: true, note: { id: ref.id, ...note } });
-    }
-
-    // JSON fallback
-    const file = path.join(DATA_DIR, 'chrome_extension_notes.json');
-    const arr = readArray(file);
-    const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-    arr.unshift({ id, ...note });
-    writeArray(file, arr);
-    return res.json({ success: true, note: { id, ...note } });
-  } catch (e) {
-    console.error('[chrome-ext notes POST] error:', e);
-    res.status(500).json({ success: false, error: 'Failed to create note' });
+    const result = await service.createNote(user.uid, req.body || {});
+    return res.json(result);
+  } catch (error) {
+    return sendChromeExtensionNotesError(
+      res,
+      error,
+      'Failed to create note',
+      '[chrome-ext notes POST]'
+    );
   }
 }
 
 export async function handleCENotesPut(req, res) {
   try {
     const user = await resolveUser(req);
-    if (!user) return res.status(401).json({ success: false, error: 'Unauthorized' });
-    const db = ensureDb();
-    const { noteId, title, content, tags, metadata } = req.body || {};
-    if (!noteId) return res.status(400).json({ success: false, error: 'Note ID is required' });
-
-    if (db) {
-      const doc = await db.collection('chrome_extension_notes').doc(String(noteId)).get();
-      if (!doc.exists) return res.status(404).json({ success: false, error: 'Note not found' });
-      const data = doc.data();
-      if (data.userId !== user.uid) return res.status(403).json({ success: false, error: 'Unauthorized' });
-
-      const update = { updatedAt: new Date().toISOString() };
-      if (title !== undefined) update.title = String(title).trim();
-      if (content !== undefined) update.content = String(content).trim();
-      if (tags !== undefined) update.tags = Array.isArray(tags) ? tags.filter((t) => String(t).trim()) : [];
-      if (metadata !== undefined) update.metadata = { ...(data.metadata || {}), ...metadata };
-
-      await db.collection('chrome_extension_notes').doc(String(noteId)).update(update);
-      return res.json({ success: true, note: { id: String(noteId), ...data, ...update } });
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
-    // JSON fallback
-    const file = path.join(DATA_DIR, 'chrome_extension_notes.json');
-    const arr = readArray(file);
-    const idx = arr.findIndex((n) => n.id === String(noteId) && n.userId === user.uid);
-    if (idx === -1) return res.status(404).json({ success: false, error: 'Note not found' });
-    const updated = { ...arr[idx], updatedAt: new Date().toISOString() };
-    if (title !== undefined) updated.title = String(title).trim();
-    if (content !== undefined) updated.content = String(content).trim();
-    if (tags !== undefined) updated.tags = Array.isArray(tags) ? tags.filter((t) => String(t).trim()) : [];
-    if (metadata !== undefined) updated.metadata = { ...(arr[idx].metadata || {}), ...metadata };
-    arr[idx] = updated;
-    writeArray(file, arr);
-    res.json({ success: true, note: updated });
-  } catch (e) {
-    console.error('[chrome-ext notes PUT] error:', e);
-    res.status(500).json({ success: false, error: 'Failed to update note' });
+
+    const db = ensureDb();
+    const service = resolveChromeExtensionNotesService(db);
+
+    const result = await service.updateNote(user.uid, req.body || {});
+    return res.json(result);
+  } catch (error) {
+    return sendChromeExtensionNotesError(
+      res,
+      error,
+      'Failed to update note',
+      '[chrome-ext notes PUT]'
+    );
   }
 }
 
 export async function handleCENotesDelete(req, res) {
   try {
     const user = await resolveUser(req);
-    if (!user) return res.status(401).json({ success: false, error: 'Unauthorized' });
-    const db = ensureDb();
-    const noteId = req.query.noteId;
-    if (!noteId) return res.status(400).json({ success: false, error: 'Note ID is required' });
-    if (db) {
-      const doc = await db.collection('chrome_extension_notes').doc(String(noteId)).get();
-      if (!doc.exists) return res.status(404).json({ success: false, error: 'Note not found' });
-      const data = doc.data();
-      if (data.userId !== user.uid) return res.status(403).json({ success: false, error: 'Unauthorized' });
-      await db.collection('chrome_extension_notes').doc(String(noteId)).delete();
-      return res.json({ success: true });
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
-    // JSON fallback
-    const file = path.join(DATA_DIR, 'chrome_extension_notes.json');
-    const arr = readArray(file);
-    const idx = arr.findIndex((n) => n.id === String(noteId) && n.userId === user.uid);
-    if (idx === -1) return res.status(404).json({ success: false, error: 'Note not found' });
-    arr.splice(idx, 1);
-    writeArray(file, arr);
-    res.json({ success: true });
-  } catch (e) {
-    console.error('[chrome-ext notes DELETE] error:', e);
-    res.status(500).json({ success: false, error: 'Failed to delete note' });
+
+    const db = ensureDb();
+    const service = resolveChromeExtensionNotesService(db);
+
+    const noteId = req.query?.noteId;
+    const result = await service.deleteNote(user.uid, noteId);
+    return res.json(result);
+  } catch (error) {
+    return sendChromeExtensionNotesError(
+      res,
+      error,
+      'Failed to delete note',
+      '[chrome-ext notes DELETE]'
+    );
   }
 }
 

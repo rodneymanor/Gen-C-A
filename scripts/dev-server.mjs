@@ -6,30 +6,7 @@ import { spawn } from 'child_process';
 import process from 'process';
 
 const envCandidates = ['.env.local', '.env'];
-const nodeArgs = [];
-
-for (const candidate of envCandidates) {
-  const absPath = path.resolve(process.cwd(), candidate);
-  if (existsSync(absPath)) {
-    nodeArgs.push(`--env-file=${absPath}`);
-  } else {
-    console.warn(`[dev-server] Skipping missing env file ${candidate}`);
-  }
-}
-
-const [nodeMajor, nodeMinor] = process.versions.node
-  .split('.')
-  .map((part) => Number.parseInt(part, 10));
-
-if (Number.isFinite(nodeMajor) && Number.isFinite(nodeMinor) && (nodeMajor > 20 || (nodeMajor === 20 && nodeMinor >= 6))) {
-  nodeArgs.push('--import', 'tsx');
-} else {
-  nodeArgs.push('--loader', 'tsx');
-}
-
-nodeArgs.push('server-vite.js');
-
-const child = spawn(process.execPath, nodeArgs, {
+const child = spawn('concurrently', ['-k', 'npm:backend:dev', 'vite'], {
   stdio: 'inherit',
   env: process.env,
 });

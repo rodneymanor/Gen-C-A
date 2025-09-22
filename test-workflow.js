@@ -15,8 +15,8 @@ import { execSync } from 'child_process';
 console.log('🧪 Testing Complete Transcription Workflow');
 console.log('==========================================');
 
-const FRONTEND_URL = 'http://localhost:3000';
-const API_URL = 'http://localhost:4000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const API_URL = process.env.API_URL || process.env.BACKEND_DEV_URL || 'http://localhost:5001';
 
 // Test data
 const testCases = [

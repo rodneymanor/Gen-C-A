@@ -24,6 +24,7 @@ const collectionCardStyles = css`
   transition: var(--transition-all);
   display: flex;
   flex-direction: column;
+  padding-bottom: 0;
 
   &:hover {
     border-color: var(--card-hover-border);

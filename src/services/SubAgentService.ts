@@ -5,8 +5,7 @@ import * as glob from 'fast-glob';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import MarkdownIt from 'markdown-it';
-import { natural } from 'natural';
-import chokidar from 'chokidar';
+import chokidar, { FSWatcher } from 'chokidar';
 
 export interface PRDRequirement {
   id: string;
@@ -54,10 +53,10 @@ export interface ServiceConnection {
 
 export class SubAgentService {
   private openai: OpenAI;
-  private markdown: MarkdownIt;
+  private markdown: ReturnType<typeof MarkdownIt>;
   private projectRoot: string;
   private codePatterns: CodePattern[] = [];
-  private fileWatcher?: chokidar.FSWatcher;
+  private fileWatcher?: FSWatcher;
 
   constructor(apiKey: string, projectRoot: string) {
     this.openai = new OpenAI({ apiKey });
@@ -230,17 +229,17 @@ export class SubAgentService {
       persistent: true
     });
 
-    this.fileWatcher.on('change', async (filePath) => {
+    this.fileWatcher.on('change', async (filePath: string) => {
       console.log(`📝 File changed: ${filePath}`);
       await this.updateCodePattern(filePath);
     });
 
-    this.fileWatcher.on('add', async (filePath) => {
+    this.fileWatcher.on('add', async (filePath: string) => {
       console.log(`➕ File added: ${filePath}`);
       await this.updateCodePattern(filePath);
     });
 
-    this.fileWatcher.on('unlink', (filePath) => {
+    this.fileWatcher.on('unlink', (filePath: string) => {
       console.log(`➖ File removed: ${filePath}`);
       this.codePatterns = this.codePatterns.filter(pattern => pattern.filePath !== filePath);
     });
@@ -475,7 +474,7 @@ export class SubAgentService {
       }
 
       case 'route': {
-        const routeFile = await this.generateRouteConfiguration(requirement);
+        const routeFile = await this.generateRouteConfigFile(requirement);
         generatedFiles.push(routeFile);
         break;
       }
@@ -554,7 +553,7 @@ export class SubAgentService {
     return filePath;
   }
 
-  private async generateRouteConfiguration(requirement: PRDRequirement): Promise<string> {
+  private async generateRouteConfigFile(requirement: PRDRequirement): Promise<string> {
     // Implementation for route configuration
     return 'route-config.ts';
   }

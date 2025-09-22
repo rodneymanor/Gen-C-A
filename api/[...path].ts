@@ -12,8 +12,20 @@ import { handleSaveCreatorAnalysis } from '../src/api-routes/creator-analysis.js
 import { handleListAnalyzedVideoIds } from '../src/api-routes/creator-lookup.js';
 import { handleListBrandVoices, handleGetBrandVoiceTemplates, handleDeleteBrandVoice, handleUpdateBrandVoiceMeta } from '../src/api-routes/brand-voices.js';
 import { handleGetScripts, handleCreateScript, handleGetScriptById, handleUpdateScript, handleDeleteScript } from '../src/api-routes/scripts.js';
-import { handleGetNotes, handleCreateNote, handleGetNoteById, handleUpdateNote, handleDeleteNote } from '../src/api-routes/notes.js';
-import { handleGetCollections, handleCreateCollection, handleGetUserCollections, handleGetCollectionVideos, handleMoveVideo, handleCopyVideo, handleDeleteCollection, handleUpdateCollection, handleAddVideoToCollection } from '../src/api-routes/collections.js';
+import {
+  handleGetNotes,
+  handleCreateNote,
+  handleGetNoteById,
+  handleUpdateNote,
+  handleDeleteNote,
+} from '../src/api-routes/notes.js';
+import {
+  handleCENotesGet,
+  handleCENotesPost,
+  handleCENotesPut,
+  handleCENotesDelete,
+} from '../src/api-routes/chrome-extension.js';
+import { handleGetCollections, handleCreateCollection, handleGetUserCollections, handleGetCollectionVideos, handleMoveVideo, handleCopyVideo, handleDeleteCollection, handleUpdateCollection, handleAddVideoToCollection, handleDeleteVideo } from '../src/api-routes/collections.js';
 
 function aiAction(text: string, actionType: string, option?: string) {
   const extractTheme = (t: string) => {
@@ -91,6 +103,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (req.method === 'DELETE') return handleDeleteNote(req as any, res as any);
     }
 
+    // Chrome extension notes
+    if (path === '/api/chrome-extension/notes' && req.method === 'GET') {
+      return handleCENotesGet(req as any, res as any);
+    }
+    if (path === '/api/chrome-extension/notes' && req.method === 'POST') {
+      return handleCENotesPost(req as any, res as any);
+    }
+    if (path === '/api/chrome-extension/notes' && req.method === 'PUT') {
+      return handleCENotesPut(req as any, res as any);
+    }
+    if (path === '/api/chrome-extension/notes' && req.method === 'DELETE') {
+      return handleCENotesDelete(req as any, res as any);
+    }
+
     // Collections + Videos
     if (path === '/api/collections' && req.method === 'GET') return handleGetCollections(req as any, res as any);
     if (path === '/api/collections' && req.method === 'POST') return handleCreateCollection(req as any, res as any);
@@ -101,6 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path === '/api/collections/delete' && req.method === 'DELETE') return handleDeleteCollection(req as any, res as any);
     if (path === '/api/collections/update' && req.method === 'PATCH') return handleUpdateCollection(req as any, res as any);
     if (path === '/api/videos/add-to-collection' && req.method === 'POST') return handleAddVideoToCollection(req as any, res as any);
+    if (path === '/api/videos/delete' && req.method === 'POST') return handleDeleteVideo(req as any, res as any);
 
     // AI action mock
     if (path === '/api/ai-action' && req.method === 'POST') {

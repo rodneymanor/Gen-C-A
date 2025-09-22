@@ -8,6 +8,11 @@ import { CDNService } from './cdn-service';
 import { TranscriptionService } from './transcription-service';
 import { AIAnalysisService } from './ai-analysis-service';
 import { BackgroundJobService } from './background-job-service';
+import type { VideoDownloadResult } from './video-download-service';
+
+type DownloadStepResult =
+  | { success: true; data: VideoDownloadResult }
+  | { success: false; error?: string; data?: undefined };
 
 export interface VideoProcessingOptions {
   /**
@@ -162,6 +167,14 @@ export class VideoProcessingService {
         };
       }
 
+      if (!downloadResult.data) {
+        return {
+          success: false,
+          transcriptionStatus: 'failed',
+          error: 'Video download completed without payload'
+        };
+      }
+
       // Step 2: Stream to CDN
       console.log('🎬 [VIDEO_PROCESSING] Step 2: Streaming to CDN...');
       const streamResult = await this.handleCDNUpload(downloadResult.data, options.scrapedData);
@@ -237,7 +250,7 @@ export class VideoProcessingService {
   /**
    * Handle video download step
    */
-  private async handleVideoDownload(url: string, scrapedData?: ScrapedVideoData) {
+  private async handleVideoDownload(url: string, scrapedData?: ScrapedVideoData): Promise<DownloadStepResult> {
     if (scrapedData) {
       console.log('🔄 [VIDEO_PROCESSING] Using pre-scraped data to avoid re-download');
       return {
@@ -264,8 +277,7 @@ export class VideoProcessingService {
             originalUrl: url,
             platform: scrapedData.platform,
             downloadedAt: new Date().toISOString(),
-            shortCode: scrapedData.metadata?.shortCode,
-            thumbnailUrl: scrapedData.thumbnailUrl
+            shortCode: scrapedData.metadata?.shortCode
           }
         }
       };

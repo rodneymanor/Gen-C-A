@@ -53,8 +53,6 @@ const getCardStyles = (
       padding: var(--space-6);
     `}
 
-    padding-bottom: 0;
-
     /* Appearance variants - Perplexity Flat Design */
     ${appearance === 'subtle' && css`
       border: 1px solid var(--card-border);

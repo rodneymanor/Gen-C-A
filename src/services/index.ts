@@ -1,7 +1,7 @@
 /**
  * Video Processing Services - Main export file
  * Extracted from React application for reusable video processing pipeline
- * 
+ *
  * This package provides a complete video processing pipeline with:
  * - Multi-platform video download (TikTok, Instagram, YouTube)
  * - CDN integration (Bunny.net) with streaming and thumbnail support
@@ -11,14 +11,26 @@
  * - Pipeline orchestration with error handling and fallbacks
  */
 
+import { VideoProcessingService } from './video-processing-service';
+import { VideoDownloadService } from './video-download-service';
+import { CDNService } from './cdn-service';
+import { TranscriptionService } from './transcription-service';
+import { AIAnalysisService } from './ai-analysis-service';
+import { BackgroundJobService } from './background-job-service';
+import { PipelineOrchestrator } from './pipeline-orchestrator';
+import type { VideoProcessingOptions } from './video-processing-service';
+import type { PipelineConfig } from './pipeline-orchestrator';
+
 // Main services
-export { VideoProcessingService } from './video-processing-service';
-export { VideoDownloadService } from './video-download-service';
-export { CDNService } from './cdn-service';
-export { TranscriptionService } from './transcription-service';
-export { AIAnalysisService } from './ai-analysis-service';
-export { BackgroundJobService } from './background-job-service';
-export { PipelineOrchestrator } from './pipeline-orchestrator';
+export {
+  VideoProcessingService,
+  VideoDownloadService,
+  CDNService,
+  TranscriptionService,
+  AIAnalysisService,
+  BackgroundJobService,
+  PipelineOrchestrator
+};
 
 // Service interfaces and types
 export * from './service-interfaces';
@@ -29,17 +41,15 @@ export type {
   VideoProcessingResult,
   VideoDocument,
   ScrapedVideoData,
-  VideoMetrics,
-  VideoDownloadResult,
-  CDNUploadResult,
-  TranscriptionResult,
-  ScriptComponents,
-  ContentMetadata,
-  BackgroundJobStatus,
-  PipelineExecutionResult,
-  PipelineContext,
-  PipelineConfig
+  VideoMetrics
 } from './video-processing-service';
+
+export type { VideoDownloadResult } from './video-download-service';
+export type { CDNUploadResult } from './cdn-service';
+export type { TranscriptionResult } from './transcription-service';
+export type { ScriptComponents } from './ai-analysis-service';
+export type { ContentMetadata, BackgroundJobStatus } from './service-interfaces';
+export type { PipelineExecutionResult, PipelineContext, PipelineConfig } from './pipeline-orchestrator';
 
 // Factory functions for easy setup
 export function createVideoProcessingPipeline(config: PipelineConfig) {

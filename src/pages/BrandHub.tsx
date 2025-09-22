@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { css } from '@emotion/react'
 import AddIcon from '@atlaskit/icon/glyph/add'
 import { Button } from '../components/ui/Button'
@@ -140,18 +140,6 @@ export const BrandHub: React.FC = () => {
     isQuestionnaireComplete
   } = useBrandHubOnboarding({ userId: firebaseUser?.uid })
 
-  const requestAuthToken = useCallback(async () => {
-    if (!firebaseUser) {
-      return null
-    }
-    try {
-      return await firebaseUser.getIdToken()
-    } catch (tokenError) {
-      console.warn('[BrandHub] Failed to resolve Firebase auth token', tokenError)
-      return null
-    }
-  }, [firebaseUser])
-
   const {
     workflow,
     videosForDisplay,
@@ -160,7 +148,7 @@ export const BrandHub: React.FC = () => {
     analyzeVideos,
     createPersona,
     reset: resetVoiceWorkflow
-  } = useVoiceCreationWorkflow({ onPersonaCreated: refresh, getAuthToken: requestAuthToken })
+  } = useVoiceCreationWorkflow({ onVoiceSaved: refresh })
 
   const totalQuestions = onboardingPrompts.length
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { css } from '@emotion/react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -35,9 +35,9 @@ interface VideoInsights {
   transcript: string;
   scriptComponents: ScriptComponent[];
   performanceMetrics: {
-    readability: number;
-    engagement: number;
-    hookStrength: number;
+    readability: number | null;
+    engagement: number | null;
+    hookStrength: number | null;
   };
 }
 
@@ -468,44 +468,78 @@ export const VideoModal: React.FC<VideoModalProps> = ({
   };
   
   // Mock video insights data - in real app this would come from props or API
-  const videoInsights: VideoInsights = {
-    transcript: video ? `"Hey everyone! Today I'm going to show you the most incredible hack that will change your life forever. You won't believe how simple this is..."
+  const transcript = useMemo(() => {
+    const raw = video?.metadata?.transcript ?? video?.metadata?.contentMetadata?.transcript;
+    return typeof raw === 'string' && raw.trim() ? raw : '';
+  }, [video]);
 
-[Continue transcript with full video content...]
-
-This technique has helped thousands of people achieve amazing results, and now I'm sharing it with you for free. Don't forget to like and follow for more content like this!` : '',
-    scriptComponents: [
-      {
-        id: '1',
-        type: 'hook',
-        label: 'Hook',
-        content: "Hey everyone! Today I'm going to show you the most incredible hack..."
-      },
-      {
-        id: '2',
-        type: 'bridge',
-        label: 'Bridge',
-        content: "going to show you the most incredible technique that will..."
-      },
-      {
-        id: '3',
-        type: 'golden_nugget',
-        label: 'Golden Nugget',
-        content: "incredible hack that will change your life forever..."
-      },
-      {
-        id: '4',
-        type: 'call_to_action',
-        label: 'Call to Action',
-        content: "You won't believe how simple this is, so make sure to follow for more..."
-      }
-    ],
-    performanceMetrics: {
-      readability: 8.2,
-      engagement: 7.8,
-      hookStrength: 9.1
+  const scriptComponents = useMemo(() => {
+    const raw = video?.metadata?.scriptComponents ?? video?.metadata?.components;
+    if (!raw) return [] as ScriptComponent[];
+    if (Array.isArray(raw)) {
+      return raw.filter((component) => component && component.content);
     }
-  };
+    if (typeof raw === 'object') {
+      const normalizeType = (value: string): ScriptComponent['type'] => {
+        const normalized = value.toLowerCase();
+        if (normalized.includes('call_to_action') || normalized === 'cta') return 'call_to_action';
+        if (normalized.includes('golden') || normalized.includes('nugget')) return 'golden_nugget';
+        if (normalized.includes('bridge')) return 'bridge';
+        return 'hook';
+      };
+      return Object.entries(raw)
+        .map(([key, value]) => ({
+          id: key,
+          type: normalizeType(key),
+          label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+          content: String(value ?? ''),
+        }))
+        .filter((component) => component.content);
+    }
+    return [] as ScriptComponent[];
+  }, [video]);
+
+  const performanceMetrics: VideoInsights['performanceMetrics'] = useMemo(() => {
+    const analysis = video?.metadata?.analysis || video?.metadata?.metrics || {};
+    const metricsSource = analysis?.performance || analysis?.scores || analysis;
+    const pickValue = (keys: string[]): number | null => {
+      for (const key of keys) {
+        const value = metricsSource?.[key];
+        if (typeof value === 'number' && !Number.isNaN(value)) {
+          return value;
+        }
+      }
+      return null;
+    };
+
+    return {
+      readability: pickValue(['readability', 'readabilityScore', 'readability_score']),
+      engagement: pickValue(['engagement', 'engagementScore', 'engagement_rate']),
+      hookStrength: pickValue(['hookStrength', 'hook_strength', 'hookScore']),
+    };
+  }, [video]);
+
+  const formattedTranscript = transcript || 'Transcript not available yet.';
+
+  const videoInsights: VideoInsights = useMemo(() => ({
+    transcript,
+    scriptComponents,
+    performanceMetrics,
+  }), [performanceMetrics, scriptComponents, transcript]);
+
+  const views = video?.metadata?.views ?? video?.metadata?.metrics?.views;
+  const likes = video?.metadata?.likes ?? video?.metadata?.metrics?.likes;
+  const comments = video?.metadata?.comments ?? video?.metadata?.metrics?.comments;
+  const saves = video?.metadata?.saves ?? video?.metadata?.metrics?.saves;
+  const shares = video?.metadata?.shares ?? video?.metadata?.metrics?.shares;
+
+  const hasPerformanceMetrics = useMemo(() => {
+    return [
+      performanceMetrics.readability,
+      performanceMetrics.engagement,
+      performanceMetrics.hookStrength,
+    ].some((value) => typeof value === 'number' && !Number.isNaN(value));
+  }, [performanceMetrics]);
 
   const currentVideoIndex = videos.findIndex(v => v.id === video?.id);
   const canNavigatePrev = currentVideoIndex > 0;
@@ -587,8 +621,20 @@ This technique has helped thousands of people achieve amazing results, and now I
               <div className="video-stats">
                 <span>
                   <EyeIcon label="" size="small" primaryColor={token('color.icon')} />
-                  {video.metadata?.views ? formatViewCount(video.metadata.views) : 'Unknown'} views
+                  {typeof views === 'number' ? formatViewCount(views) : 'Unknown'} views
                 </span>
+                {typeof likes === 'number' && (
+                  <span>❤️ {formatViewCount(likes)} likes</span>
+                )}
+                {typeof comments === 'number' && (
+                  <span>💬 {formatViewCount(comments)} comments</span>
+                )}
+                {typeof saves === 'number' && (
+                  <span>🔖 {formatViewCount(saves)} saves</span>
+                )}
+                {typeof shares === 'number' && (
+                  <span>🚀 {formatViewCount(shares)} shares</span>
+                )}
                 <span>⏱️ {video.duration ? formatDuration(video.duration) : 'Unknown'} duration</span>
                 <span>{formatRelativeTime(video.created)}</span>
               </div>
@@ -599,7 +645,7 @@ This technique has helped thousands of people achieve amazing results, and now I
                 📝 Full Transcript
               </h2>
               <div className="transcript-content">
-                {videoInsights.transcript}
+                {formattedTranscript}
               </div>
             </div>
           </>
@@ -611,30 +657,34 @@ This technique has helped thousands of people achieve amazing results, and now I
             <h2 className="section-title">
               📋 Script Components
             </h2>
-            {videoInsights.scriptComponents.map((component) => (
-              <div key={component.id} className="script-component">
-                <div className="component-header">
-                  <div className="component-label">
-                    <span className="component-type">
-                      {getComponentTypeIcon(component.type)}
-                    </span>
-                    {component.label}
+            {videoInsights.scriptComponents.length === 0 ? (
+              <p>No script components available yet.</p>
+            ) : (
+              videoInsights.scriptComponents.map((component) => (
+                <div key={component.id} className="script-component">
+                  <div className="component-header">
+                    <div className="component-label">
+                      <span className="component-type">
+                        {getComponentTypeIcon(component.type)}
+                      </span>
+                      {component.label}
+                    </div>
+                    <Button
+                      variant="subtle"
+                      size="small"
+                      className="copy-button"
+                      onClick={() => handleCopyToClipboard(component.content)}
+                    >
+                      <CopyIcon label="" size="small" primaryColor={token('color.icon')} />
+                      Copy
+                    </Button>
                   </div>
-                  <Button
-                    variant="subtle"
-                    size="small"
-                    className="copy-button"
-                    onClick={() => handleCopyToClipboard(component.content)}
-                  >
-                    <CopyIcon label="" size="small" primaryColor={token('color.icon')} />
-                    Copy
-                  </Button>
+                  <div className="component-content">
+                    {component.content}
+                  </div>
                 </div>
-                <div className="component-content">
-                  {component.content}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         );
 
@@ -644,20 +694,36 @@ This technique has helped thousands of people achieve amazing results, and now I
             <h2 className="section-title">
               📊 Performance Metrics
             </h2>
-            <div className="performance-metrics">
-              <div className="metric">
-                <span className="metric-label">Readability Score</span>
-                <span className="metric-value">{videoInsights.performanceMetrics.readability}/10</span>
+            {hasPerformanceMetrics ? (
+              <div className="performance-metrics">
+                <div className="metric">
+                  <span className="metric-label">Readability Score</span>
+                  <span className="metric-value">
+                    {typeof videoInsights.performanceMetrics.readability === 'number'
+                      ? `${videoInsights.performanceMetrics.readability}/10`
+                      : '—'}
+                  </span>
+                </div>
+                <div className="metric">
+                  <span className="metric-label">Engagement Score</span>
+                  <span className="metric-value">
+                    {typeof videoInsights.performanceMetrics.engagement === 'number'
+                      ? `${videoInsights.performanceMetrics.engagement}/10`
+                      : '—'}
+                  </span>
+                </div>
+                <div className="metric">
+                  <span className="metric-label">Hook Strength</span>
+                  <span className="metric-value">
+                    {typeof videoInsights.performanceMetrics.hookStrength === 'number'
+                      ? `${videoInsights.performanceMetrics.hookStrength}/10`
+                      : '—'}
+                  </span>
+                </div>
               </div>
-              <div className="metric">
-                <span className="metric-label">Engagement Score</span>
-                <span className="metric-value">{videoInsights.performanceMetrics.engagement}/10</span>
-              </div>
-              <div className="metric">
-                <span className="metric-label">Hook Strength</span>
-                <span className="metric-value">{videoInsights.performanceMetrics.hookStrength}/10</span>
-              </div>
-            </div>
+            ) : (
+              <p>Performance metrics will appear here once available.</p>
+            )}
           </div>
         );
 

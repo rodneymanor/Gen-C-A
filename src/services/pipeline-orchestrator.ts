@@ -31,6 +31,8 @@ export interface PipelineConfig {
   backgroundProcessing: {
     enabled: boolean;
     queuePriority: 'low' | 'normal' | 'high';
+    maxConcurrentJobs?: number;
+    jobTimeout?: number;
   };
   
   /**
@@ -338,7 +340,11 @@ export class PipelineOrchestrator {
     const transcriptionProviders = this.transcriptionService.getProviderStatus();
     const aiProviders = this.aiAnalysisService.getProviderStatus();
 
-    const services = [
+    const services: Array<{
+      name: string;
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      details?: string;
+    }> = [
       {
         name: 'Video Download',
         status: 'healthy' as const,

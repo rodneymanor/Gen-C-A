@@ -477,6 +477,51 @@ export class RBACService {
     
     return baseQuery.where("userId", "in", context.accessibleCoaches);
   }
+
+  /**
+   * Delete a video and decrement collection counts
+   */
+  async deleteVideo(userId: string, videoId: string): Promise<void> {
+    const context = await this.getRBACContext(userId);
+
+    const videoRef = this.db.collection(RBACService.VIDEOS_PATH).doc(videoId);
+    const videoDoc = await videoRef.get();
+
+    if (!videoDoc.exists) {
+      throw new Error('Video not found');
+    }
+
+    const videoData = videoDoc.data() || {};
+    const ownerId = videoData.userId as string | undefined;
+
+    if (!context.isSuperAdmin) {
+      const hasOwnership = ownerId === userId;
+      const hasCoachAccess = ownerId ? context.accessibleCoaches.includes(ownerId) : false;
+
+      if (!hasOwnership && !hasCoachAccess) {
+        throw new Error('Access denied');
+      }
+    }
+
+    const batch = this.db.batch();
+    batch.delete(videoRef);
+
+    const collectionId = videoData.collectionId as string | undefined;
+    if (collectionId && collectionId !== 'all-videos') {
+      const collectionRef = this.db.collection(RBACService.COLLECTIONS_PATH).doc(collectionId);
+      const collectionDoc = await collectionRef.get();
+
+      if (collectionDoc.exists) {
+        const currentCount = (collectionDoc.data()?.videoCount ?? 0) as number;
+        batch.update(collectionRef, {
+          videoCount: Math.max(0, currentCount - 1),
+          updatedAt: new Date(),
+        });
+      }
+    }
+
+    await batch.commit();
+  }
 }
 
 // Factory function for easy instantiation

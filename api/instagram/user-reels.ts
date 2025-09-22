@@ -1,6 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { handleInstagramReels } from '../../src/api-routes/videos/instagram-reels.js';
+import {
+  parseReelsRequest,
+  resolveInstagramService,
+  sendInstagramError,
+} from '../_utils/instagram-service';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  return handleInstagramReels(req as any, res as any);
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method Not Allowed' });
+  }
+
+  try {
+    const service = resolveInstagramService();
+    const result = await service.getUserReels(parseReelsRequest(req));
+    return res.status(200).json(result);
+  } catch (error) {
+    return sendInstagramError(res, error, 'Failed to fetch Instagram reels', '[api/instagram/user-reels] error:');
+  }
 }
