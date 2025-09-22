@@ -61,7 +61,7 @@ function extractString(label, text) {
 
 function findPlaceholders(pattern) {
   const placeholders = new Set();
-  const regex = /\\[([^\\]\n]+)\\]/g;
+  const regex = /\[([^\]\r\n]+)\]/g;
   let currentMatch;
   while ((currentMatch = regex.exec(pattern))) {
     placeholders.add(currentMatch[1].trim());
