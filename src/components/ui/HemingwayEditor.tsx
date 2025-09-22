@@ -17,6 +17,7 @@ import { useScriptGeneration } from '@/hooks/use-script-generation';
 import type { BrandVoice } from '@/types';
 import type { ScriptElements } from '@/lib/script-analysis';
 import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME, resolveDefaultBrandVoiceId } from '@/constants/brand-voices';
+import { dedupeBrandVoices } from '@/utils/brand-voice';
 
 // Re-export interfaces from child components for convenience
 export type { ReadabilityMetrics, WritingStats } from './EditorSidebar';
@@ -44,6 +45,8 @@ export interface HemingwayEditorProps {
   onScriptElementsChange?: (elements: ScriptElements) => void;
   /** Whether to enable AI-powered interactive script editing */
   enableAIActions?: boolean;
+  /** Brand voice selection to seed the floating toolbar */
+  initialBrandVoiceId?: string;
 }
 
 // Styled Components
@@ -187,6 +190,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   isScriptMode = false,
   onScriptElementsChange,
   enableAIActions = false,
+  initialBrandVoiceId,
 }) => {
   // State management
   const [content, setContent] = useState(initialContent);
@@ -195,11 +199,16 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   const [focusMode, setFocusMode] = useState(initialFocusMode);
   const [activeTab, setActiveTab] = useState<'readability' | 'writing'>('readability');
   const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([]);
-  const [selectedBrandVoiceId, setSelectedBrandVoiceId] = useState<string>('');
+  const [selectedBrandVoiceId, setSelectedBrandVoiceId] = useState<string>(initialBrandVoiceId || '');
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date>(new Date());
   const [, forceRelativeRefresh] = useState(0);
-  
+
+  useEffect(() => {
+    if (!initialBrandVoiceId) return;
+    setSelectedBrandVoiceId((prev) => (prev ? prev : initialBrandVoiceId));
+  }, [initialBrandVoiceId]);
+
   // Log script mode status
   useEffect(() => {
     console.log('🎬 [HemingwayEditor] Script mode status:', {
@@ -407,7 +416,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
             const isDefault = v.isDefault === true || v.id === DEFAULT_BRAND_VOICE_ID;
             return {
               id: v.id,
-              creatorId: v.creatorId,
+              creatorId: v.creatorId || v.id || '',
               name: isDefault ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
               description: v.description || '',
               tone: v.tone || 'Varied',
@@ -420,11 +429,12 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
               isShared: v.isShared ?? false,
             };
           });
-          setBrandVoices(mapped);
+          const deduped = dedupeBrandVoices(mapped);
+          setBrandVoices(deduped);
           setSelectedBrandVoiceId(prev => {
             if (prev) return prev;
-            const resolvedDefaultId = resolveDefaultBrandVoiceId(mapped);
-            const hasDefault = mapped.some(p => p.id === resolvedDefaultId);
+            const resolvedDefaultId = resolveDefaultBrandVoiceId(deduped);
+            const hasDefault = deduped.some(p => p.id === resolvedDefaultId);
             return hasDefault ? resolvedDefaultId : prev;
           });
         }
@@ -461,7 +471,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
       const idea = deriveIdeaFromEditor();
       const length = decideLength();
       const brandVoiceId = selectedBrandVoiceId || undefined;
-      const brandVoiceCreatorId = brandVoices.find(voice => voice.id === brandVoiceId)?.creatorId;
+      const brandVoiceCreatorId = brandVoices.find(voice => voice.id === brandVoiceId)?.creatorId || brandVoiceId;
 
       const result = await generateScript({
         idea,

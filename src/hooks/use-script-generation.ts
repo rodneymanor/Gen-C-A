@@ -53,13 +53,35 @@ async function fetchVoiceTemplates(
     return { templates: { hooks: [], bridges: [], ctas: [], nuggets: [] }, style: null };
   }
 
-  const params = new URLSearchParams({
-    creatorId,
-    brandVoiceId,
-  });
-  const res = await fetch(`/api/brand-voices/templates?${params.toString()}`);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data?.success) return { templates: { hooks: [], bridges: [], ctas: [], nuggets: [] }, style: null };
+  const buildParams = (includeBrandVoiceId: boolean) => {
+    const params = new URLSearchParams({ creatorId });
+    if (includeBrandVoiceId && brandVoiceId) {
+      params.set('brandVoiceId', brandVoiceId);
+    }
+    return params.toString();
+  };
+
+  let response = await fetch(`/api/brand-voices/templates?${buildParams(true)}`);
+
+  if (!response.ok && response.status === 404 && brandVoiceId) {
+    console.warn('⚠️ [useScriptGeneration] Templates not found for brandVoiceId, retrying with creatorId only', {
+      brandVoiceId,
+      creatorId,
+    });
+    response = await fetch(`/api/brand-voices/templates?${buildParams(false)}`);
+  }
+
+  let data: any = null;
+  try {
+    data = await response.json();
+  } catch (_) {
+    data = null;
+  }
+
+  if (!response.ok || !data?.success) {
+    return { templates: { hooks: [], bridges: [], ctas: [], nuggets: [] }, style: null };
+  }
+
   return { templates: data.templates as VoiceTemplates, style: (data.styleSignature as VoiceStyle) ?? null };
 }
 

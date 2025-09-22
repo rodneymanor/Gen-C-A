@@ -30,6 +30,7 @@ export default function HemingwayEditorPage() {
   const [title, setTitle] = useState("The Writer's Journey");
   const [scriptElements, setScriptElements] = useState<ScriptElements | null>(null);
   const [isScriptMode, setIsScriptMode] = useState(false);
+  const [initialBrandVoiceId, setInitialBrandVoiceId] = useState<string | undefined>(undefined);
 
   // Initialize from URL parameters if present
   useEffect(() => {
@@ -38,13 +39,17 @@ export default function HemingwayEditorPage() {
     const paramPlatform = searchParams.get('platform');
     const paramLength = searchParams.get('length');
     const paramStyle = searchParams.get('style');
+    const paramBrandVoiceId = searchParams.get('brandVoiceId');
+    const paramBrandVoiceCreatorId = searchParams.get('brandVoiceCreatorId');
     
     console.log('🔍 [HemingwayEditorPage] URL parameters:', {
       content: paramContent ? paramContent.substring(0, 100) + '...' : null,
       title: paramTitle,
       platform: paramPlatform,
       length: paramLength,
-      style: paramStyle
+      style: paramStyle,
+      brandVoiceId: paramBrandVoiceId,
+      brandVoiceCreatorId: paramBrandVoiceCreatorId,
     });
     
     if (paramContent) {
@@ -75,6 +80,17 @@ export default function HemingwayEditorPage() {
       const sanitizedTitle = sanitizeTitle(decodedTitle);
       console.log('📑 [HemingwayEditorPage] Setting title:', sanitizedTitle);
       setTitle(sanitizedTitle);
+    }
+
+    if (paramBrandVoiceId) {
+      try {
+        const decodedBrandVoiceId = decodeURIComponent(paramBrandVoiceId);
+        setInitialBrandVoiceId(decodedBrandVoiceId);
+      } catch (_) {
+        setInitialBrandVoiceId(paramBrandVoiceId);
+      }
+    } else {
+      setInitialBrandVoiceId(undefined);
     }
   }, [searchParams]);
 
@@ -137,6 +153,7 @@ export default function HemingwayEditorPage() {
       isScriptMode={isScriptMode}
       onScriptElementsChange={handleScriptElementsChange}
       enableAIActions={isScriptMode} // Enable AI actions when in script mode
+      initialBrandVoiceId={initialBrandVoiceId}
     />
   );
 }

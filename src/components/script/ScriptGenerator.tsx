@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { TextArea } from '../ui/TextArea';
 import type { AIGenerationRequest, BrandVoice } from '../../types';
 import { DEFAULT_BRAND_VOICE_ID } from '../../constants/brand-voices';
+import { dedupeBrandVoices } from '@/utils/brand-voice';
 
 export interface ScriptGeneratorProps {
   onGenerate?: (request: AIGenerationRequest) => void;
@@ -199,6 +200,8 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   brandVoices = [],
   defaultBrandVoiceId = DEFAULT_BRAND_VOICE_ID
 }) => {
+  const normalizedBrandVoices = React.useMemo(() => dedupeBrandVoices(brandVoices), [brandVoices]);
+
   const [formData, setFormData] = useState({
     prompt: '',
     length: 'medium',
@@ -212,22 +215,22 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   React.useEffect(() => {
     if (formData.brandVoiceId) return;
     if (!defaultBrandVoiceId) return;
-    const found = brandVoices.find(p => p.id === defaultBrandVoiceId);
+    const found = normalizedBrandVoices.find(p => p.id === defaultBrandVoiceId);
     if (!found) return;
     setFormData(prev => ({
       ...prev,
       brandVoiceId: defaultBrandVoiceId,
-      brandVoiceCreatorId: found.creatorId || ''
+      brandVoiceCreatorId: found.creatorId || found.id || ''
     }));
-  }, [defaultBrandVoiceId, brandVoices, formData.brandVoiceId]);
+  }, [defaultBrandVoiceId, normalizedBrandVoices, formData.brandVoiceId]);
 
   const handleInputChange = (field: string, value: any) => {
     if (field === 'brandVoiceId') {
-      const selectedVoice = brandVoices.find(voice => voice.id === value);
+      const selectedVoice = normalizedBrandVoices.find(voice => voice.id === value);
       setFormData(prev => ({
         ...prev,
         brandVoiceId: value,
-        brandVoiceCreatorId: selectedVoice?.creatorId || ''
+        brandVoiceCreatorId: selectedVoice?.creatorId || selectedVoice?.id || ''
       }));
       return;
     }
@@ -264,7 +267,7 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
     console.log("✅ [ScriptGenerator] onGenerate call completed");
   };
 
-  const selectedBrandVoice = brandVoices.find(p => p.id === formData.brandVoiceId);
+  const selectedBrandVoice = normalizedBrandVoices.find(p => p.id === formData.brandVoiceId);
 
   return (
     <Card appearance="elevated" spacing="comfortable" css={generatorStyles}>
@@ -399,7 +402,7 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
                 }}
               >
                 <option value="">Select brand voice (optional)</option>
-                {brandVoices.map(voice => (
+                {normalizedBrandVoices.map(voice => (
                   <option key={voice.id} value={voice.id}>
                     {voice.name}
                   </option>

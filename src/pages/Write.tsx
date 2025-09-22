@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { useScriptGeneration } from '../hooks/use-script-generation';
 import type { AIGenerationRequest, AIGenerationResponse, Script, BrandVoice } from '../types';
 import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME, resolveDefaultBrandVoiceId } from '../constants/brand-voices';
+import { dedupeBrandVoices } from '@/utils/brand-voice';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase';
 
@@ -404,6 +405,14 @@ ${result.script.wta}`;
         if (savedScript?.id) {
           params.set('scriptId', savedScript.id);
         }
+
+        if (request.brandVoiceId) {
+          params.set('brandVoiceId', request.brandVoiceId);
+        }
+
+        if (request.brandVoiceCreatorId) {
+          params.set('brandVoiceCreatorId', request.brandVoiceCreatorId);
+        }
         
         const editorUrl = `/editor?${params.toString()}`;
         console.log("🧭 [Write] Navigating to:", editorUrl);
@@ -432,7 +441,7 @@ ${result.script.wta}`;
             const isDefault = v.isDefault === true || v.id === DEFAULT_BRAND_VOICE_ID;
             return {
               id: v.id,
-              creatorId: v.creatorId,
+              creatorId: v.creatorId || v.id || '',
               name: isDefault ? DEFAULT_BRAND_VOICE_NAME : (v.name || v.id || ''),
               description: v.description || '',
               tone: v.tone || 'Varied',
@@ -445,8 +454,9 @@ ${result.script.wta}`;
               isShared: v.isShared ?? false,
             };
           });
-          setBrandVoices(mapped);
-          setDefaultBrandVoiceId(resolveDefaultBrandVoiceId(mapped));
+          const deduped = dedupeBrandVoices(mapped);
+          setBrandVoices(deduped);
+          setDefaultBrandVoiceId(resolveDefaultBrandVoiceId(deduped));
         } else {
           // Silent fallback
         }
