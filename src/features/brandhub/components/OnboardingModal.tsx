@@ -2,12 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { css } from '@emotion/react'
 import StopwatchIcon from '@atlaskit/icon/glyph/stopwatch'
 import VidPlayIcon from '@atlaskit/icon/glyph/vid-play'
-import ArrowUpIcon from '@atlaskit/icon/glyph/arrow-up'
-import ArrowDownIcon from '@atlaskit/icon/glyph/arrow-down'
+import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left'
+import ArrowRightIcon from '@atlaskit/icon/glyph/arrow-right'
 import { Badge } from '../../../components/ui/Badge'
 import { BasicModal } from '../../../components/ui/BasicModal'
 import { Button } from '../../../components/ui/Button'
-import { TextArea } from '../../../components/ui/TextArea'
 import { onboardingPrompts } from '../constants/onboarding'
 import { useSpeechTranscription } from '../hooks/useSpeechTranscription'
 import { formatTime } from '../utils/time'
@@ -292,7 +291,6 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
   const {
     liveTranscript,
-    updateTranscript,
     clearTranscript,
     isRecording,
     startRecording,
@@ -456,6 +454,33 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               <h3 className="prompt-text">{currentQuestion.prompt}</h3>
               {currentQuestion.helper && <p className="helper-text">{currentQuestion.helper}</p>}
               {showHalfwayMessage && <div className="milestone-banner">Great! You're halfway done!</div>}
+              <div className="nav-cluster">
+                <div className="arrow-stack">
+                  <button
+                    type="button"
+                    className="nav-button"
+                    onClick={handlePrevious}
+                    disabled={activeQuestionIndex === 0}
+                    aria-label="Previous question"
+                  >
+                    <ArrowLeftIcon label="" />
+                    <span className="visually-hidden">Previous</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-button${canAdvance ? ' primary' : ''}`}
+                    onClick={handleNext}
+                    disabled={!canAdvance}
+                    aria-label={isLastQuestion ? 'Finish onboarding' : 'Next question'}
+                  >
+                    <ArrowRightIcon label="" />
+                    <span className="visually-hidden">
+                      {isLastQuestion ? 'Finish onboarding' : 'Next question'}
+                    </span>
+                  </button>
+                </div>
+                <span className="powered">Powered by Gen.C</span>
+              </div>
             </div>
             <div className="transcript-stream">
               <span className="stream-label">Live transcript</span>
@@ -463,13 +488,6 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 {liveTranscript || 'Your words will appear here as you speak.'}
               </div>
             </div>
-            <TextArea
-              label="Refine or add notes"
-              placeholder="Type to expand on your spoken answer."
-              value={responses[currentQuestion.id] ?? ''}
-              onChange={(event) => updateTranscript(event.target.value)}
-              size="small"
-            />
             {recordingError && <div className="error-banner">{recordingError}</div>}
             <div className="response-controls">
               <Button
@@ -487,33 +505,6 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             <div className="panel-footer">
               <div className="progress-meta">
                 {completedCount}/{totalQuestions} answered
-              </div>
-              <div className="nav-cluster">
-                <div className="arrow-stack">
-                  <button
-                    type="button"
-                    className="nav-button"
-                    onClick={handlePrevious}
-                    disabled={activeQuestionIndex === 0}
-                    aria-label="Previous question"
-                  >
-                    <ArrowUpIcon label="" />
-                    <span className="visually-hidden">Previous</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`nav-button${canAdvance ? ' primary' : ''}`}
-                    onClick={handleNext}
-                    disabled={!canAdvance}
-                    aria-label={isLastQuestion ? 'Finish onboarding' : 'Next question'}
-                  >
-                    <ArrowDownIcon label="" />
-                    <span className="visually-hidden">
-                      {isLastQuestion ? 'Finish onboarding' : 'Next question'}
-                    </span>
-                  </button>
-                </div>
-                <span className="powered">Powered by Gen.C</span>
               </div>
             </div>
           </div>

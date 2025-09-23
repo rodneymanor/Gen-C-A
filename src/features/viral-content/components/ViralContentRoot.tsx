@@ -7,6 +7,7 @@ import {
   GcDashSearchBar,
   GcDashButton,
   GcDashCard,
+  GcDashCardBody,
   GcDashBlankSlate,
   GcDashLabel,
 } from '@/components/gc-dash';
@@ -22,10 +23,13 @@ import {
   shellStyles,
   headerRowStyles,
   headerLeftStyles,
+  headerRightStyles,
   heroStyles,
   heroTitleStyles,
   highlightRowStyles,
-  controlsRowStyles,
+  controlsCardBodyStyles,
+  controlsLeftStyles,
+  controlsRightStyles,
   platformChipsStyles,
   gridStyles,
   masonrySentinelStyles,
@@ -142,9 +146,14 @@ export const ViralContentRoot: React.FC = () => {
             <GcDashPlanChip planName="Viral feed" info={resultSummary} highlighted />
             <GcDashNavButtons onPrevious={handlePreviousNav} onNext={handleNextNav} />
           </div>
-          <GcDashButton variant="primary" leadingIcon={<AddIcon label="" />} onClick={() => navigate('/collections')}>
-            Save to collection
-          </GcDashButton>
+          <div css={headerRightStyles}>
+            <GcDashSearchBar
+              placeholder="Search creators, hooks, formats"
+              defaultValue={searchQuery}
+              submitLabel="Search"
+              onSubmitSearch={(value) => setSearchQuery(value)}
+            />
+          </div>
         </header>
 
         <section css={heroStyles}>
@@ -168,26 +177,33 @@ export const ViralContentRoot: React.FC = () => {
           </div>
         </section>
 
-        <div css={controlsRowStyles}>
-          <GcDashSearchBar
-            placeholder="Search creators, hooks, formats"
-            defaultValue={searchQuery}
-            submitLabel="Search"
-            onSubmitSearch={(value) => setSearchQuery(value)}
-          />
-          <div css={platformChipsStyles}>
-            {platformOptions.map((option) => (
+        <GcDashCard>
+          <GcDashCardBody css={controlsCardBodyStyles}>
+            <div css={controlsLeftStyles}>
+              <div css={platformChipsStyles}>
+                {platformOptions.map((option) => (
+                  <GcDashButton
+                    key={option.key}
+                    variant={platform === option.key ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setPlatform(option.key)}
+                  >
+                    {option.emoji} {option.label}
+                  </GcDashButton>
+                ))}
+              </div>
+            </div>
+            <div css={controlsRightStyles}>
               <GcDashButton
-                key={option.key}
-                variant={platform === option.key ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => setPlatform(option.key)}
+                variant="primary"
+                leadingIcon={<AddIcon label="" />}
+                onClick={() => navigate('/collections')}
               >
-                {option.emoji} {option.label}
+                Save to collection
               </GcDashButton>
-            ))}
-          </div>
-        </div>
+            </div>
+          </GcDashCardBody>
+        </GcDashCard>
 
         {videos.length === 0 && !isLoading ? (
           <GcDashBlankSlate

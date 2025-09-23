@@ -9,7 +9,7 @@ import {
 import MediaServicesPresentationIcon from '@atlaskit/icon/glyph/media-services/presentation';
 import AddIcon from '@atlaskit/icon/glyph/add';
 import PlayIcon from '@atlaskit/icon/glyph/vid-play';
-import type { ViralMetric, ViralVideo } from '../types';
+import type { ViralVideo } from '../types';
 import { PLATFORM_EMOJI, PLATFORM_LABELS } from '../constants/feed';
 
 export interface ViralClipCardProps {
@@ -39,9 +39,30 @@ const cardStyles = css`
   }
 `;
 
-const thumbnailWrapperStyles = css`
+const verticalThumbnailStyles = css`
   position: relative;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 9 / 16;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(9, 30, 66, 0.06);
+
+  img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.24s ease;
+  }
+
+  &:hover img {
+    transform: scale(1.04);
+  }
+`;
+
+const horizontalThumbnailStyles = css`
+  position: relative;
+  aspect-ratio: 16 / 9;
   border-radius: 18px;
   overflow: hidden;
   background: rgba(9, 30, 66, 0.06);
@@ -156,6 +177,9 @@ export const ViralClipCard: React.FC<ViralClipCardProps> = ({
   onAddToProject,
   onPlay,
 }) => {
+  const isYoutube = video.platform === 'youtube';
+  const thumbnailWrapperStyles = isYoutube ? horizontalThumbnailStyles : verticalThumbnailStyles;
+
   const handleOpen = () => {
     if (onOpen) {
       onOpen(video);

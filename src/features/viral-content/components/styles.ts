@@ -28,12 +28,21 @@ export const headerRowStyles = css`
   align-items: center;
   gap: 24px;
   flex-wrap: wrap;
+  justify-content: space-between;
 `;
 
 export const headerLeftStyles = css`
   display: inline-flex;
   align-items: center;
   gap: 16px;
+`;
+
+export const headerRightStyles = css`
+  margin-left: auto;
+  flex: 1 1 320px;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 280px;
 `;
 
 export const heroStyles = css`
@@ -71,11 +80,21 @@ export const highlightRowStyles = css`
   gap: 12px;
 `;
 
-export const controlsRowStyles = css`
+export const controlsCardBodyStyles = css`
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   gap: 16px;
   align-items: center;
+  justify-content: space-between;
+`;
+
+export const controlsLeftStyles = css`
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  flex: 1 1 auto;
 `;
 
 export const platformChipsStyles = css`
@@ -84,12 +103,44 @@ export const platformChipsStyles = css`
   gap: 8px;
 `;
 
+export const controlsRightStyles = css`
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+
+  @media (max-width: 720px) {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+`;
+
 export const gridStyles = css`
-  display: grid;
-  gap: 20px;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  column-count: 4;
+  column-gap: 24px;
+  width: 100%;
+
+  & > * {
+    break-inside: avoid;
+    margin-bottom: 24px;
+    width: 100%;
+  }
+
+  @media (max-width: 1400px) {
+    column-count: 3;
+  }
+
+  @media (max-width: 1024px) {
+    column-count: 2;
+  }
+
+  @media (max-width: 640px) {
+    column-count: 1;
+  }
 `;
 
 export const masonrySentinelStyles = css`
   height: 1px;
+  width: 100%;
+  display: block;
 `;
