@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { css } from '@emotion/react';
 import {
   GcDashButton,
@@ -18,12 +18,18 @@ import {
   GcDashTextArea,
   type GcDashTabItem,
 } from '../../components/gc-dash';
+import { useScriptGeneration } from '@/hooks/use-script-generation';
+import type { AIGenerationRequest, BrandVoice } from '@/types';
+import { dedupeBrandVoices } from '@/utils/brand-voice';
+import { DEFAULT_BRAND_VOICE_ID, DEFAULT_BRAND_VOICE_NAME, resolveDefaultBrandVoiceId } from '@/constants/brand-voices';
+import { auth } from '../../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const ideaCapsules = [
   {
     id: 'ai-onboarding',
     title: 'AI onboarding wins',
-    summary: 'Show how Claude Workspace cut onboarding from weeks to 30 days.'
+    summary: 'Show how your workspace cut onboarding from weeks to 30 days.'
   },
   {
     id: 'ops-automation',
@@ -42,13 +48,6 @@ const ideaCapsules = [
   },
 ];
 
-const brandVoiceOptions: GcDashDropdownOption[] = [
-  { value: 'workspace-default', label: 'Workspace default' },
-  { value: 'founder-story', label: 'Founder storytelling' },
-  { value: 'educator', label: 'Educator · explain simply' },
-  { value: 'creator-collab', label: 'Creator collab voice' },
-];
-
 const lengthOptions: GcDashDropdownOption[] = [
   { value: '20', label: '20 seconds' },
   { value: '30', label: '30 seconds' },
@@ -60,6 +59,58 @@ const scriptTabs: GcDashTabItem[] = [
   { id: 'outline', label: 'Outline', content: null },
   { id: 'cta', label: 'CTA', content: null },
 ];
+
+type ScriptComponents = {
+  hook: string;
+  bridge: string;
+  goldenNugget: string;
+  wta: string;
+};
+
+const uiLengthToRequestLength = (value: string): 'short' | 'medium' | 'long' => {
+  switch (value) {
+    case '20':
+      return 'short';
+    case '60':
+      return 'long';
+    default:
+      return 'medium';
+  }
+};
+
+const uiLengthToDuration = (value: string): '15' | '20' | '30' | '45' | '60' | '90' => {
+  switch (value) {
+    case '20':
+      return '20';
+    case '60':
+      return '60';
+    case '15':
+      return '15';
+    case '45':
+      return '45';
+    case '90':
+      return '90';
+    default:
+      return '30';
+  }
+};
+
+const formatScriptForEditor = (components: ScriptComponents): string => {
+  return `[HOOK]\n${components.hook}\n\n[BRIDGE]\n${components.bridge}\n\n[VALUE]\n${components.goldenNugget}\n\n[CTA]\n${components.wta}`;
+};
+
+const deriveScriptTitle = (prompt: string): string => {
+  const normalized = prompt.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return 'AI Script Draft';
+  }
+
+  if (normalized.length <= 60) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, 57).trim()}…`;
+};
 
 type Phase = 'input' | 'generating' | 'result';
 
@@ -73,8 +124,8 @@ const entryOptions: Array<{
 }> = [
   {
     id: 'notes',
-    title: 'Use notes',
-    description: 'Share your thoughts about a topic and Claude will shape the script around them.',
+    title: 'Use notes to brief the AI writer',
+    description: 'Share your thoughts about a topic and the AI writer will shape the script around them.',
     meta: '3–5 bullets recommended',
   },
   {
@@ -91,7 +142,7 @@ const entryOptions: Array<{
   {
     id: 'suggestions',
     title: 'Suggested ideas',
-    description: 'Pick from Claude-curated ideas based on your onboarding goals and generate in one click.',
+    description: 'Pick from AI-curated ideas based on your onboarding goals and generate in one click.',
   },
 ];
 
@@ -103,13 +154,101 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
   const [entryMode, setEntryMode] = useState<EntryMode | null>(null);
   const [phase, setPhase] = useState<Phase>('input');
   const [activeTab, setActiveTab] = useState(scriptTabs[0]!.id);
-  const [voice, setVoice] = useState(brandVoiceOptions[0]!.value);
+  const { generateScript, isLoading: isGenerating, error: generationError } = useScriptGeneration();
+  const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([]);
+  const [defaultBrandVoiceId, setDefaultBrandVoiceId] = useState<string>(DEFAULT_BRAND_VOICE_ID);
+  const [voice, setVoice] = useState<string>(DEFAULT_BRAND_VOICE_ID);
   const [length, setLength] = useState(lengthOptions[1]!.value);
   const [selectedIdea, setSelectedIdea] = useState(ideaCapsules[0]!);
   const [progress, setProgress] = useState(0);
   const [notesInput, setNotesInput] = useState('');
   const [inspirationUrl, setInspirationUrl] = useState('');
   const [transcribeUrl, setTranscribeUrl] = useState('');
+  const [generatedComponents, setGeneratedComponents] = useState<ScriptComponents | null>(null);
+  const [lastScriptContent, setLastScriptContent] = useState<string>('');
+  const [lastRequest, setLastRequest] = useState<AIGenerationRequest | null>(null);
+  const [lastMappedLength, setLastMappedLength] = useState<'15' | '20' | '30' | '45' | '60' | '90'>('30');
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [isPersistingScript, setIsPersistingScript] = useState(false);
+  const [currentNotesDraft, setCurrentNotesDraft] = useState<string>('');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const res = await fetch('/api/brand-voices/list');
+        const data = await res.json().catch(() => null);
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (res.ok && data?.success && Array.isArray(data.voices)) {
+          const mapped: BrandVoice[] = data.voices.map((voiceData: any) => {
+            const isDefault = voiceData.isDefault === true || voiceData.id === DEFAULT_BRAND_VOICE_ID;
+            return {
+              id: voiceData.id,
+              creatorId: voiceData.creatorId || voiceData.id || '',
+              name: isDefault ? DEFAULT_BRAND_VOICE_NAME : (voiceData.name || voiceData.id || DEFAULT_BRAND_VOICE_NAME),
+              description: voiceData.description || '',
+              tone: voiceData.tone || 'Varied',
+              voice: voiceData.voice || 'Derived from analysis',
+              targetAudience: voiceData.targetAudience || 'General',
+              keywords: Array.isArray(voiceData.keywords) ? voiceData.keywords : [],
+              platforms: Array.isArray(voiceData.platforms) && voiceData.platforms.length ? voiceData.platforms : ['tiktok'],
+              created: voiceData.created ? new Date(voiceData.created._seconds ? voiceData.created._seconds * 1000 : voiceData.created) : new Date(),
+              isDefault,
+              isShared: voiceData.isShared ?? false,
+            } satisfies BrandVoice;
+          });
+
+          const deduped = dedupeBrandVoices(mapped);
+          setBrandVoices(deduped);
+
+          const resolvedDefault = resolveDefaultBrandVoiceId(deduped);
+          setDefaultBrandVoiceId(resolvedDefault);
+          setVoice(resolvedDefault);
+        } else {
+          setBrandVoices([]);
+          setDefaultBrandVoiceId(DEFAULT_BRAND_VOICE_ID);
+          setVoice(DEFAULT_BRAND_VOICE_ID);
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.warn('⚠️ [WritingRedesign] Failed to load brand voices', error);
+          setBrandVoices([]);
+          setDefaultBrandVoiceId(DEFAULT_BRAND_VOICE_ID);
+          setVoice(DEFAULT_BRAND_VOICE_ID);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const brandVoiceOptions = useMemo<GcDashDropdownOption[]>(() => {
+    if (!brandVoices.length) {
+      return [{ value: DEFAULT_BRAND_VOICE_ID, label: DEFAULT_BRAND_VOICE_NAME }];
+    }
+
+    return brandVoices.map((brandVoice) => ({
+      value: brandVoice.id,
+      label: brandVoice.name || DEFAULT_BRAND_VOICE_NAME,
+    }));
+  }, [brandVoices]);
+
+  const selectedBrandVoice = useMemo(() => {
+    return brandVoices.find((item) => item.id === voice) ?? null;
+  }, [brandVoices, voice]);
+
+  useEffect(() => {
+    if (!voice && defaultBrandVoiceId) {
+      setVoice(defaultBrandVoiceId);
+    }
+  }, [defaultBrandVoiceId, voice]);
 
   useEffect(() => {
     if (phase !== 'generating') return;
@@ -134,40 +273,305 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
     }
   }, [entryMode, phase]);
 
-  const outlineGuidance = useMemo(() => {
-    switch (voice) {
-      case 'founder-story':
-        return 'Open with a milestone → reveal the customer outcome → close with an invitation to co-build the next chapter.';
-      case 'educator':
-        return 'Frame the problem → teach three actionable steps → recap with proof → extend a helpful CTA.';
-      case 'creator-collab':
-        return 'Hook with a challenge → duet-style proof → playful CTA inviting creators to remix the story.';
-      default:
-        return 'Anchor in customer proof → show the Claude workflow → end with a crisp next step for the viewer.';
+  useEffect(() => {
+    setLocalError(null);
+    if (entryMode !== 'notes') {
+      setGeneratedComponents(null);
+      setLastRequest(null);
+      setLastScriptContent('');
+      setCurrentNotesDraft('');
     }
-  }, [voice]);
+  }, [entryMode]);
 
-  const voiceLabel = useMemo<string>(() => {
-    return brandVoiceOptions.find((option) => option.value === voice)?.label ?? brandVoiceOptions[0]!.label;
-  }, [voice]);
+  useEffect(() => {
+    if (phase === 'result' && currentNotesDraft && notesInput.trim() !== currentNotesDraft.trim()) {
+      setPhase('input');
+      setGeneratedComponents(null);
+      setLastRequest(null);
+      setLastScriptContent('');
+      setProgress(0);
+      setCurrentNotesDraft('');
+    }
+  }, [currentNotesDraft, notesInput, phase]);
+
+  const outlineGuidance = useMemo(() => {
+    if (selectedBrandVoice) {
+      return `Lean into the ${selectedBrandVoice.name.toLowerCase()} tone: hook fast, reinforce the proof, and close with a clear next step.`;
+    }
+    return 'Lead with a hook → reinforce proof → finish with a crisp CTA or next step.';
+  }, [selectedBrandVoice]);
+
+  const voiceLabel = selectedBrandVoice?.name ?? DEFAULT_BRAND_VOICE_NAME;
 
   const voiceLabelLower = useMemo(() => voiceLabel.toLowerCase(), [voiceLabel]);
+
+  const notesPreview = useMemo(() => {
+    if (!currentNotesDraft) return '';
+    const firstNonEmptyLine = currentNotesDraft
+      .split('\n')
+      .map((line) => line.trim())
+      .find((line) => line.length > 0);
+    const previewSource = firstNonEmptyLine || currentNotesDraft;
+    if (previewSource.length <= 90) {
+      return previewSource;
+    }
+    return `${previewSource.slice(0, 87)}…`;
+  }, [currentNotesDraft]);
+
+  const displayScriptContent = useMemo(() => {
+    if (lastScriptContent) {
+      return lastScriptContent;
+    }
+
+    if (generatedComponents) {
+      return formatScriptForEditor(generatedComponents);
+    }
+
+    return '';
+  }, [generatedComponents, lastScriptContent]);
 
   const handleGenerate = () => {
     setPhase('generating');
   };
 
-  const handleOpenEditor = () => {
-    alert('Navigate to Hemingway editor with generated script payload.');
-  };
+  const persistGeneratedScript = useCallback(async (
+    params: {
+      request: AIGenerationRequest;
+      scriptContent: string;
+      mappedLength: '15' | '20' | '30' | '45' | '60' | '90';
+      components: ScriptComponents;
+      title: string;
+    }
+  ) => {
+    const { request, scriptContent, mappedLength, components, title } = params;
+    const brandVoiceDetails = request.brandVoiceId ? brandVoices.find((item) => item.id === request.brandVoiceId) : undefined;
 
-  const handleSubmitNotes = () => {
-    if (!notesInput.trim()) {
-      alert('Add a few notes so Claude knows where to begin.');
+    const payload = {
+      title,
+      content: scriptContent,
+      summary: scriptContent.slice(0, 200),
+      approach: 'speed-write' as const,
+      voice: brandVoiceDetails
+        ? {
+            id: brandVoiceDetails.id,
+            name: brandVoiceDetails.name,
+            badges: Array.isArray(brandVoiceDetails.keywords)
+              ? brandVoiceDetails.keywords.slice(0, 3)
+              : [],
+          }
+        : undefined,
+      originalIdea: request.prompt,
+      targetLength: mappedLength,
+      source: 'scripting' as const,
+      platform: request.platform,
+      status: 'draft' as const,
+      tags: ['ai-generated', request.platform].filter(Boolean),
+      isThread: false,
+      elements: {
+        hook: components.hook,
+        bridge: components.bridge,
+        goldenNugget: components.goldenNugget,
+        wta: components.wta,
+      },
+    };
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'X-Client': 'writing-redesign',
+      };
+
+      const resolveAuthToken = async (): Promise<string | null> => {
+        if (!auth) return null;
+
+        try {
+          const maybeAuthStateReady = (auth as unknown as { authStateReady?: () => Promise<void> }).authStateReady;
+          if (typeof maybeAuthStateReady === 'function') {
+            try {
+              await maybeAuthStateReady.call(auth);
+            } catch (readyError) {
+              console.warn('⚠️ [WritingRedesign] authStateReady check failed', readyError);
+            }
+          }
+
+          if (auth.currentUser) {
+            return await auth.currentUser.getIdToken();
+          }
+
+          return await new Promise<string | null>((resolve) => {
+            let resolved = false;
+            let unsubscribe: (() => void) | null = null;
+
+            const finalize = (token: string | null) => {
+              if (resolved) return;
+              resolved = true;
+              if (unsubscribe) unsubscribe();
+              resolve(token);
+            };
+
+            const timeoutId = setTimeout(() => finalize(null), 5000);
+
+            unsubscribe = onAuthStateChanged(
+              auth,
+              async (user) => {
+                clearTimeout(timeoutId);
+                const token = user ? await user.getIdToken().catch(() => null) : null;
+                finalize(token);
+              },
+              (listenerError) => {
+                clearTimeout(timeoutId);
+                console.warn('⚠️ [WritingRedesign] Auth listener error while resolving token', listenerError);
+                finalize(null);
+              },
+            );
+          });
+        } catch (tokenError) {
+          console.warn('⚠️ [WritingRedesign] Unexpected error resolving auth token', tokenError);
+          return null;
+        }
+      };
+
+      try {
+        const token = await resolveAuthToken();
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+          console.log('🔐 [WritingRedesign] Attached auth token for script persistence');
+        } else {
+          console.warn('⚠️ [WritingRedesign] No auth token available; script will be stored locally');
+        }
+      } catch (tokenError) {
+        console.warn('⚠️ [WritingRedesign] Failed to retrieve auth token for script persistence', tokenError);
+      }
+
+      const response = await fetch('/api/scripts', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        console.warn('⚠️ [WritingRedesign] Failed to persist generated script', {
+          status: response.status,
+          data,
+        });
+        return null;
+      }
+
+      console.log('💾 [WritingRedesign] Generated script saved', data.script?.id);
+      return data.script ?? null;
+    } catch (error) {
+      console.error('❌ [WritingRedesign] Persisting script failed', error);
+      return null;
+    }
+  }, [brandVoices]);
+
+  const handleOpenEditor = useCallback(async () => {
+    if (!lastRequest || !generatedComponents || !lastScriptContent) {
+      setLocalError('Generate a script before opening the editor.');
       return;
     }
-    alert(`Kick off notes flow with: ${notesInput.slice(0, 120)}${notesInput.length > 120 ? '…' : ''}`);
-  };
+
+    setIsPersistingScript(true);
+    setLocalError(null);
+
+    try {
+      const title = deriveScriptTitle(lastRequest.prompt);
+      const savedScript = await persistGeneratedScript({
+        request: lastRequest,
+        scriptContent: lastScriptContent,
+        mappedLength: lastMappedLength,
+        components: generatedComponents,
+        title,
+      });
+
+      const params = new URLSearchParams({
+        content: lastScriptContent,
+        title,
+        platform: lastRequest.platform,
+        length: lastRequest.length,
+        style: lastRequest.style,
+      });
+
+      if (savedScript?.id) {
+        params.set('scriptId', savedScript.id);
+      }
+
+      if (lastRequest.brandVoiceId) {
+        params.set('brandVoiceId', lastRequest.brandVoiceId);
+      }
+
+      if (lastRequest.brandVoiceCreatorId) {
+        params.set('brandVoiceCreatorId', lastRequest.brandVoiceCreatorId);
+      }
+
+      window.location.assign(`/editor?${params.toString()}`);
+    } catch (error) {
+      console.error('❌ [WritingRedesign] Failed to open editor', error);
+      setLocalError('We saved the draft locally but could not open the editor. Please try again.');
+    } finally {
+      setIsPersistingScript(false);
+    }
+  }, [generatedComponents, lastMappedLength, lastRequest, lastScriptContent, persistGeneratedScript]);
+
+  const handleSubmitNotes = useCallback(async () => {
+    const trimmedNotes = notesInput.trim();
+    if (!trimmedNotes) {
+      setLocalError('Add a few notes so the AI writer knows where to begin.');
+      return;
+    }
+
+    setLocalError(null);
+    setGeneratedComponents(null);
+    setLastRequest(null);
+    setLastScriptContent('');
+    setCurrentNotesDraft(trimmedNotes);
+    setPhase('generating');
+    setProgress(12);
+
+    const mappedLength = uiLengthToDuration(length);
+    const requestLength = uiLengthToRequestLength(length);
+
+    const response = await generateScript({
+      idea: trimmedNotes,
+      length: mappedLength,
+      brandVoiceId: selectedBrandVoice?.id,
+      brandVoiceCreatorId: selectedBrandVoice?.creatorId,
+    });
+
+    if (response.success && response.script) {
+      const components: ScriptComponents = {
+        hook: response.script.hook,
+        bridge: response.script.bridge,
+        goldenNugget: response.script.goldenNugget,
+        wta: response.script.wta,
+      };
+
+      const scriptContent = formatScriptForEditor(components);
+      const request: AIGenerationRequest = {
+        prompt: trimmedNotes,
+        aiModel: 'creative',
+        length: requestLength,
+        style: 'engaging',
+        platform: 'tiktok',
+        brandVoiceId: selectedBrandVoice?.id,
+        brandVoiceCreatorId: selectedBrandVoice?.creatorId,
+        additionalSettings: { entryMode: 'notes' },
+      };
+
+      setGeneratedComponents(components);
+      setLastScriptContent(scriptContent);
+      setLastRequest(request);
+      setLastMappedLength(mappedLength);
+      setPhase('result');
+      setProgress(100);
+    } else {
+      setPhase('input');
+      setProgress(0);
+      setLocalError(response.error ?? 'We could not generate a script this time. Please try again.');
+    }
+  }, [generateScript, length, notesInput, selectedBrandVoice]);
 
   const handleSubmitVideo = (url: string, mode: 'inspiration' | 'transcribe') => {
     if (!url.trim()) {
@@ -234,10 +638,10 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
   const generatingSection = (
     <section css={cardStyles}>
       <h3 css={css`margin: 0; font-size: 18px; letter-spacing: -0.2px;`}>
-        Claude is shaping your story…
+        The AI writer is shaping your story…
       </h3>
       <span css={css`font-size: 13px; color: rgba(9, 30, 66, 0.6);`}>
-        {length} second video in the {voiceLabelLower} voice about “{selectedIdea.title}”.
+        {length} second script in the {voiceLabelLower} voice{notesPreview ? ` based on “${notesPreview}”` : ''}.
       </span>
       <div
         css={css`
@@ -299,12 +703,20 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
             Script ready to review
           </h2>
           <span css={css`font-size: 13px; color: rgba(9, 30, 66, 0.6);`}>
-            {length} second story in the {voiceLabelLower} voice.
+            {length} second story in the {voiceLabelLower} voice{notesPreview ? ` · based on “${notesPreview}”` : ''}.
           </span>
         </div>
         <div css={css`display: inline-flex; gap: 8px;`}>
-          <GcDashButton variant="ghost">Share preview</GcDashButton>
-          <GcDashButton onClick={handleOpenEditor}>Open in Hemingway</GcDashButton>
+          <GcDashButton variant="ghost" disabled={!displayScriptContent}>
+            Share preview
+          </GcDashButton>
+          <GcDashButton
+            onClick={handleOpenEditor}
+            disabled={!displayScriptContent}
+            isLoading={isPersistingScript}
+          >
+            Open in editor
+          </GcDashButton>
         </div>
       </header>
 
@@ -319,15 +731,19 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
       >
         <GcDashFeatureCard
           title="Hook"
-          description="Remember when onboarding meant juggling five tools? Here’s how we fixed it in one sprint."
+          description={generatedComponents?.hook || 'Your hook will appear here after generation.'}
         />
         <GcDashFeatureCard
-          title="Proof"
-          description="Automation captures now prep exec briefings in minutes, powering a 30-day rollout."
+          title="Bridge"
+          description={generatedComponents?.bridge || 'We will add the connective story beats once the script is ready.'}
         />
         <GcDashFeatureCard
-          title="CTA"
-          description="Invite leaders to co-build a pilot in Claude Workspace this month."
+          title="Golden nugget"
+          description={generatedComponents?.goldenNugget || 'Your main proof point will land here once generation completes.'}
+        />
+        <GcDashFeatureCard
+          title="Call to action"
+          description={generatedComponents?.wta || 'Your closing CTA shows up here after generation.'}
         />
       </section>
 
@@ -343,14 +759,7 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
           white-space: pre-line;
         `}
       >
-        {`[Intro]
-Onboarding used to mean juggling five tools. In September we moved the entire workflow into Claude Workspace and shipped in under 30 days.
-
-[Proof]
-Automated captures now prep every exec briefing, revenue ops runs their checklist in a single view, and GTM teams launch playbooks in minutes.
-
-[CTA]
-DM me to see the workspace live and grab the prompts we use every Monday.`}
+        {displayScriptContent || 'Add notes and generate a script to preview the draft here.'}
       </article>
     </section>
   );
@@ -362,7 +771,7 @@ DM me to see the workspace live and grab the prompts we use every Monday.`}
           <div css={css`display: flex; flex-direction: column; gap: 4px;`}>
             <GcDashCardTitle>Ideas tailored to your goals</GcDashCardTitle>
             <GcDashCardSubtitle>
-              Choose a prompt sourced from your onboarding answers. Claude will use it as the brief for your script.
+              Choose a prompt sourced from your onboarding answers. Our AI writer will use it as the brief for your script.
             </GcDashCardSubtitle>
           </div>
 
@@ -456,13 +865,13 @@ DM me to see the workspace live and grab the prompts we use every Monday.`}
             <span css={css`font-size: 13px; color: rgba(9, 30, 66, 0.65);`}>
               Selected idea: <strong>{selectedIdea.title}</strong>
             </span>
-            <GcDashButton onClick={handleGenerate}>Draft with Claude</GcDashButton>
+            <GcDashButton onClick={handleGenerate}>Generate script</GcDashButton>
           </div>
         </GcDashCardBody>
       </GcDashCard>
 
       <GcDashFeatureCard
-        title="Claude tip"
+        title="Workflow tip"
         description={outlineGuidance}
         highlight
       />
@@ -476,9 +885,9 @@ DM me to see the workspace live and grab the prompts we use every Monday.`}
     <div css={singleColumnStyles}>
       <GcDashCard>
         <GcDashCardBody>
-          <GcDashCardTitle>Use notes to brief Claude</GcDashCardTitle>
+          <GcDashCardTitle>Use notes to brief the AI writer</GcDashCardTitle>
           <GcDashCardSubtitle>
-            Share quick bullets about your idea, launch, or announcement. Claude will turn them into a script with hook, proof, and CTA moments.
+            Share quick bullets about your idea, launch, or announcement. The AI writer will turn them into a script with hook, proof, and CTA moments.
           </GcDashCardSubtitle>
           <GcDashTextArea
             placeholder={`• Launching the onboarding workspace next Tuesday\n• Highlight 30-day rollout + exec alignment\n• CTA: DM for pilot access`}
@@ -486,6 +895,11 @@ DM me to see the workspace live and grab the prompts we use every Monday.`}
             value={notesInput}
             onChange={(event) => setNotesInput(event.target.value)}
           />
+          {(localError || generationError) && (
+            <span css={css`color: #b42318; font-size: 13px;`}>
+              {localError ?? generationError}
+            </span>
+          )}
           <div
             css={css`
               display: flex;
@@ -530,7 +944,9 @@ DM me to see the workspace live and grab the prompts we use every Monday.`}
               <GcDashButton variant="ghost" onClick={() => setNotesInput('')}>
                 Clear
               </GcDashButton>
-              <GcDashButton onClick={handleSubmitNotes}>Draft with Claude</GcDashButton>
+              <GcDashButton onClick={handleSubmitNotes} isLoading={isGenerating}>
+                Generate script
+              </GcDashButton>
             </div>
           </div>
         </GcDashCardBody>
@@ -538,9 +954,12 @@ DM me to see the workspace live and grab the prompts we use every Monday.`}
 
       <GcDashFeatureCard
         title="What happens next"
-        description="Claude maps your notes into a clear storyline and keeps brand voice guardrails in place before handing off to the editor."
+        description="We map your notes into a clear storyline and keep brand voice guardrails in place before handing off to the editor."
         highlight
       />
+
+      {phase === 'generating' && generatingSection}
+      {phase === 'result' && resultSection}
     </div>
   );
 
@@ -550,7 +969,7 @@ DM me to see the workspace live and grab the prompts we use every Monday.`}
         <GcDashCardBody>
           <GcDashCardTitle>Get inspiration from an existing video</GcDashCardTitle>
           <GcDashCardSubtitle>
-            Paste a TikTok, Reels, or Shorts link. Claude will extract the structure so you can remix the idea in your brand voice.
+            Paste a TikTok, Reels, or Shorts link. The AI assistant will extract the structure so you can remix the idea in your brand voice.
           </GcDashCardSubtitle>
           <GcDashInput
             type="url"
@@ -612,8 +1031,8 @@ DM me to see the workspace live and grab the prompts we use every Monday.`}
       </GcDashCard>
 
       <GcDashFeatureCard
-        title="Claude will"
-        description="Break the clip into hook, story beats, and CTA, then suggest fresh angles and talking points aligned to your audience."
+        title="What you get"
+        description="We break the clip into hook, story beats, and CTA, then suggest fresh angles and talking points aligned to your audience."
       />
     </div>
   );
