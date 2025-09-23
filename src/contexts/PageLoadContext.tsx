@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 
 interface PageLoadContextValue {
   busyCount: number;
@@ -14,11 +14,19 @@ export const PageLoadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   React.useEffect(() => () => { mounted.current = false; }, []);
 
+  const beginPageLoad = useCallback(() => {
+    setBusyCount((c) => c + 1);
+  }, [setBusyCount]);
+
+  const endPageLoad = useCallback(() => {
+    setBusyCount((c) => Math.max(0, c - 1));
+  }, [setBusyCount]);
+
   const value = useMemo<PageLoadContextValue>(() => ({
     busyCount,
-    beginPageLoad: () => setBusyCount((c) => c + 1),
-    endPageLoad: () => setBusyCount((c) => Math.max(0, c - 1)),
-  }), [busyCount]);
+    beginPageLoad,
+    endPageLoad,
+  }), [busyCount, beginPageLoad, endPageLoad]);
 
   return (
     <PageLoadContext.Provider value={value}>{children}</PageLoadContext.Provider>
@@ -30,4 +38,3 @@ export function usePageLoad() {
   if (!ctx) throw new Error('usePageLoad must be used within PageLoadProvider');
   return ctx;
 }
-

@@ -66,16 +66,16 @@ export const useBrandHubOnboarding = (
     const loadOnboarding = async () => {
       setIsLoading(true)
       try {
-        const document = await fetchOnboardingDocument(userId)
-        if (cancelled || !document?.onboarding) {
+        const record = await fetchOnboardingDocument(userId)
+        if (cancelled || !record) {
           return
         }
 
-        if (document.onboarding.responses) {
-          setResponses((prev) => ({ ...prev, ...document.onboarding!.responses }))
+        if (record.responses) {
+          setResponses((prev) => ({ ...prev, ...record.responses }))
         }
 
-        if (document.onboarding.status === 'completed') {
+        if (record.status === 'completed') {
           setHasCompleted(true)
         }
       } catch (error) {

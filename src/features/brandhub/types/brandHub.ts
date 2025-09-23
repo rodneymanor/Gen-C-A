@@ -58,11 +58,9 @@ export interface ResolvedBrandVoice {
   sortTime: number
 }
 
-export interface OnboardingDocument {
-  onboarding?: {
-    responses?: Partial<OnboardingFormState>
-    status?: string
-    updatedAt?: unknown
-    completedAt?: unknown
-  }
+export interface OnboardingRecord {
+  responses?: Partial<OnboardingFormState>
+  status?: 'in-progress' | 'completed'
+  updatedAt?: unknown
+  completedAt?: unknown
 }

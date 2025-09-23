@@ -95,7 +95,11 @@ const entryOptions: Array<{
   },
 ];
 
-export const WritingRedesignShowcase: React.FC = () => {
+export interface WritingRedesignShowcaseProps {
+  onNavigateNext?: () => void;
+}
+
+export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = ({ onNavigateNext }) => {
   const [entryMode, setEntryMode] = useState<EntryMode | null>(null);
   const [phase, setPhase] = useState<Phase>('input');
   const [activeTab, setActiveTab] = useState(scriptTabs[0]!.id);
@@ -687,7 +691,13 @@ DM me to see the workspace live and grab the prompts we use every Monday.`}
             />
             <GcDashNavButtons
               disablePrevious
-              onNext={() => alert('Smooth transition to Viral Video Library view.')}
+              onNext={() => {
+                if (onNavigateNext) {
+                  onNavigateNext();
+                } else {
+                  alert('Smooth transition to Viral Video Library view.');
+                }
+              }}
             />
           </div>
           <GcDashSearchBar

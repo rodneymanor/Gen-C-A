@@ -16,20 +16,20 @@ export const onboardingPrompts: OnboardingPrompt[] = [
   {
     id: 'quickWin',
     title: 'Quick Win',
-    prompt: "What's the first small win they're looking for?",
-    helper: 'Example: “Just 10 minutes a day where they feel like themselves again.”'
+    prompt: 'What immediate impact would you like to have for your viewers?',
+    helper: 'Example: “Help them leave with one actionable tip they can implement tonight.”'
   },
   {
     id: 'bigDream',
     title: 'Big Dream',
-    prompt: 'If they could wave a magic wand, what would their life look like in 1 year?',
-    helper: 'Example: “They’d have energy to play with kids and feel confident in their body.”'
+    prompt: 'What ultimate impact would you like to have?',
+    helper: 'Example: “Redefine how busy parents see health so they build lifelong strength.”'
   },
   {
     id: 'voiceStyle',
     title: 'Your Style',
-    prompt: 'Are you the tough coach, the supportive friend, or the wise teacher?',
-    helper: 'Example: “I’m the supportive friend who’s been there and gets it.”'
+    prompt: "How would your customer's life change if they were able to successfully apply your recommendations?",
+    helper: 'Example: “They’d wake up energized, feel confident in their skin, and trust their routine.”'
   },
   {
     id: 'contentFocus',
