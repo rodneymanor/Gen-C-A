@@ -437,7 +437,234 @@ export const VideoModal: React.FC<VideoModalProps> = ({
   onNavigateVideo
 }) => {
   const [activeTab, setActiveTab] = useState<'video' | 'script' | 'hooks' | 'analytics' | 'more'>('video');
-  
+
+  const collectCandidateObjects = (item: ContentItem | null) => {
+    if (!item) return [] as Record<string, any>[];
+    const metadata = item.metadata ?? {};
+    const rawSource = metadata.rawSource ?? {};
+    const roots = [
+      metadata,
+      metadata.contentMetadata,
+      metadata.analysis,
+      metadata.metrics,
+      metadata.statistics,
+      metadata.insights,
+      rawSource,
+      rawSource.metadata,
+      rawSource.contentMetadata,
+      rawSource.analysis,
+      rawSource.metrics,
+      rawSource.statistics,
+    ];
+    return roots.filter((root): root is Record<string, any> => !!root && typeof root === 'object');
+  };
+
+  const extractTranscript = (item: ContentItem | null) => {
+    const roots = collectCandidateObjects(item);
+    const flattenTranscriptValue = (value: any): string | null => {
+      if (!value) return null;
+      if (typeof value === 'string' && value.trim()) return value.trim();
+      if (Array.isArray(value)) {
+        const joined = value
+          .map((entry) => {
+            if (typeof entry === 'string') return entry;
+            if (entry && typeof entry === 'object') return entry.text ?? entry.content ?? entry.caption ?? '';
+            return '';
+          })
+          .filter(Boolean)
+          .join('\n');
+        return joined.trim() ? joined.trim() : null;
+      }
+      if (typeof value === 'object') {
+        const text = value.text ?? value.content ?? value.fullText ?? value.transcript ?? value.raw;
+        if (typeof text === 'string' && text.trim()) return text.trim();
+        const segments = value.segments ?? value.sentences ?? value.lines;
+        if (Array.isArray(segments)) return flattenTranscriptValue(segments);
+      }
+      return null;
+    };
+
+    const quickCandidates = [
+      item?.metadata?.transcript,
+      item?.metadata?.transcriptText,
+      item?.metadata?.transcriptSegments,
+      item?.metadata?.transcription,
+      item?.metadata?.transcription?.text,
+      item?.metadata?.transcription?.segments,
+      item?.metadata?.caption,
+      item?.metadata?.captions,
+      item?.metadata?.rawSource?.transcript,
+      item?.metadata?.rawSource?.transcriptSegments,
+      item?.metadata?.rawSource?.transcription,
+      item?.metadata?.rawSource?.transcription?.segments,
+    ];
+
+    for (const candidate of quickCandidates) {
+      const flattened = flattenTranscriptValue(candidate);
+      if (flattened) return flattened;
+    }
+
+    const visited = new Set<any>();
+    const stack = roots.flatMap((root) => Object.entries(root).map(([key, value]) => ({ key, value })));
+    while (stack.length > 0) {
+      const { key, value } = stack.pop()!;
+      if (value && typeof value === 'object') {
+        if (visited.has(value)) continue;
+        visited.add(value);
+      }
+
+      if (typeof key === 'string' && /transcript|caption|transcription/i.test(key)) {
+        const flattened = flattenTranscriptValue(value);
+        if (flattened) return flattened;
+      }
+
+      if (Array.isArray(value)) {
+        const flattened = flattenTranscriptValue(value);
+        if (flattened) return flattened;
+        value.forEach((entry, index) => {
+          if (entry && typeof entry === 'object') {
+            stack.push({ key: `${key}[${index}]`, value: entry });
+          }
+        });
+      } else if (value && typeof value === 'object') {
+        Object.entries(value).forEach(([childKey, childValue]) => {
+          stack.push({ key: childKey, value: childValue });
+        });
+      } else {
+        const flattened = flattenTranscriptValue(value);
+        if (flattened) return flattened;
+      }
+    }
+
+    return '';
+  };
+
+  const extractScriptComponents = (item: ContentItem | null): ScriptComponent[] => {
+    if (!item) return [];
+    const roots = collectCandidateObjects(item);
+
+    const normalizeType = (value: string): ScriptComponent['type'] => {
+      const normalized = value.toLowerCase();
+      if (normalized === 'wta') return 'call_to_action';
+      if (normalized.includes('call_to_action') || normalized === 'cta') return 'call_to_action';
+      if (normalized.includes('golden') || normalized.includes('nugget')) return 'golden_nugget';
+      if (normalized.includes('bridge')) return 'bridge';
+      return 'hook';
+    };
+
+    const quickCandidates = [
+      item.metadata?.scriptComponents,
+      item.metadata?.components,
+      item.metadata?.script?.components,
+      item.metadata?.analysis?.components,
+      item.metadata?.contentMetadata?.scriptComponents,
+      item.metadata?.rawSource?.scriptComponents,
+      item.metadata?.rawSource?.components,
+    ];
+
+    const results: ScriptComponent[] = [];
+    const visited = new Set<any>();
+    const stack = roots.flatMap((root) => Object.entries(root).map(([key, value]) => ({ key, value })));
+
+    quickCandidates.forEach((candidate) => {
+      if (!candidate) return;
+      if (Array.isArray(candidate)) {
+        candidate.forEach((entry: any, index: number) => {
+          if (!entry) return;
+          const content = typeof entry === 'string' ? entry : entry.content ?? entry.text ?? '';
+          if (!content) return;
+          const type = normalizeType(entry.type ?? 'hook');
+          const label = entry.label ?? entry.title ?? `Component ${index + 1}`;
+          results.push({ id: entry.id ?? `component-${index}`, type, label, content: String(content) });
+        });
+      } else if (candidate && typeof candidate === 'object') {
+        Object.entries(candidate).forEach(([childKey, childValue], index) => {
+          const content = typeof childValue === 'string' ? childValue : childValue?.content ?? childValue?.text ?? '';
+          if (!content) return;
+          results.push({
+            id: `${childKey}-${index}`,
+            type: normalizeType(childKey),
+            label: childKey.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            content: String(content),
+          });
+        });
+      }
+    });
+
+    while (stack.length > 0) {
+      const { key, value } = stack.pop()!;
+      if (value && typeof value === 'object') {
+        if (visited.has(value)) continue;
+        visited.add(value);
+      }
+
+      if (typeof key === 'string' && /component|script|hook|cta|bridge|nugget/i.test(key)) {
+        if (Array.isArray(value)) {
+          value.forEach((entry, index) => {
+            if (!entry) return;
+            const content = typeof entry === 'string' ? entry : entry.content ?? entry.text ?? '';
+            if (!content) return;
+            const type = normalizeType(entry.type ?? key);
+            const label = entry.label ?? entry.title ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+            results.push({ id: entry.id ?? `${key}-${index}`, type, label, content: String(content) });
+          });
+        } else if (value && typeof value === 'object') {
+          const content = value.content ?? value.text ?? value.script ?? '';
+          if (content) {
+            results.push({
+              id: value.id ?? key,
+              type: normalizeType(value.type ?? key),
+              label: value.label ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+              content: String(content),
+            });
+          } else {
+            Object.entries(value).forEach(([childKey, childValue]) => {
+              const text = typeof childValue === 'string' ? childValue : childValue?.content ?? childValue?.text ?? '';
+              if (!text) return;
+              results.push({
+                id: `${key}-${childKey}`,
+                type: normalizeType(childKey),
+                label: childKey.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+                content: String(text),
+              });
+            });
+          }
+        } else if (typeof value === 'string' && value.trim()) {
+          results.push({
+            id: key,
+            type: normalizeType(key),
+            label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            content: value.trim(),
+          });
+        }
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach((entry, index) => {
+          if (entry && typeof entry === 'object') {
+            stack.push({ key: `${key}[${index}]`, value: entry });
+          }
+        });
+      } else if (value && typeof value === 'object') {
+        Object.entries(value).forEach(([childKey, childValue]) => {
+          stack.push({ key: childKey, value: childValue });
+        });
+      }
+    }
+
+    if (results.length > 0) {
+      const seen = new Set<string>();
+      return results.filter((component) => {
+        const key = `${component.type}-${component.label}-${component.content}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    return [];
+  };
+
   const computeEmbedSrc = (rawUrl?: string, platform?: string): string => {
     if (!rawUrl) return '';
     try {
@@ -468,36 +695,9 @@ export const VideoModal: React.FC<VideoModalProps> = ({
   };
   
   // Mock video insights data - in real app this would come from props or API
-  const transcript = useMemo(() => {
-    const raw = video?.metadata?.transcript ?? video?.metadata?.contentMetadata?.transcript;
-    return typeof raw === 'string' && raw.trim() ? raw : '';
-  }, [video]);
+  const transcript = useMemo(() => extractTranscript(video), [video]);
 
-  const scriptComponents = useMemo(() => {
-    const raw = video?.metadata?.scriptComponents ?? video?.metadata?.components;
-    if (!raw) return [] as ScriptComponent[];
-    if (Array.isArray(raw)) {
-      return raw.filter((component) => component && component.content);
-    }
-    if (typeof raw === 'object') {
-      const normalizeType = (value: string): ScriptComponent['type'] => {
-        const normalized = value.toLowerCase();
-        if (normalized.includes('call_to_action') || normalized === 'cta') return 'call_to_action';
-        if (normalized.includes('golden') || normalized.includes('nugget')) return 'golden_nugget';
-        if (normalized.includes('bridge')) return 'bridge';
-        return 'hook';
-      };
-      return Object.entries(raw)
-        .map(([key, value]) => ({
-          id: key,
-          type: normalizeType(key),
-          label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-          content: String(value ?? ''),
-        }))
-        .filter((component) => component.content);
-    }
-    return [] as ScriptComponent[];
-  }, [video]);
+  const scriptComponents = useMemo(() => extractScriptComponents(video), [video]);
 
   const performanceMetrics: VideoInsights['performanceMetrics'] = useMemo(() => {
     const analysis = video?.metadata?.analysis || video?.metadata?.metrics || {};
@@ -748,7 +948,25 @@ export const VideoModal: React.FC<VideoModalProps> = ({
         <div css={videoPlayerSectionStyles}>
           <div css={videoPlayerStyles}>
             {(() => {
-              const embedSrc = computeEmbedSrc(video.url, video.platform);
+              const metadata = video.metadata ?? {};
+              const rawSource = metadata.rawSource ?? {};
+              const rawEmbedUrl =
+                video.url ||
+                metadata.iframeUrl ||
+                metadata.embedUrl ||
+                metadata.playerUrl ||
+                metadata.videoUrl ||
+                metadata.embed?.src ||
+                metadata.iframe?.src ||
+                metadata.contentMetadata?.embedUrl ||
+                metadata.contentMetadata?.iframeUrl ||
+                rawSource.embedUrl ||
+                rawSource.iframeUrl ||
+                rawSource.playerUrl ||
+                rawSource.videoUrl ||
+                rawSource.url;
+
+              const embedSrc = computeEmbedSrc(rawEmbedUrl, video.platform);
               if (embedSrc) {
                 return (
                   <iframe
