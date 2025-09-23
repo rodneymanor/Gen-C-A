@@ -38,6 +38,45 @@ export interface OnboardingPrompt {
   helper?: string
 }
 
+export interface BrandProfilePillar {
+  pillar_name: string
+  description: string
+  suggested_themes: string[]
+}
+
+export interface BrandProfileHashtags {
+  broad: string[]
+  niche: string[]
+  community: string[]
+}
+
+export interface BrandProfile {
+  core_keywords: string[]
+  audience_keywords: string[]
+  problem_aware_keywords: string[]
+  solution_aware_keywords: string[]
+  content_pillars: BrandProfilePillar[]
+  suggested_hashtags: BrandProfileHashtags
+}
+
+export interface BrandProfileRequestPayload {
+  profession: string
+  brandPersonality: string
+  universalProblem: string
+  initialHurdle: string
+  persistentStruggle: string
+  visibleTriumph: string
+  ultimateTransformation: string
+  immediateImpact: string
+  ultimateImpact: string
+}
+
+export interface BrandProfileResult {
+  profile: BrandProfile
+  tokensUsed?: number
+  responseTime?: number
+}
+
 export interface ApiBrandVoice {
   id: string
   creatorId?: string

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { css } from '@emotion/react'
 import AddIcon from '@atlaskit/icon/glyph/add'
 import { Button } from '../components/ui/Button'
@@ -12,8 +12,14 @@ import { WorkflowSpotlightModal } from '../features/brandhub/components/Workflow
 import { defaultIntentSelection, intentOptions, onboardingPrompts } from '../features/brandhub/constants/onboarding'
 import { useBrandVoices } from '../features/brandhub/hooks/useBrandVoices'
 import { useBrandHubOnboarding } from '../features/brandhub/hooks/useBrandHubOnboarding'
-import { TabKey } from '../features/brandhub/types/brandHub'
+import {
+  TabKey,
+  BrandProfile,
+  BrandProfileResult,
+  BrandProfileRequestPayload
+} from '../features/brandhub/types/brandHub'
 import { useVoiceCreationWorkflow } from '../features/brandhub/hooks/useVoiceCreationWorkflow'
+import { generateBrandProfile } from '../features/brandhub/services/brandProfileService'
 
 const pageContainerStyles = css`
   max-width: 1200px;
@@ -150,6 +156,13 @@ export const BrandHub: React.FC = () => {
     reset: resetVoiceWorkflow
   } = useVoiceCreationWorkflow({ onVoiceSaved: refresh })
 
+  const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null)
+  const [brandProfileMeta, setBrandProfileMeta] = useState<
+    Pick<BrandProfileResult, 'tokensUsed' | 'responseTime'> | null
+  >(null)
+  const [brandProfileError, setBrandProfileError] = useState<string | null>(null)
+  const [isGeneratingBrandProfile, setIsGeneratingBrandProfile] = useState(false)
+
   const canManageBrandVoices = useMemo(() => {
     const role = currentUser?.role
     if (!role) return false
@@ -171,6 +184,49 @@ export const BrandHub: React.FC = () => {
     }
     setActiveTab(tab)
   }
+
+  const buildBrandProfilePayload = useCallback((): BrandProfileRequestPayload => {
+    const safeValue = (value?: string) =>
+      value && value.trim().length > 0 ? value.trim() : 'Not provided'
+
+    const brandPersonality = selectedIntents.length
+      ? `We show up to our audience to ${selectedIntents.join(', ')}.`
+      : safeValue(responses.voiceStyle)
+
+    return {
+      profession: safeValue(responses.whoAndWhat),
+      brandPersonality,
+      universalProblem: safeValue(responses.audienceProblem),
+      initialHurdle: 'Not provided',
+      persistentStruggle: 'Not provided',
+      visibleTriumph: 'Not provided',
+      ultimateTransformation: safeValue(responses.voiceStyle),
+      immediateImpact: safeValue(responses.quickWin),
+      ultimateImpact: safeValue(responses.bigDream)
+    }
+  }, [responses, selectedIntents])
+
+  const handleGenerateBrandProfile = useCallback(async () => {
+    if (!isQuestionnaireComplete) {
+      setBrandProfileError('Complete the onboarding interview before generating a brand profile.')
+      return
+    }
+
+    setIsGeneratingBrandProfile(true)
+    setBrandProfileError(null)
+
+    try {
+      const payload = buildBrandProfilePayload()
+      const result = await generateBrandProfile(payload)
+      setBrandProfile(result.profile)
+      setBrandProfileMeta({ tokensUsed: result.tokensUsed, responseTime: result.responseTime })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to generate brand profile.'
+      setBrandProfileError(message)
+    } finally {
+      setIsGeneratingBrandProfile(false)
+    }
+  }, [buildBrandProfilePayload, isQuestionnaireComplete])
 
   const handleIntentToggle = (intent: string) => {
     setSelectedIntents((prev) =>
@@ -209,11 +265,38 @@ export const BrandHub: React.FC = () => {
     setCompleted(true)
     setIsOnboardingModalOpen(false)
     setActiveTab('blueprint')
+    void handleGenerateBrandProfile()
   }
 
   const handleCloseOnboardingModal = () => {
     setIsOnboardingModalOpen(false)
   }
+
+  useEffect(() => {
+    if (!isQuestionnaireComplete) {
+      setBrandProfile(null)
+      setBrandProfileMeta(null)
+    }
+  }, [isQuestionnaireComplete])
+
+  useEffect(() => {
+    if (
+      activeTab === 'blueprint' &&
+      isQuestionnaireComplete &&
+      !brandProfile &&
+      !isGeneratingBrandProfile &&
+      !brandProfileError
+    ) {
+      void handleGenerateBrandProfile()
+    }
+  }, [
+    activeTab,
+    brandProfile,
+    brandProfileError,
+    handleGenerateBrandProfile,
+    isGeneratingBrandProfile,
+    isQuestionnaireComplete
+  ])
 
   return (
     <div css={pageContainerStyles}>
@@ -287,6 +370,11 @@ export const BrandHub: React.FC = () => {
           responses={responses}
           selectedIntents={selectedIntents}
           onReturnToOnboarding={() => setActiveTab('onboarding')}
+          brandProfile={brandProfile}
+          brandProfileMeta={brandProfileMeta}
+          brandProfileError={brandProfileError}
+          isGeneratingBrandProfile={isGeneratingBrandProfile}
+          onGenerateBrandProfile={handleGenerateBrandProfile}
         />
       )}
 

@@ -20,6 +20,7 @@ type UseLibraryState = {
   activeFilter: ContentType;
   setActiveFilter: (filter: ContentType) => void;
   filters: LibraryFilter[];
+  content: ContentItem[];
   filteredContent: ContentItem[];
   selectItem: (item: ContentItem | null) => void;
   selectedItem: ContentItem | null;
@@ -180,6 +181,7 @@ export function useLibrary(): UseLibraryState {
     activeFilter,
     setActiveFilter,
     filters: FILTERS,
+    content,
     filteredContent,
     selectItem,
     selectedItem,
