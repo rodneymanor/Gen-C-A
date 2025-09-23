@@ -7,8 +7,6 @@ import {
   formatDateTime,
   formatReadingTime,
   formatDuration,
-  getContentTypeIcon,
-  getPlatformIconComponent,
   truncate,
 } from '@/utils/format';
 import {
@@ -25,6 +23,7 @@ import {
   GcDashBlankSlate,
   GcDashAvatar,
   GcDashLabel,
+  GcDashDropdown,
 } from '@/components/gc-dash';
 import AddIcon from '@atlaskit/icon/glyph/add';
 import RefreshIcon from '@atlaskit/icon/glyph/refresh';
@@ -161,6 +160,10 @@ const timelineContentStyles = css`
   .description {
     font-size: 13px;
     color: rgba(9, 30, 66, 0.7);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 `;
 
@@ -186,6 +189,7 @@ const quickActionButtonStyles = css`
   color: rgba(9, 30, 66, 0.85);
   cursor: pointer;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  width: 100%;
 
   .action-title {
     font-size: 15px;
@@ -322,6 +326,29 @@ type FilterToken = {
   label: string;
 };
 
+const getTranscriptPreview = (item: ContentItem): string => {
+  const transcript = item.metadata?.transcript;
+  if (typeof transcript === 'string' && transcript.trim()) {
+    return transcript.trim();
+  }
+
+  const rawContent =
+    typeof item.metadata?.content === 'string'
+      ? item.metadata.content
+      : item.description ?? '';
+
+  if (!rawContent) {
+    return '';
+  }
+
+  const cleaned = rawContent
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !/^\[[^\]]+\]/.test(line));
+
+  return cleaned.join(' ').replace(/\s+/g, ' ').trim();
+};
+
 interface LibraryItemCardProps {
   item: ContentItem;
   selected: boolean;
@@ -330,9 +357,8 @@ interface LibraryItemCardProps {
 
 const LibraryItemCard: React.FC<LibraryItemCardProps> = ({ item, selected, onSelect }) => {
   const typeLabel = item.type.charAt(0).toUpperCase() + item.type.slice(1);
-  const platformIcon = item.platform ? getPlatformIconComponent(item.platform) : null;
   const hasTags = item.tags?.length;
-  const truncatedDescription = item.description ? truncate(item.description, 150) : '';
+  const transcriptPreview = getTranscriptPreview(item);
 
   return (
     <GcDashCard
@@ -343,12 +369,7 @@ const LibraryItemCard: React.FC<LibraryItemCardProps> = ({ item, selected, onSel
     >
       <GcDashCardBody css={itemCardBodyStyles}>
         <div css={itemMetaStyles}>
-          <GcDashLabel
-            tone="primary"
-            variant="soft"
-            uppercase={false}
-            leadingIcon={getContentTypeIcon(item.type)}
-          >
+          <GcDashLabel tone="primary" variant="soft" uppercase={false}>
             {typeLabel}
           </GcDashLabel>
           <span>Updated {formatRelativeTime(item.updated)}</span>
@@ -357,16 +378,21 @@ const LibraryItemCard: React.FC<LibraryItemCardProps> = ({ item, selected, onSel
 
         <div>
           <GcDashCardTitle>{item.title}</GcDashCardTitle>
-          {truncatedDescription && (
-            <GcDashCardSubtitle>{truncatedDescription}</GcDashCardSubtitle>
+          {transcriptPreview && (
+            <GcDashCardSubtitle
+              css={css`
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+              `}
+            >
+              {transcriptPreview}
+            </GcDashCardSubtitle>
           )}
         </div>
 
         <div css={itemFooterStyles}>
-          {platformIcon && (
-            <span aria-label={item.platform ?? 'Platform'}>{platformIcon}</span>
-          )}
-          {item.creator && <span>By {item.creator}</span>}
           {typeof item.wordCount === 'number' && (
             <span>{formatReadingTime(item.wordCount)}</span>
           )}
@@ -409,8 +435,8 @@ const LibraryPreviewCard: React.FC<LibraryPreviewCardProps> = ({
   onDelete,
   deleting,
 }) => {
-  const platformIcon = item.platform ? getPlatformIconComponent(item.platform) : null;
   const typeLabel = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+  const transcriptPreview = getTranscriptPreview(item);
 
   return (
     <GcDashCard>
@@ -418,17 +444,21 @@ const LibraryPreviewCard: React.FC<LibraryPreviewCardProps> = ({
         <div>
           <GcDashCardHeader>
             <div css={previewMetaGridStyles}>
-              <GcDashLabel
-                tone="primary"
-                variant="soft"
-                uppercase={false}
-                leadingIcon={getContentTypeIcon(item.type)}
-              >
+              <GcDashLabel tone="primary" variant="soft" uppercase={false}>
                 {typeLabel}
               </GcDashLabel>
               <GcDashCardTitle>{item.title}</GcDashCardTitle>
-              {item.description && (
-                <GcDashCardSubtitle>{truncate(item.description, 240)}</GcDashCardSubtitle>
+              {transcriptPreview && (
+                <GcDashCardSubtitle
+                  css={css`
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                  `}
+                >
+                  {transcriptPreview}
+                </GcDashCardSubtitle>
               )}
             </div>
           </GcDashCardHeader>
@@ -443,15 +473,6 @@ const LibraryPreviewCard: React.FC<LibraryPreviewCardProps> = ({
             <strong>Last updated</strong>
             <span>{formatRelativeTime(item.updated)}</span>
           </div>
-          {item.platform && (
-            <div css={previewMetaRowStyles}>
-              <strong>Platform</strong>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <span aria-hidden>{platformIcon}</span>
-                {item.platform}
-              </span>
-            </div>
-          )}
           {typeof item.wordCount === 'number' && (
             <div css={previewMetaRowStyles}>
               <strong>Length</strong>
@@ -588,6 +609,14 @@ export const LibraryRoot: React.FC = () => {
     [filters]
   );
 
+  const recentScripts = useMemo(() => {
+    return content
+      .filter((item) => item.type === 'script')
+      .slice()
+      .sort((a, b) => b.updated.getTime() - a.updated.getTime())
+      .slice(0, 10);
+  }, [content]);
+
   const recentItems = useMemo(() => {
     return content
       .slice()
@@ -619,6 +648,28 @@ export const LibraryRoot: React.FC = () => {
     navigate('/write');
   }, [navigate]);
 
+  const recentScriptOptions = useMemo(() => {
+    return recentScripts.map((script) => ({
+      value: script.id,
+      label: truncate(script.title, 54),
+      description: `Updated ${formatRelativeTime(script.updated)}`,
+      meta:
+        typeof script.wordCount === 'number'
+          ? `${formatReadingTime(script.wordCount)}`
+          : undefined,
+    }));
+  }, [recentScripts]);
+
+  const handleSelectRecentScript = useCallback(
+    (value: string) => {
+      const script = recentScripts.find((item) => item.id === value);
+      if (script) {
+        handleOpenEditor(script);
+      }
+    },
+    [handleOpenEditor, recentScripts]
+  );
+
   const quickActions = useMemo(
     () => [
       {
@@ -630,30 +681,21 @@ export const LibraryRoot: React.FC = () => {
       },
       {
         id: 'open-latest',
-        label: recentItems[0]
-          ? `Jump back into “${recentItems[0]!.title}”`
-          : 'Jump back into your latest piece',
-        caption: recentItems[0]
-          ? `Updated ${formatRelativeTime(recentItems[0]!.updated)} · ${recentItems[0]!.type}`
-          : 'We’ll surface your last touched item once the library syncs.',
-        onClick: recentItems[0]
+        label: recentScripts[0]
+          ? `Jump back into “${recentScripts[0]!.title}”`
+          : 'Jump back into your latest script',
+        caption: recentScripts[0]
+          ? `Updated ${formatRelativeTime(recentScripts[0]!.updated)}`
+          : 'We’ll surface your newest script once the library syncs.',
+        onClick: recentScripts[0]
           ? () => {
-              handleOpenEditor(recentItems[0]!);
+              handleOpenEditor(recentScripts[0]!);
             }
           : undefined,
-        disabled: !recentItems[0],
-      },
-      {
-        id: 'refresh',
-        label: 'Sync from source',
-        caption: 'Pull the freshest scripts and notes from Firestore.',
-        onClick: () => {
-          void refreshContent();
-        },
-        disabled: false,
+        disabled: !recentScripts[0],
       },
     ],
-    [handleWriteScript, recentItems, refreshContent, handleOpenEditor]
+    [handleWriteScript, recentScripts, handleOpenEditor]
   );
 
   const handlePreviousNav = () => navigate('/collections');
@@ -714,39 +756,33 @@ export const LibraryRoot: React.FC = () => {
                 />
               ) : (
                 <ul css={momentumListStyles}>
-                  {recentItems.map((item) => (
-                    <li key={item.id} css={timelineItemStyles}>
-                      <span css={timelineMarkerStyles} aria-hidden />
-                      <div css={timelineContentStyles}>
-                        <div className="title-row">
-                          {item.title}
-                          <GcDashLabel
-                            tone="primary"
-                            variant="soft"
-                            uppercase={false}
-                            leadingIcon={getContentTypeIcon(item.type)}
-                          >
-                            {item.type}
-                          </GcDashLabel>
-                        </div>
-                        <div className="meta-row">
-                          <span>Updated {formatRelativeTime(item.updated)}</span>
-                          {item.creator && <span>By {item.creator}</span>}
-                          {item.platform && <span>{item.platform}</span>}
-                        </div>
-                        {item.description && (
-                          <p className="description">{truncate(item.description, 120)}</p>
-                        )}
-                        <GcDashButton
-                          variant="link"
-                          size="sm"
-                          onClick={() => handleOpenEditor(item)}
-                        >
-                          Open details
-                        </GcDashButton>
+              {recentItems.map((item) => {
+                const preview = getTranscriptPreview(item);
+                return (
+                  <li key={item.id} css={timelineItemStyles}>
+                    <span css={timelineMarkerStyles} aria-hidden />
+                    <div css={timelineContentStyles}>
+                      <div className="title-row">
+                        {item.title}
+                        <GcDashLabel tone="primary" variant="soft" uppercase={false}>
+                          {item.type}
+                        </GcDashLabel>
                       </div>
-                    </li>
-                  ))}
+                      <div className="meta-row">
+                        <span>Updated {formatRelativeTime(item.updated)}</span>
+                      </div>
+                      {preview && <p className="description">{preview}</p>}
+                      <GcDashButton
+                        variant="link"
+                        size="sm"
+                        onClick={() => handleOpenEditor(item)}
+                      >
+                        Open details
+                      </GcDashButton>
+                    </div>
+                  </li>
+                );
+              })}
                 </ul>
               )}
             </GcDashCardBody>
@@ -771,6 +807,17 @@ export const LibraryRoot: React.FC = () => {
                     <span className="action-caption">{action.caption}</span>
                   </button>
                 ))}
+                <GcDashDropdown
+                  label="Recent scripts"
+                  placeholder={recentScriptOptions.length ? 'Open a recent script' : 'No scripts yet'}
+                  options={recentScriptOptions}
+                  onSelect={handleSelectRecentScript}
+                  disabled={recentScriptOptions.length === 0}
+                  align="start"
+                  css={css`
+                    width: 100%;
+                  `}
+                />
               </div>
             </GcDashCardBody>
           </GcDashCard>

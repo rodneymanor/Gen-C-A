@@ -38,6 +38,26 @@ export interface OnboardingPrompt {
   helper?: string
 }
 
+export type OnboardingBoundaryType = 'start' | 'end'
+
+export interface OnboardingSessionBoundary {
+  questionId: keyof OnboardingFormState
+  questionIndex: number
+  elapsedSeconds: number
+  timestamp: number
+  type: OnboardingBoundaryType
+}
+
+export type OnboardingSessionStatus = 'idle' | 'in-progress' | 'completed' | 'cancelled'
+
+export interface OnboardingSessionMeta {
+  startedAt: number | null
+  stoppedAt?: number | null
+  status: OnboardingSessionStatus
+  boundaries: OnboardingSessionBoundary[]
+  transcript?: string
+}
+
 export interface BrandProfilePillar {
   pillar_name: string
   description: string
@@ -75,6 +95,11 @@ export interface BrandProfileResult {
   profile: BrandProfile
   tokensUsed?: number
   responseTime?: number
+  storage?: {
+    latestDocPath: string
+    historyDocPath: string
+    historyDocId: string
+  }
 }
 
 export interface ApiBrandVoice {
@@ -102,4 +127,5 @@ export interface OnboardingRecord {
   status?: 'in-progress' | 'completed'
   updatedAt?: unknown
   completedAt?: unknown
+  sessionMeta?: OnboardingSessionMeta
 }

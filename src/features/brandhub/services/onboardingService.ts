@@ -1,6 +1,6 @@
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from '../../../config/firebase'
-import { OnboardingRecord, OnboardingFormState } from '../types/brandHub'
+import { OnboardingRecord, OnboardingFormState, OnboardingSessionMeta } from '../types/brandHub'
 
 const getOnboardingDocRef = (userId: string) => doc(db, 'users', userId, 'onboarding', 'current')
 
@@ -15,7 +15,8 @@ export const fetchOnboardingDocument = async (userId: string): Promise<Onboardin
 export const persistOnboardingResponses = async (
   userId: string,
   responses: OnboardingFormState,
-  completed: boolean
+  completed: boolean,
+  sessionMeta?: OnboardingSessionMeta
 ): Promise<void> => {
   const basePayload = {
     responses,
@@ -27,5 +28,16 @@ export const persistOnboardingResponses = async (
     ? { ...basePayload, completedAt: serverTimestamp() }
     : basePayload
 
-  await setDoc(getOnboardingDocRef(userId), onboardingPayload, { merge: true })
+  const payloadWithMeta = sessionMeta
+    ? {
+        ...onboardingPayload,
+        sessionMeta: {
+          ...sessionMeta,
+          boundaries: sessionMeta.boundaries ?? [],
+          transcript: sessionMeta.transcript ?? ''
+        }
+      }
+    : onboardingPayload
+
+  await setDoc(getOnboardingDocRef(userId), payloadWithMeta, { merge: true })
 }

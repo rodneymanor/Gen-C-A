@@ -1,9 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createEmptyOnboardingResponses, onboardingPrompts } from '../constants/onboarding'
 import { persistOnboardingResponses, fetchOnboardingDocument } from '../services/onboardingService'
-import { OnboardingFormState } from '../types/brandHub'
+import {
+  OnboardingFormState,
+  OnboardingSessionBoundary,
+  OnboardingSessionMeta,
+  OnboardingSessionStatus
+} from '../types/brandHub'
 
 const SAVE_DEBOUNCE_MS = 1000
+
+const createInitialSessionMeta = (): OnboardingSessionMeta => ({
+  startedAt: null,
+  status: 'idle',
+  boundaries: [],
+  transcript: ''
+})
 
 interface UseBrandHubOnboardingArgs {
   userId?: string
@@ -20,6 +32,11 @@ interface UseBrandHubOnboardingResult {
   isLoading: boolean
   completedCount: number
   isQuestionnaireComplete: boolean
+  sessionMeta: OnboardingSessionMeta
+  ensureSessionStarted: () => void
+  registerBoundary: (boundary: OnboardingSessionBoundary) => void
+  finalizeSession: (status: OnboardingSessionStatus) => void
+  updateSessionTranscript: (transcript: string) => void
 }
 
 export const useBrandHubOnboarding = (
@@ -29,9 +46,12 @@ export const useBrandHubOnboarding = (
   const [hasCompleted, setHasCompleted] = useState(false)
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
+  const [sessionMeta, setSessionMeta] = useState<OnboardingSessionMeta>(createInitialSessionMeta)
+
   const saveTimerRef = useRef<number | null>(null)
   const latestResponsesRef = useRef(responses)
   const latestCompletionRef = useRef(hasCompleted)
+  const latestSessionMetaRef = useRef(sessionMeta)
   const isMountedRef = useRef(true)
 
   useEffect(() => {
@@ -45,6 +65,7 @@ export const useBrandHubOnboarding = (
     setHasCompleted(false)
     setActiveQuestionIndex(0)
     setIsLoading(false)
+    setSessionMeta(createInitialSessionMeta())
   }, [])
 
   useEffect(() => {
@@ -54,6 +75,10 @@ export const useBrandHubOnboarding = (
   useEffect(() => {
     latestCompletionRef.current = hasCompleted
   }, [hasCompleted])
+
+  useEffect(() => {
+    latestSessionMetaRef.current = sessionMeta
+  }, [sessionMeta])
 
   useEffect(() => {
     if (!userId) {
@@ -78,6 +103,16 @@ export const useBrandHubOnboarding = (
         if (record.status === 'completed') {
           setHasCompleted(true)
         }
+
+        if (record.sessionMeta) {
+          setSessionMeta({
+            startedAt: record.sessionMeta.startedAt ?? null,
+            stoppedAt: record.sessionMeta.stoppedAt ?? null,
+            status: record.sessionMeta.status ?? 'idle',
+            boundaries: record.sessionMeta.boundaries ?? [],
+            transcript: record.sessionMeta.transcript ?? ''
+          })
+        }
       } catch (error) {
         console.error('Failed to load onboarding responses:', error)
       } finally {
@@ -100,7 +135,12 @@ export const useBrandHubOnboarding = (
     }
 
     if (typeof window === 'undefined') {
-      void persistOnboardingResponses(userId, latestResponsesRef.current, latestCompletionRef.current)
+      void persistOnboardingResponses(
+        userId,
+        latestResponsesRef.current,
+        latestCompletionRef.current,
+        latestSessionMetaRef.current
+      )
       return
     }
 
@@ -112,7 +152,8 @@ export const useBrandHubOnboarding = (
       void persistOnboardingResponses(
         userId,
         latestResponsesRef.current,
-        latestCompletionRef.current
+        latestCompletionRef.current,
+        latestSessionMetaRef.current
       )
     }, SAVE_DEBOUNCE_MS)
   }, [userId])
@@ -128,7 +169,7 @@ export const useBrandHubOnboarding = (
         saveTimerRef.current = null
       }
     }
-  }, [responses, hasCompleted, enqueueSave])
+  }, [responses, hasCompleted, sessionMeta, enqueueSave])
 
   useEffect(() => {
     return () => {
@@ -139,7 +180,12 @@ export const useBrandHubOnboarding = (
         saveTimerRef.current = null
       }
       if (userId) {
-        void persistOnboardingResponses(userId, latestResponsesRef.current, latestCompletionRef.current)
+        void persistOnboardingResponses(
+          userId,
+          latestResponsesRef.current,
+          latestCompletionRef.current,
+          latestSessionMetaRef.current
+        )
       }
     }
   }, [userId])
@@ -150,6 +196,44 @@ export const useBrandHubOnboarding = (
 
   const setCompleted = useCallback((state: boolean) => {
     setHasCompleted(state)
+  }, [])
+
+  const ensureSessionStarted = useCallback(() => {
+    setSessionMeta((prev) => {
+      if (prev.startedAt) {
+        return prev.status === 'idle' ? { ...prev, status: 'in-progress' } : prev
+      }
+      return {
+        ...prev,
+        startedAt: Date.now(),
+        status: 'in-progress'
+      }
+    })
+  }, [])
+
+  const registerBoundary = useCallback((boundary: OnboardingSessionBoundary) => {
+    setSessionMeta((prev) => ({
+      ...prev,
+      boundaries: [...prev.boundaries, boundary]
+    }))
+  }, [])
+
+  const finalizeSession = useCallback(
+    (status: OnboardingSessionStatus) => {
+      setSessionMeta((prev) => ({
+        ...prev,
+        status,
+        stoppedAt: Date.now(),
+        startedAt: prev.startedAt ?? Date.now()
+      }))
+    },
+  [])
+
+  const updateSessionTranscript = useCallback((transcript: string) => {
+    setSessionMeta((prev) => ({
+      ...prev,
+      transcript
+    }))
   }, [])
 
   const completedCount = useMemo(
@@ -173,6 +257,11 @@ export const useBrandHubOnboarding = (
     resetInterview,
     isLoading,
     completedCount,
-    isQuestionnaireComplete
+    isQuestionnaireComplete,
+    sessionMeta,
+    ensureSessionStarted,
+    registerBoundary,
+    finalizeSession,
+    updateSessionTranscript
   }
 }

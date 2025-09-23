@@ -22,6 +22,7 @@ import { Roadmap } from './pages/Roadmap';
 import BrandHub from './pages/BrandHub';
 import YouTubeIdeaSeeds from './pages/YouTubeIdeaSeeds';
 import WritingRedesignPage from './pages/WritingRedesignPage';
+import ViralContent from './pages/ViralContent';
 import './styles/globals.css';
 
 // Placeholder components for missing routes
@@ -59,6 +60,14 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Library />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/viral-content" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ViralContent />
                 </Layout>
               </ProtectedRoute>
             } />

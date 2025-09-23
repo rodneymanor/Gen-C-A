@@ -7,6 +7,11 @@ interface BrandProfileApiResponse {
   responseTime?: number
   error?: string
   raw?: unknown
+  storage?: {
+    latestDocPath: string
+    historyDocPath: string
+    historyDocId: string
+  }
 }
 
 const HEADERS: HeadersInit = {
@@ -40,6 +45,7 @@ export const generateBrandProfile = async (
   return {
     profile: data.profile,
     tokensUsed: data.tokensUsed,
-    responseTime: data.responseTime
+    responseTime: data.responseTime,
+    storage: data.storage
   }
 }

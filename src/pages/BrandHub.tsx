@@ -143,7 +143,11 @@ export const BrandHub: React.FC = () => {
     activeQuestionIndex,
     setActiveQuestionIndex,
     completedCount,
-    isQuestionnaireComplete
+    isQuestionnaireComplete,
+    ensureSessionStarted,
+    registerBoundary,
+    finalizeSession,
+    updateSessionTranscript
   } = useBrandHubOnboarding({ userId: firebaseUser?.uid })
 
   const {
@@ -387,6 +391,10 @@ export const BrandHub: React.FC = () => {
         setResponse={setResponse}
         completedCount={completedCount}
         onComplete={handleCompleteOnboarding}
+        ensureSessionStarted={ensureSessionStarted}
+        registerBoundary={registerBoundary}
+        finalizeSession={finalizeSession}
+        updateSessionTranscript={updateSessionTranscript}
       />
 
       {canManageBrandVoices && (

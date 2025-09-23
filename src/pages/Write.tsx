@@ -123,6 +123,19 @@ interface GenerationState {
   estimatedTimeRemaining?: number;
 }
 
+const deriveScriptTitle = (prompt: string): string => {
+  const normalized = prompt.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return 'AI Script Draft';
+  }
+
+  if (normalized.length <= 60) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, 57).trim()}…`;
+};
+
 export const Write: React.FC = () => {
   const navigate = useNavigate();
   const { generateScript, isLoading, error } = useScriptGeneration();
@@ -293,7 +306,7 @@ export const Write: React.FC = () => {
     // Return a mock generated script
     return {
       id: Date.now().toString(),
-      title: `Generated Script: ${request.prompt.slice(0, 50)}...`,
+      title: deriveScriptTitle(request.prompt),
       content: `[HOOK - First 3 seconds]
 "${request.prompt.includes('summer') ? 'Wait, you\'re missing out on the BEST summer trend! 🌞' : 'Hold up - this changes everything! 😱'}"
 
@@ -364,7 +377,7 @@ ${request.prompt.toLowerCase().includes('skincare') ?
 
       if (result.success && result.script) {
         console.log("✅ [Write] Script generation successful, creating content...");
-        const title = `Generated Script: ${request.prompt.slice(0, 50)}...`;
+        const title = deriveScriptTitle(request.prompt);
         // Create script content for Hemingway editor from components
         const scriptContent = `[HOOK - First 3 seconds]
 ${result.script.hook}

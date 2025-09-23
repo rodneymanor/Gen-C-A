@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { css } from '@emotion/react'
 import StopwatchIcon from '@atlaskit/icon/glyph/stopwatch'
 import VidPlayIcon from '@atlaskit/icon/glyph/vid-play'
@@ -11,7 +11,12 @@ import { TextArea } from '../../../components/ui/TextArea'
 import { onboardingPrompts } from '../constants/onboarding'
 import { useSpeechTranscription } from '../hooks/useSpeechTranscription'
 import { formatTime } from '../utils/time'
-import { OnboardingFormState, OnboardingPrompt } from '../types/brandHub'
+import {
+  OnboardingFormState,
+  OnboardingPrompt,
+  OnboardingSessionBoundary,
+  OnboardingSessionStatus
+} from '../types/brandHub'
 
 const onboardingModalStyles = css`
   display: flex;
@@ -259,6 +264,10 @@ type OnboardingModalProps = {
   setResponse: (id: keyof OnboardingFormState, value: string) => void
   completedCount: number
   onComplete: () => void
+  ensureSessionStarted: () => void
+  registerBoundary: (boundary: OnboardingSessionBoundary) => void
+  finalizeSession: (status: OnboardingSessionStatus) => void
+  updateSessionTranscript: (transcript: string) => void
 }
 
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({
@@ -269,7 +278,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   responses,
   setResponse,
   completedCount,
-  onComplete
+  onComplete,
+  ensureSessionStarted,
+  registerBoundary,
+  finalizeSession,
+  updateSessionTranscript
 }) => {
   const currentQuestion: OnboardingPrompt = onboardingPrompts[activeQuestionIndex]
   const totalQuestions = onboardingPrompts.length
@@ -285,30 +298,139 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     startRecording,
     stopRecording,
     elapsedSeconds,
-    recordingError
+    recordingError,
+    sessionTranscript,
+    setSegmentStartAtCurrentPosition
   } = useSpeechTranscription({
     transcript: currentResponse,
     onTranscriptChange: (value) => setResponse(currentQuestion.id, value)
   })
 
+  const [hasRecordingStarted, setHasRecordingStarted] = useState(false)
+  const lastStartedQuestionRef = useRef<keyof OnboardingFormState | null>(null)
+
   const handleClose = () => {
+    if (hasRecordingStarted) {
+      registerBoundary({
+        questionId: currentQuestion.id,
+        questionIndex: activeQuestionIndex,
+        elapsedSeconds,
+        timestamp: Date.now(),
+        type: 'end'
+      })
+      finalizeSession('cancelled')
+      setHasRecordingStarted(false)
+    }
     stopRecording()
     onClose()
   }
 
   const handlePrevious = () => {
-    stopRecording()
+    if (hasRecordingStarted) {
+      registerBoundary({
+        questionId: currentQuestion.id,
+        questionIndex: activeQuestionIndex,
+        elapsedSeconds,
+        timestamp: Date.now(),
+        type: 'end'
+      })
+    }
     setActiveQuestionIndex(Math.max(activeQuestionIndex - 1, 0))
   }
 
   const handleNext = () => {
-    stopRecording()
     if (isLastQuestion) {
+      if (hasRecordingStarted) {
+        registerBoundary({
+          questionId: currentQuestion.id,
+          questionIndex: activeQuestionIndex,
+          elapsedSeconds,
+          timestamp: Date.now(),
+          type: 'end'
+        })
+        finalizeSession('completed')
+        setHasRecordingStarted(false)
+      }
+      stopRecording()
       onComplete()
       return
     }
+
+    if (hasRecordingStarted) {
+      registerBoundary({
+        questionId: currentQuestion.id,
+        questionIndex: activeQuestionIndex,
+        elapsedSeconds,
+        timestamp: Date.now(),
+        type: 'end'
+      })
+    }
     setActiveQuestionIndex(Math.min(activeQuestionIndex + 1, totalQuestions - 1))
   }
+
+  useEffect(() => {
+    if (!open) {
+      setHasRecordingStarted(false)
+      lastStartedQuestionRef.current = null
+    }
+  }, [open])
+
+  useEffect(() => {
+    updateSessionTranscript(sessionTranscript)
+  }, [sessionTranscript, updateSessionTranscript])
+
+  useEffect(() => {
+    if (!open || !hasRecordingStarted) {
+      return
+    }
+
+    const currentId = currentQuestion.id
+    if (lastStartedQuestionRef.current === currentId) {
+      return
+    }
+
+    registerBoundary({
+      questionId: currentId,
+      questionIndex: activeQuestionIndex,
+      elapsedSeconds,
+      timestamp: Date.now(),
+      type: 'start'
+    })
+    setSegmentStartAtCurrentPosition({
+      resetLiveTranscript: true,
+      initialValue: responses[currentId] ?? ''
+    })
+    lastStartedQuestionRef.current = currentId
+  }, [
+    open,
+    hasRecordingStarted,
+    currentQuestion.id,
+    activeQuestionIndex,
+    elapsedSeconds,
+    registerBoundary,
+    responses,
+    setSegmentStartAtCurrentPosition
+  ])
+
+  const handleStartRecording = async () => {
+    if (isRecording) {
+      return
+    }
+    ensureSessionStarted()
+    setSegmentStartAtCurrentPosition({
+      resetLiveTranscript: true,
+      initialValue: responses[currentQuestion.id] ?? ''
+    })
+    setHasRecordingStarted(true)
+    await startRecording()
+  }
+
+  const recordButtonLabel = useMemo(() => {
+    if (isRecording) {
+      return 'Recording in progress'
+    }
+    return hasRecordingStarted ? 'Resume recording' : 'Start recording'
+  }, [hasRecordingStarted, isRecording])
 
   const canAdvance = useMemo(
     () => (responses[currentQuestion.id] ?? '').trim().length > 0,
@@ -326,7 +448,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               </Badge>
               <div className="timer-pill">
                 <StopwatchIcon label="Timer" /> {formatTime(elapsedSeconds)}
-                {isRecording ? ' · Recording' : ' · Ready'}
+                {isRecording ? ' · Recording' : hasRecordingStarted ? ' · Paused' : ' · Ready'}
               </div>
             </div>
             <div className="question-copy">
@@ -352,10 +474,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             <div className="response-controls">
               <Button
                 variant={isRecording ? 'secondary' : 'primary'}
-                iconBefore={<VidPlayIcon label={isRecording ? 'Stop recording' : 'Start recording'} />}
-                onClick={isRecording ? stopRecording : startRecording}
+                iconBefore={<VidPlayIcon label={recordButtonLabel} />}
+                onClick={handleStartRecording}
+                isDisabled={isRecording}
               >
-                {isRecording ? 'Stop recording' : 'Start recording'}
+                {recordButtonLabel}
               </Button>
               <Button variant="tertiary" onClick={clearTranscript} isDisabled={isRecording}>
                 Clear response

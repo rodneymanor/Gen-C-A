@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { FieldValue } from "firebase-admin/firestore";
+import type { Firestore } from "firebase-admin/firestore";
+
 import { verifyRequestAuth } from "@/app/api/utils/auth";
 import { GeminiService } from "@/lib/gemini";
+import { getDb } from "@/api-routes/utils/firebase-admin.js";
 
 const SYSTEM_PROMPT = `You are an expert brand and content strategist. Your task is to analyze a user's business profile and generate a foundational brand strategy profile in a valid JSON format. This profile will include core keywords and a set of personalized content pillar themes.
 
@@ -123,6 +127,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const db = getDb();
+  if (!db) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Content service is unavailable. Please try again later.",
+      },
+      { status: 503 },
+    );
+  }
+
   const payload = sanitizePayload(body as Record<string, unknown>);
   const missingFields = REQUIRED_FIELDS.filter((field) => !payload[field]);
 
@@ -136,8 +151,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const structuredPayload = payload as BrandProfileRequestBody;
+
   try {
-    const prompt = createUserPrompt(payload as BrandProfileRequestBody);
+    const prompt = createUserPrompt(structuredPayload);
 
     const result = await GeminiService.generateContent({
       systemPrompt: SYSTEM_PROMPT,
@@ -173,11 +190,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let storage: BrandProfileStorageMeta | null = null;
+    try {
+      storage = await persistBrandProfile(
+        db,
+        auth.uid,
+        structuredPayload,
+        profileJson,
+        result.tokensUsed,
+        result.responseTime,
+      );
+    } catch (persistError) {
+      console.error("[brand-profile] Failed to persist profile", persistError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Brand profile generated but could not be saved. Please try again.",
+        },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json({
       success: true,
       profile: profileJson,
       tokensUsed: result.tokensUsed,
       responseTime: result.responseTime,
+      storage,
     });
   } catch (error) {
     console.error("[brand-profile] Unexpected error", error);
@@ -240,4 +279,53 @@ BRAND PERSONALITY: ${value(data.brandPersonality)}
    ${value(data.ultimateImpact)}
 
 Based on this information, generate the required JSON. Reflect the immediate and ultimate impact clearly within the suggested themes and keywords.`;
+}
+
+interface BrandProfileStorageMeta {
+  latestDocPath: string;
+  historyDocPath: string;
+  historyDocId: string;
+}
+
+async function persistBrandProfile(
+  db: Firestore,
+  uid: string,
+  payload: BrandProfileRequestBody,
+  profile: unknown,
+  tokensUsed?: number,
+  responseTime?: number,
+): Promise<BrandProfileStorageMeta> {
+  const userRef = db.collection("users").doc(uid);
+  const collectionRef = userRef.collection("brandProfiles");
+  const latestRef = collectionRef.doc("current");
+
+  const baseRecord = {
+    profile,
+    promptData: payload,
+    tokensUsed: tokensUsed ?? null,
+    responseTime: responseTime ?? null,
+    generatedBy: uid,
+  };
+
+  const latestSnapshot = await latestRef.get();
+  const latestPayload: Record<string, unknown> = {
+    ...baseRecord,
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (!latestSnapshot.exists) {
+    latestPayload.createdAt = FieldValue.serverTimestamp();
+  }
+  await latestRef.set(latestPayload, { merge: true });
+
+  const historyRef = collectionRef.doc();
+  await historyRef.set({
+    ...baseRecord,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+
+  return {
+    latestDocPath: latestRef.path,
+    historyDocPath: historyRef.path,
+    historyDocId: historyRef.id,
+  };
 }

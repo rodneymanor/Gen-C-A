@@ -21,6 +21,8 @@ type UseSpeechTranscriptionResult = {
   stopRecording: () => void
   elapsedSeconds: number
   recordingError: string | null
+  sessionTranscript: string
+  setSegmentStartAtCurrentPosition: (options?: { resetLiveTranscript?: boolean; initialValue?: string }) => void
 }
 
 interface WindowWithSpeechRecognition extends Window {
@@ -45,14 +47,19 @@ export const useSpeechTranscription = (
   const [isRecording, setIsRecording] = useState(false)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [recordingError, setRecordingError] = useState<string | null>(null)
+  const [sessionTranscript, setSessionTranscript] = useState('')
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
   const timerIntervalRef = useRef<number | null>(null)
+  const sessionTranscriptRef = useRef('')
+  const segmentStartRef = useRef(0)
 
   useEffect(() => {
     setLiveTranscript(transcript)
-    setElapsedSeconds(0)
-    setRecordingError(null)
   }, [transcript])
+
+  useEffect(() => {
+    sessionTranscriptRef.current = sessionTranscript
+  }, [sessionTranscript])
 
   const stopInterval = useCallback(() => {
     if (timerIntervalRef.current && typeof window !== 'undefined') {
@@ -101,6 +108,20 @@ export const useSpeechTranscription = (
     updateTranscript('')
   }, [updateTranscript])
 
+  const setSegmentStartAtCurrentPosition = useCallback(
+    (options?: { resetLiveTranscript?: boolean; initialValue?: string }) => {
+      const resetLive = options?.resetLiveTranscript ?? true
+      const initialValue = options?.initialValue ?? ''
+      const current = sessionTranscriptRef.current
+      segmentStartRef.current = current.length
+      if (resetLive) {
+        setLiveTranscript(initialValue)
+        onTranscriptChange(initialValue)
+      }
+    },
+    [onTranscriptChange]
+  )
+
   const startRecording = useCallback(async () => {
     if (isRecording) {
       return
@@ -142,8 +163,12 @@ export const useSpeechTranscription = (
         .join(' ')
         .trim()
 
-      setLiveTranscript(aggregatedTranscript)
-      onTranscriptChange(aggregatedTranscript)
+      setSessionTranscript(aggregatedTranscript)
+
+      const segmentStart = segmentStartRef.current
+      const segmentText = aggregatedTranscript.slice(segmentStart).trimStart()
+      setLiveTranscript(segmentText)
+      onTranscriptChange(segmentText)
     }
 
     recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
@@ -172,6 +197,9 @@ export const useSpeechTranscription = (
       setIsRecording(true)
       setElapsedSeconds(0)
       stopInterval()
+      segmentStartRef.current = sessionTranscriptRef.current.length
+      setSessionTranscript('')
+      sessionTranscriptRef.current = ''
       if (typeof window !== 'undefined') {
         timerIntervalRef.current = window.setInterval(() => {
           setElapsedSeconds((prev) => prev + 1)
@@ -192,6 +220,8 @@ export const useSpeechTranscription = (
     startRecording,
     stopRecording,
     elapsedSeconds,
-    recordingError
+    recordingError,
+    sessionTranscript,
+    setSegmentStartAtCurrentPosition
   }
 }

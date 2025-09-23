@@ -16,6 +16,7 @@ import BookIcon from '@atlaskit/icon/glyph/book';
 import EditIcon from '@atlaskit/icon/glyph/edit';
 import PeopleIcon from '@atlaskit/icon/glyph/people';
 import GraphLineIcon from '@atlaskit/icon/glyph/graph-line';
+import VideoFilledIcon from '@atlaskit/icon/glyph/video-filled';
 import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left';
 import MoreIcon from '@atlaskit/icon/glyph/more';
 
@@ -33,6 +34,7 @@ const navigationData: NavigationSection[] = [
       { path: '/write', label: 'Write', icon: <EditIcon label="Write" /> },
       { path: '/write-redesign', label: 'Write (New)', icon: <EditIcon label="Write (New)" /> },
       { path: '/collections', label: 'Collections', icon: <FolderIcon label="Collections" /> },
+      { path: '/viral-content', label: 'Viral Feed', icon: <VideoFilledIcon label="Viral Feed" /> },
       { path: '/library', label: 'Library', icon: <BookIcon label="Library" /> },
       { path: '/youtube-ideas', label: 'YouTube Seeds', icon: <GraphLineIcon label="YouTube Seeds" /> },
     ]
