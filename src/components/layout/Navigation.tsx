@@ -15,6 +15,7 @@ import FolderIcon from '@atlaskit/icon/glyph/folder';
 import BookIcon from '@atlaskit/icon/glyph/book';
 import EditIcon from '@atlaskit/icon/glyph/edit';
 import PeopleIcon from '@atlaskit/icon/glyph/people';
+import GraphLineIcon from '@atlaskit/icon/glyph/graph-line';
 import ArrowLeftIcon from '@atlaskit/icon/glyph/arrow-left';
 import MoreIcon from '@atlaskit/icon/glyph/more';
 
@@ -30,8 +31,10 @@ const navigationData: NavigationSection[] = [
     items: [
       { path: '/dashboard', label: 'Home', icon: <HomeIcon label="Home" /> },
       { path: '/write', label: 'Write', icon: <EditIcon label="Write" /> },
+      { path: '/write-redesign', label: 'Write (New)', icon: <EditIcon label="Write (New)" /> },
       { path: '/collections', label: 'Collections', icon: <FolderIcon label="Collections" /> },
       { path: '/library', label: 'Library', icon: <BookIcon label="Library" /> },
+      { path: '/youtube-ideas', label: 'YouTube Seeds', icon: <GraphLineIcon label="YouTube Seeds" /> },
     ]
   },
   {

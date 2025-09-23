@@ -46,6 +46,7 @@ Documentation Standards:
 - Include troubleshooting sections for common issues
 - Reference specific file paths and component names
 - Create actionable next steps and modification guides
+- Whenever API routes are discussed, call out the need to update both the Vite dev proxy (`server.js`) and the backend Express router (`apps/backend/src/routes`) so local testing covers every layer.
 
 Output Format:
 - Use Markdown formatting for all documentation

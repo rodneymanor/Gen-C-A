@@ -6,6 +6,10 @@ import {
   getScriptsService,
   ScriptsServiceError,
 } from '../../../../src/services/scripts/scripts-service.js';
+import {
+  getYouTubeIdeaSeedsService,
+  YouTubeIdeaSeedsServiceError,
+} from '../../../../src/services/scripts/youtube-idea-seeds-service.js';
 
 interface AuthResult {
   uid: string;
@@ -40,6 +44,28 @@ function requireDb(res: Response) {
 }
 
 export const scriptsRouter = Router();
+
+scriptsRouter.post('/youtube-ideas', async (req: Request, res: Response) => {
+  try {
+    const payload = req.body ?? {};
+    const service = getYouTubeIdeaSeedsService();
+    const result = await service.generateIdeaSeeds(payload);
+
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    if (error instanceof YouTubeIdeaSeedsServiceError) {
+      res.status(error.statusCode).json({
+        success: false,
+        error: error.message,
+        ...(error.debug ? { debug: error.debug } : {}),
+      });
+      return;
+    }
+
+    console.error('[backend][scripts][youtube-ideas] unexpected error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate idea seeds.' });
+  }
+});
 
 scriptsRouter.get('/', async (req, res) => {
   const auth = await requireAuth(req, res);

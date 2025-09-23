@@ -1,5 +1,9 @@
 import { getDb, verifyBearer } from './utils/firebase-admin.js';
 import { getScriptsService, ScriptsServiceError } from '../services/scripts/scripts-service.js';
+import {
+  getYouTubeIdeaSeedsService,
+  YouTubeIdeaSeedsServiceError,
+} from '../services/scripts/youtube-idea-seeds-service.js';
 
 export async function handleGetScripts(req, res) {
   try {
@@ -143,6 +147,39 @@ export async function handleUpdateScript(req, res) {
     }
   } catch (e) {
     res.status(400).json({ success: false, error: e?.message || 'Invalid request' });
+  }
+}
+
+export async function handleGenerateYouTubeIdeaSeeds(req, res) {
+  if (req.method && req.method.toUpperCase() !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method Not Allowed' });
+  }
+
+  try {
+    const payload = req.body || {};
+
+    if (!payload.transcript && !Array.isArray(payload.chunks)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Provide transcript text or chunks to generate idea seeds.',
+      });
+    }
+
+    const service = getYouTubeIdeaSeedsService();
+    const result = await service.generateIdeaSeeds(payload);
+
+    return res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    if (error instanceof YouTubeIdeaSeedsServiceError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        error: error.message,
+        ...(error.debug ? { debug: error.debug } : {}),
+      });
+    }
+
+    console.error('[scripts/youtube-ideas] Unexpected error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to generate idea seeds.' });
   }
 }
 

@@ -177,12 +177,14 @@ async function setupRoutes() {
     // Import other API route handlers
     const { handleTikTokUserFeed } = await import('./src/api-routes/videos/tiktok-user-feed.js');
     const { handleVideoTranscribe } = await import('./src/api-routes/videos/transcribe.js');
+    const { handleYouTubeTranscript } = await import('./src/api-routes/videos/youtube-transcript.js');
     const { handleVideoScrape } = await import('./src/api-routes/videos/scrape-url.js');
     const { handleVideoWorkflow } = await import('./src/api-routes/videos/orchestrate.js');
     const { handleVoiceAnalyzePatterns } = await import('./src/api-routes/voice.js');
     const { handleSaveCreatorAnalysis } = await import('./src/api-routes/creator-analysis.js');
     const { handleListAnalyzedVideoIds } = await import('./src/api-routes/creator-lookup.js');
     const { handleListBrandVoices, handleGetBrandVoiceTemplates, handleUpdateBrandVoiceMeta } = await import('./src/api-routes/brand-voices.js');
+    const { handleGenerateYouTubeIdeaSeeds } = await import('./src/api-routes/scripts.js');
     const { handleGetNotes, handleCreateNote, handleGetNoteById, handleUpdateNote, handleDeleteNote } = await import('./src/api-routes/notes.js');
     // Main transcription endpoint (replaces the complex follow workflow)
     app.post('/api/creators/follow', handleCreatorTranscription);
@@ -199,8 +201,11 @@ async function setupRoutes() {
     app.post('/api/video/transcribe-from-url', handleVideoTranscribe);
     app.post('/api/video/scrape-url', handleVideoScrape);
     app.post('/api/video/orchestrate', handleVideoWorkflow);
+    app.get('/api/video/youtube-transcript', handleYouTubeTranscript);
+    app.post('/api/video/youtube-transcript', handleYouTubeTranscript);
 
     app.post('/api/voice/analyze-patterns', handleVoiceAnalyzePatterns);
+    app.post('/api/scripts/youtube-ideas', handleGenerateYouTubeIdeaSeeds);
     app.post('/api/creator/save-analysis', handleSaveCreatorAnalysis);
     app.get('/api/creator/analyzed-video-ids', handleListAnalyzedVideoIds);
     app.get('/api/brand-voices/list', handleListBrandVoices);

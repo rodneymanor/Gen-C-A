@@ -13,6 +13,10 @@ import {
   getVideoOrchestratorService,
   VideoOrchestratorServiceError,
 } from '../../../../src/services/video/video-orchestrator-service.js';
+import {
+  getYouTubeTranscriptService,
+  YouTubeTranscriptServiceError,
+} from '../../../../src/services/video/youtube-transcript-service.js';
 
 function handleScrapeError(res: Response, error: unknown) {
   if (error instanceof VideoScraperServiceError) {
@@ -59,6 +63,21 @@ function handleOrchestratorError(res: Response, error: unknown) {
   res.status(500).json({ success: false, error: message });
 }
 
+function handleYouTubeTranscriptError(res: Response, error: unknown) {
+  if (error instanceof YouTubeTranscriptServiceError) {
+    res.status(error.statusCode).json({
+      success: false,
+      error: error.message,
+      ...(error.debug ? { debug: error.debug } : {}),
+    });
+    return;
+  }
+
+  const message = error instanceof Error ? error.message : 'Failed to fetch YouTube transcript';
+  console.error('[backend][video][youtube-transcript] unexpected error:', message);
+  res.status(500).json({ success: false, error: message });
+}
+
 export const videoRouter = Router();
 
 videoRouter.post('/scrape-url', async (req: Request, res: Response) => {
@@ -95,5 +114,27 @@ videoRouter.post('/orchestrate', async (req: Request, res: Response) => {
     res.json(result);
   } catch (error) {
     handleOrchestratorError(res, error);
+  }
+});
+
+videoRouter.get('/youtube-transcript', async (req: Request, res: Response) => {
+  try {
+    const { url, lang } = req.query as { url?: string; lang?: string };
+    const service = getYouTubeTranscriptService();
+    const transcript = await service.fetchTranscript({ url, lang });
+    res.status(200).json({ success: true, transcript });
+  } catch (error) {
+    handleYouTubeTranscriptError(res, error);
+  }
+});
+
+videoRouter.post('/youtube-transcript', async (req: Request, res: Response) => {
+  try {
+    const body = (req.body ?? {}) as { url?: string; lang?: string };
+    const service = getYouTubeTranscriptService();
+    const transcript = await service.fetchTranscript({ url: body.url, lang: body.lang });
+    res.status(200).json({ success: true, transcript });
+  } catch (error) {
+    handleYouTubeTranscriptError(res, error);
   }
 });

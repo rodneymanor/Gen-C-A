@@ -88,4 +88,7 @@ export type { GcDashFeatureCardProps } from './GcDashFeatureCard';
 export { GcDashLabel } from './GcDashLabel';
 export type { GcDashLabelProps, GcDashLabelTone, GcDashLabelVariant } from './GcDashLabel';
 
+export { GcDashBlankSlate } from './GcDashBlankSlate';
+export type { GcDashBlankSlateProps } from './GcDashBlankSlate';
+
 export * from './styleUtils';

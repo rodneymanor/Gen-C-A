@@ -20,6 +20,8 @@ import LoginPage from './pages/Login';
 import RegisterPage from './pages/Register';
 import { Roadmap } from './pages/Roadmap';
 import BrandHub from './pages/BrandHub';
+import YouTubeIdeaSeeds from './pages/YouTubeIdeaSeeds';
+import WritingRedesignPage from './pages/WritingRedesignPage';
 import './styles/globals.css';
 
 // Placeholder components for missing routes
@@ -85,6 +87,14 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/write-redesign" element={
+              <ProtectedRoute>
+                <Layout>
+                  <WritingRedesignPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/transcription" element={
               <ProtectedRoute>
                 <Layout>
@@ -105,6 +115,14 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <TikTokAnalysisTest />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/youtube-ideas" element={
+              <ProtectedRoute>
+                <Layout>
+                  <YouTubeIdeaSeeds />
                 </Layout>
               </ProtectedRoute>
             } />
