@@ -1,3 +1,4 @@
+import { createRef } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, userEvent } from '../../../test/test-utils';
 import { Button } from '../../../components/ui/Button';
@@ -344,18 +345,18 @@ describe('Button Component', () => {
     });
 
     it('should support ref forwarding', () => {
-      let buttonRef: HTMLButtonElement | null = null;
-      
+      const buttonRef = createRef<HTMLButtonElement>();
+
       const TestComponent = () => (
-        <Button ref={(ref) => { buttonRef = ref; }}>
+        <Button ref={buttonRef}>
           Ref Test
         </Button>
       );
-      
+
       render(<TestComponent />);
-      
-      expect(buttonRef).toBeInstanceOf(HTMLButtonElement);
-      expect(buttonRef?.textContent).toBe('Ref Test');
+
+      expect(buttonRef.current).toBeInstanceOf(HTMLButtonElement);
+      expect(buttonRef.current?.textContent).toBe('Ref Test');
     });
   });
 

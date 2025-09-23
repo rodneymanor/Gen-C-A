@@ -40,15 +40,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { success: true, notes } satisfies NotesResponse,
     );
-  } catch (error) {
-    if (error instanceof NotesServiceError) {
-      console.warn("[notes] Service error while fetching notes:", error.message);
+  } catch (unknownError) {
+    if (unknownError instanceof NotesServiceError) {
+      console.warn("[notes] Service error while fetching notes:", unknownError.message);
       return NextResponse.json(
-        { success: false, error: error.message } satisfies NotesResponse,
-        { status: error.statusCode },
+        { success: false, error: unknownError.message } satisfies NotesResponse,
+        { status: unknownError.statusCode },
       );
     }
-    console.error("[notes] Failed to fetch notes:", (error as Error)?.message);
+    const message = unknownError instanceof Error ? unknownError.message : 'Failed to load notes.';
+    console.error("[notes] Failed to fetch notes:", message);
     return NextResponse.json(
       { success: false, error: "Failed to load notes." } satisfies NotesResponse,
       { status: 500 },
@@ -91,15 +92,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { success: true, note: saved } satisfies NoteResponse,
     );
-  } catch (error) {
-    if (error instanceof NotesServiceError) {
-      console.warn("[notes] Service error while saving note:", error.message);
+  } catch (unknownError) {
+    if (unknownError instanceof NotesServiceError) {
+      console.warn("[notes] Service error while saving note:", unknownError.message);
       return NextResponse.json(
-        { success: false, error: error.message } satisfies NoteResponse,
-        { status: error.statusCode },
+        { success: false, error: unknownError.message } satisfies NoteResponse,
+        { status: unknownError.statusCode },
       );
     }
-    console.error("[notes] Failed to save note:", (error as Error)?.message);
+    const message = unknownError instanceof Error ? unknownError.message : 'Failed to save note to Firestore.';
+    console.error("[notes] Failed to save note:", message);
     return NextResponse.json(
       { success: false, error: "Failed to save note to Firestore." } satisfies NoteResponse,
       { status: 500 },

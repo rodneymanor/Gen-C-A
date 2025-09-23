@@ -34,15 +34,16 @@ export async function GET(
     return NextResponse.json(
       { success: true, script } satisfies ScriptResponse,
     );
-  } catch (error) {
-    if (error instanceof ScriptsServiceError) {
-      console.warn("[scripts] Service error while fetching script:", error.message);
+  } catch (unknownError) {
+    if (unknownError instanceof ScriptsServiceError) {
+      console.warn("[scripts] Service error while fetching script:", unknownError.message);
       return NextResponse.json(
-        { success: false, error: error.message } satisfies ScriptResponse,
-        { status: error.statusCode },
+        { success: false, error: unknownError.message } satisfies ScriptResponse,
+        { status: unknownError.statusCode },
       );
     }
-    console.error("[scripts] Failed to fetch script:", (error as Error)?.message);
+    const message = unknownError instanceof Error ? unknownError.message : 'Failed to load script.';
+    console.error("[scripts] Failed to fetch script:", message);
     return NextResponse.json(
       { success: false, error: "Failed to load script." } satisfies ScriptResponse,
       { status: 500 },
@@ -90,15 +91,16 @@ export async function PUT(
     return NextResponse.json(
       { success: true, script } satisfies ScriptResponse,
     );
-  } catch (error) {
-    if (error instanceof ScriptsServiceError) {
-      console.warn("[scripts] Service error while updating script:", error.message);
+  } catch (unknownError) {
+    if (unknownError instanceof ScriptsServiceError) {
+      console.warn("[scripts] Service error while updating script:", unknownError.message);
       return NextResponse.json(
-        { success: false, error: error.message } satisfies ScriptResponse,
-        { status: error.statusCode },
+        { success: false, error: unknownError.message } satisfies ScriptResponse,
+        { status: unknownError.statusCode },
       );
     }
-    console.error("[scripts] Failed to update script:", (error as Error)?.message);
+    const message = unknownError instanceof Error ? unknownError.message : 'Failed to update script.';
+    console.error("[scripts] Failed to update script:", message);
     return NextResponse.json(
       { success: false, error: "Failed to update script." } satisfies ScriptResponse,
       { status: 500 },
@@ -135,15 +137,16 @@ export async function DELETE(
     return NextResponse.json(
       { success: true } satisfies ScriptResponse,
     );
-  } catch (error) {
-    if (error instanceof ScriptsServiceError) {
-      console.warn("[scripts] Service error while deleting script:", error.message);
+  } catch (unknownError) {
+    if (unknownError instanceof ScriptsServiceError) {
+      console.warn("[scripts] Service error while deleting script:", unknownError.message);
       return NextResponse.json(
-        { success: false, error: error.message } satisfies ScriptResponse,
-        { status: error.statusCode },
+        { success: false, error: unknownError.message } satisfies ScriptResponse,
+        { status: unknownError.statusCode },
       );
     }
-    console.error("[scripts] Failed to delete script:", (error as Error)?.message);
+    const message = unknownError instanceof Error ? unknownError.message : 'Failed to delete script.';
+    console.error("[scripts] Failed to delete script:", message);
     return NextResponse.json(
       { success: false, error: "Failed to delete script." } satisfies ScriptResponse,
       { status: 500 },

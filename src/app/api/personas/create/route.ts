@@ -127,11 +127,14 @@ export async function POST(request: NextRequest) {
 
     console.log(`📝 [Create Persona API] Creating persona: ${name}`);
 
-    if (!isAdminInitialized) {
+    if (!isAdminInitialized()) {
       return NextResponse.json({ error: "Firebase Admin not initialized" }, { status: 500 });
     }
 
     const adminDb = getAdminDb();
+    if (!adminDb) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
     const now = new Date().toISOString();
 
     // Create persona document (allow drafts without full analysis)

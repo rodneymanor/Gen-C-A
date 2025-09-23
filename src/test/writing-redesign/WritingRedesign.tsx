@@ -56,9 +56,9 @@ const lengthOptions: GcDashDropdownOption[] = [
 ];
 
 const scriptTabs: GcDashTabItem[] = [
-  { id: 'script', label: 'Script' },
-  { id: 'outline', label: 'Outline' },
-  { id: 'cta', label: 'CTA' },
+  { id: 'script', label: 'Script', content: null },
+  { id: 'outline', label: 'Outline', content: null },
+  { id: 'cta', label: 'CTA', content: null },
 ];
 
 type Phase = 'input' | 'generating' | 'result';
@@ -142,6 +142,12 @@ export const WritingRedesignShowcase: React.FC = () => {
         return 'Anchor in customer proof → show the Claude workflow → end with a crisp next step for the viewer.';
     }
   }, [voice]);
+
+  const voiceLabel = useMemo<string>(() => {
+    return brandVoiceOptions.find((option) => option.value === voice)?.label ?? brandVoiceOptions[0]!.label;
+  }, [voice]);
+
+  const voiceLabelLower = useMemo(() => voiceLabel.toLowerCase(), [voiceLabel]);
 
   const handleGenerate = () => {
     setPhase('generating');
@@ -227,7 +233,7 @@ export const WritingRedesignShowcase: React.FC = () => {
         Claude is shaping your story…
       </h3>
       <span css={css`font-size: 13px; color: rgba(9, 30, 66, 0.6);`}>
-        {length} second video in the {brandVoiceOptions.find((option) => option.value === voice)?.label.toLowerCase()} voice about “{selectedIdea.title}”.
+        {length} second video in the {voiceLabelLower} voice about “{selectedIdea.title}”.
       </span>
       <div
         css={css`
@@ -289,7 +295,7 @@ export const WritingRedesignShowcase: React.FC = () => {
             Script ready to review
           </h2>
           <span css={css`font-size: 13px; color: rgba(9, 30, 66, 0.6);`}>
-            {length} second story in the {brandVoiceOptions.find((option) => option.value === voice)?.label.toLowerCase()} voice.
+            {length} second story in the {voiceLabelLower} voice.
           </span>
         </div>
         <div css={css`display: inline-flex; gap: 8px;`}>
@@ -688,6 +694,11 @@ DM me to see the workspace live and grab the prompts we use every Monday.`}
             placeholder="Search ideas, drafts, @mentions"
             submitLabel="Search"
             onSubmitSearch={() => undefined}
+            css={css`
+              flex: 1;
+              max-width: 640px;
+              margin-left: auto;
+            `}
           />
         </header>
 

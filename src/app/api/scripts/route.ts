@@ -27,15 +27,16 @@ export async function GET(request: NextRequest) {
     const service = getScriptsService(db);
     const scripts = await service.listScripts(auth.uid);
     return NextResponse.json({ success: true, scripts } satisfies ScriptsResponse);
-  } catch (error) {
-    if (error instanceof ScriptsServiceError) {
-      console.warn("[scripts] Service error while fetching scripts:", error.message);
+  } catch (unknownError) {
+    if (unknownError instanceof ScriptsServiceError) {
+      console.warn("[scripts] Service error while fetching scripts:", unknownError.message);
       return NextResponse.json(
-        { success: false, error: error.message } satisfies ScriptsResponse,
-        { status: error.statusCode },
+        { success: false, error: unknownError.message } satisfies ScriptsResponse,
+        { status: unknownError.statusCode },
       );
     }
-    console.error("[scripts] Failed to fetch scripts:", (error as Error)?.message);
+    const message = unknownError instanceof Error ? unknownError.message : 'Failed to load scripts.';
+    console.error("[scripts] Failed to fetch scripts:", message);
     return NextResponse.json(
       { success: false, error: "Failed to load scripts." } satisfies ScriptsResponse,
       { status: 500 },
@@ -77,15 +78,16 @@ export async function POST(request: NextRequest) {
     const service = getScriptsService(db);
     const saved = await service.createScript(auth.uid, body);
     return NextResponse.json({ success: true, script: saved } satisfies ScriptResponse);
-  } catch (error) {
-    if (error instanceof ScriptsServiceError) {
-      console.warn("[scripts] Service error while saving script:", error.message);
+  } catch (unknownError) {
+    if (unknownError instanceof ScriptsServiceError) {
+      console.warn("[scripts] Service error while saving script:", unknownError.message);
       return NextResponse.json(
-        { success: false, error: error.message } satisfies ScriptResponse,
-        { status: error.statusCode },
+        { success: false, error: unknownError.message } satisfies ScriptResponse,
+        { status: unknownError.statusCode },
       );
     }
-    console.error("[scripts] Failed to save script:", (error as Error)?.message);
+    const message = unknownError instanceof Error ? unknownError.message : 'Failed to save script to Firestore.';
+    console.error("[scripts] Failed to save script:", message);
     return NextResponse.json(
       { success: false, error: "Failed to save script to Firestore." } satisfies ScriptResponse,
       { status: 500 },

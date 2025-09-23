@@ -10,17 +10,30 @@ export async function POST(request: NextRequest) {
       includeFeedVideo?: boolean;
       username?: string;
     };
-    const service = getInstagramService();
-    const result = await service.getUserReels(body);
-    return NextResponse.json(result);
-  } catch (error) {
-    if (error instanceof InstagramServiceError) {
+
+    if (!body?.userId?.trim()) {
       return NextResponse.json(
-        { success: false, error: error.message, ...(error.debug ? { debug: error.debug } : {}) },
-        { status: error.statusCode },
+        { success: false, error: 'userId is required to fetch reels' },
+        { status: 400 },
       );
     }
-    const message = error instanceof Error ? error.message : "Failed to fetch Instagram reels";
+
+    const service = getInstagramService();
+    const result = await service.getUserReels({
+      userId: body.userId.trim(),
+      count: body.count,
+      includeFeedVideo: body.includeFeedVideo,
+      username: body.username,
+    });
+    return NextResponse.json(result);
+  } catch (unknownError) {
+    if (unknownError instanceof InstagramServiceError) {
+      return NextResponse.json(
+        { success: false, error: unknownError.message, ...(unknownError.debug ? { debug: unknownError.debug } : {}) },
+        { status: unknownError.statusCode },
+      );
+    }
+    const message = unknownError instanceof Error ? unknownError.message : "Failed to fetch Instagram reels";
     console.error("[instagram/user-reels] Unexpected error:", message);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }

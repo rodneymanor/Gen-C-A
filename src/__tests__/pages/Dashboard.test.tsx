@@ -321,13 +321,12 @@ describe('Dashboard Page', () => {
       expect(buttons.length).toBeGreaterThan(0);
     });
 
-    it('should integrate with the format utilities', () => {
+    it('should integrate with the format utilities', async () => {
       render(<Dashboard />);
-      
+
       // formatRelativeTime should be called for activities
-      const { formatRelativeTime } = vi.mocked(
-        await import('../../utils/format')
-      );
+      const formatModule = await import('../../utils/format');
+      const { formatRelativeTime } = vi.mocked(formatModule);
       expect(formatRelativeTime).toHaveBeenCalled();
     });
   });

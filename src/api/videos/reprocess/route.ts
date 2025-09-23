@@ -8,6 +8,13 @@ import { requireSuperAdmin, createSuccessResponse, createErrorResponse } from '@
 import { getServices } from '@/services/service-container';
 import { getAdminDb } from "@/lib/firebase-admin";
 
+type StoredVideo = {
+  originalUrl?: string;
+  collectionId?: string;
+  userId?: string;
+  title?: string;
+};
+
 /**
  * Get the base URL for internal API calls
  */
@@ -57,15 +64,16 @@ export const POST = requireSuperAdmin(async (request, context) => {
       );
     }
 
-    const video = videoDoc.data();
-    const { originalUrl, collectionId, userId: videoUserId, title } = video;
-    if (!originalUrl || !collectionId || !videoUserId) {
+    const videoData = videoDoc.data() as StoredVideo | undefined;
+    if (!videoData?.originalUrl || !videoData.collectionId || !videoData.userId) {
       return createErrorResponse(
         "Video missing required fields",
         400,
         "videos/invalid-video-data"
       );
     }
+
+    const { originalUrl, collectionId, userId: videoUserId, title } = videoData;
 
     // Delete existing video to force a clean re-run
     await videoRef.delete();

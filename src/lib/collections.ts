@@ -35,6 +35,11 @@ export interface Video {
     likes?: number;
     comments?: number;
     saves?: number;
+    engagementRate?: number;
+    contentType?: string;
+    keyTopics?: string[];
+    sentiment?: 'positive' | 'neutral' | 'negative';
+    difficulty?: 'beginner' | 'intermediate' | 'advanced';
   };
   metadata?: Record<string, any>;
 }
@@ -77,4 +82,3 @@ export class CollectionsService {
 }
 
 export default CollectionsService;
-

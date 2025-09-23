@@ -25,12 +25,27 @@ vi.mock('framer-motion', () => ({
 }));
 
 // Mock IntersectionObserver
-global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
-  disconnect() {}
-  observe() {}
-  unobserve() {}
-};
+class MockIntersectionObserver implements IntersectionObserver {
+  readonly root: Element | Document | null = null;
+  readonly rootMargin = '0px';
+  readonly thresholds: ReadonlyArray<number> = [0];
+
+  constructor(private readonly callback: IntersectionObserverCallback) {}
+
+  disconnect(): void {}
+
+  observe(target: Element): void {
+    this.callback([{ isIntersecting: true, target } as IntersectionObserverEntry], this);
+  }
+
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+
+  unobserve(): void {}
+}
+
+global.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
 
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {

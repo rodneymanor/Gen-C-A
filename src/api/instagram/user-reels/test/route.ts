@@ -75,13 +75,13 @@ export async function GET(request: NextRequest) {
         : null,
       full_response: result,
     });
-  } catch (error) {
-    console.error("❌ Test error:", error);
+  } catch (unknownError) {
+    console.error("❌ Test error:", unknownError);
     return NextResponse.json(
       {
         success: false,
         test_status: "error",
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: unknownError instanceof Error ? unknownError.message : "Unknown error",
       },
       { status: 500 },
     );

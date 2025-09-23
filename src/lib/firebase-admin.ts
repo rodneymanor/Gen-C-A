@@ -59,3 +59,11 @@ export function getAdminDb(): Firestore | null {
     return null;
   }
 }
+
+export function isAdminInitialized(): boolean {
+  try {
+    return getApps().length > 0;
+  } catch {
+    return false;
+  }
+}

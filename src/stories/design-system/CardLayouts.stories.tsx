@@ -60,21 +60,21 @@ const CardExample = (args: Partial<ComponentProps<typeof Card>>) => (
 );
 
 export const Subtle: Story = {
-  args: {},
+  args: { children: null },
   render: (args) => <CardExample {...args} appearance="subtle" />,
 };
 
 export const RaisedHoverable: Story = {
-  args: {},
+  args: { children: null },
   render: (args) => <CardExample {...args} appearance="raised" isHoverable />,
 };
 
 export const Clickable: Story = {
-  args: {},
+  args: { children: null },
   render: (args) => <CardExample {...args} appearance="raised" isClickable />,
 };
 
 export const Selected: Story = {
-  args: {},
+  args: { children: null },
   render: (args) => <CardExample {...args} appearance="selected" isClickable />,
 };

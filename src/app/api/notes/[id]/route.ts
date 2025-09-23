@@ -39,15 +39,16 @@ export async function GET(
     return NextResponse.json(
       { success: true, note } satisfies NoteResponse,
     );
-  } catch (error) {
-    if (error instanceof NotesServiceError) {
-      console.warn("[notes] Service error while fetching note:", error.message);
+  } catch (unknownError) {
+    if (unknownError instanceof NotesServiceError) {
+      console.warn("[notes] Service error while fetching note:", unknownError.message);
       return NextResponse.json(
-        { success: false, error: error.message } satisfies NoteResponse,
-        { status: error.statusCode },
+        { success: false, error: unknownError.message } satisfies NoteResponse,
+        { status: unknownError.statusCode },
       );
     }
-    console.error("[notes] Failed to fetch note:", (error as Error)?.message);
+    const message = unknownError instanceof Error ? unknownError.message : 'Failed to load note.';
+    console.error("[notes] Failed to fetch note:", message);
     return NextResponse.json(
       { success: false, error: "Failed to load note." } satisfies NoteResponse,
       { status: 500 },
@@ -94,15 +95,16 @@ export async function PUT(
     return NextResponse.json(
       { success: true, note } satisfies NoteResponse,
     );
-  } catch (error) {
-    if (error instanceof NotesServiceError) {
-      console.warn("[notes] Service error while updating note:", error.message);
+  } catch (unknownError) {
+    if (unknownError instanceof NotesServiceError) {
+      console.warn("[notes] Service error while updating note:", unknownError.message);
       return NextResponse.json(
-        { success: false, error: error.message } satisfies NoteResponse,
-        { status: error.statusCode },
+        { success: false, error: unknownError.message } satisfies NoteResponse,
+        { status: unknownError.statusCode },
       );
     }
-    console.error("[notes] Failed to update note:", (error as Error)?.message);
+    const message = unknownError instanceof Error ? unknownError.message : 'Failed to update note.';
+    console.error("[notes] Failed to update note:", message);
     return NextResponse.json(
       { success: false, error: "Failed to update note." } satisfies NoteResponse,
       { status: 500 },
@@ -139,15 +141,16 @@ export async function DELETE(
     return NextResponse.json(
       { success: true } satisfies NoteResponse,
     );
-  } catch (error) {
-    if (error instanceof NotesServiceError) {
-      console.warn("[notes] Service error while deleting note:", error.message);
+  } catch (unknownError) {
+    if (unknownError instanceof NotesServiceError) {
+      console.warn("[notes] Service error while deleting note:", unknownError.message);
       return NextResponse.json(
-        { success: false, error: error.message } satisfies NoteResponse,
-        { status: error.statusCode },
+        { success: false, error: unknownError.message } satisfies NoteResponse,
+        { status: unknownError.statusCode },
       );
     }
-    console.error("[notes] Failed to delete note:", (error as Error)?.message);
+    const message = unknownError instanceof Error ? unknownError.message : 'Failed to delete note.';
+    console.error("[notes] Failed to delete note:", message);
     return NextResponse.json(
       { success: false, error: "Failed to delete note." } satisfies NoteResponse,
       { status: 500 },

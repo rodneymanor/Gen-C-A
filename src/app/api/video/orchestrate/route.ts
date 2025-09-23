@@ -11,15 +11,15 @@ export async function POST(request: NextRequest) {
     const service = getVideoOrchestratorService();
     const result = await service.orchestrateWorkflow(body);
     return NextResponse.json(result);
-  } catch (error) {
-    if (error instanceof VideoOrchestratorServiceError) {
+  } catch (unknownError) {
+    if (unknownError instanceof VideoOrchestratorServiceError) {
       return NextResponse.json(
-        { success: false, error: error.message, ...(error.debug ? { debug: error.debug } : {}) },
-        { status: error.statusCode },
+        { success: false, error: unknownError.message, ...(unknownError.debug ? { debug: unknownError.debug } : {}) },
+        { status: unknownError.statusCode },
       );
     }
 
-    const message = error instanceof Error ? error.message : "Failed to orchestrate video workflow";
+    const message = unknownError instanceof Error ? unknownError.message : "Failed to orchestrate video workflow";
     console.error("[video/orchestrate] Unexpected error:", message);
     return NextResponse.json(
       { success: false, error: "Internal server error", details: message },

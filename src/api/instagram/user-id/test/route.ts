@@ -49,12 +49,12 @@ export async function GET(request: NextRequest) {
       sample_response: data,
       tested_username: testUsername,
     });
-  } catch (error) {
-    console.error("❌ Test Error:", error);
+  } catch (unknownError) {
+    console.error("❌ Test Error:", unknownError);
     return NextResponse.json(
       {
         test: "failed",
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error: unknownError instanceof Error ? unknownError.message : "Unknown error occurred",
       },
       { status: 500 },
     );

@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { requireAuth, createSuccessResponse, createErrorResponse } from '@/services/api-middleware';
 import { getServices } from '@/services/service-container';
 import { getAdminDb } from '@/lib/firebase-admin';
-import { doc, updateDoc, serverTimestamp } from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * GET /api/auth/profile
@@ -113,10 +113,12 @@ export const PUT = requireAuth(async (request, context) => {
         );
       }
 
-      updateData.updatedAt = serverTimestamp();
-      
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, updateData);
+      const userRef = db.collection('users').doc(userId);
+      const updatePayload = {
+        ...updateData,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+      await userRef.update(updatePayload);
     }
 
     // Get updated profile

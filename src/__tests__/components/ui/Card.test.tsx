@@ -1,3 +1,4 @@
+import { createRef } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, userEvent } from '../../../test/test-utils';
 import { Card, CardHeader, CardContent, CardFooter } from '../../../components/ui/Card';
@@ -226,18 +227,18 @@ describe('Card Component', () => {
     });
 
     it('should support ref forwarding', () => {
-      let cardRef: HTMLDivElement | null = null;
-      
+      const cardRef = createRef<HTMLDivElement>();
+
       const TestComponent = () => (
-        <Card ref={(ref) => { cardRef = ref; }}>
+        <Card ref={cardRef}>
           Ref Test
         </Card>
       );
-      
+
       render(<TestComponent />);
-      
-      expect(cardRef).toBeInstanceOf(HTMLDivElement);
-      expect(cardRef?.textContent).toBe('Ref Test');
+
+      expect(cardRef.current).toBeInstanceOf(HTMLDivElement);
+      expect(cardRef.current?.textContent).toBe('Ref Test');
     });
   });
 

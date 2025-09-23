@@ -2,19 +2,19 @@ export interface Script {
   id: string;
   title: string;
   content: string;
-  authors: string;
-  status: "draft" | "published" | "scheduled" | "sent";
-  performance: { views: number; engagement: number };
-  category: string;
+  authors?: string;
+  status?: "draft" | "published" | "scheduled" | "sent";
+  performance?: { views: number; engagement: number };
+  category?: string;
   createdAt: string;
   updatedAt: string;
-  viewedAt: string;
-  duration: string;
-  tags: string[];
-  fileType: "Script" | "Template";
-  summary: string;
-  userId: string;
-  approach: "speed-write" | "educational" | "ai-voice";
+  viewedAt?: string;
+  duration?: string;
+  tags?: string[];
+  fileType?: "Script" | "Template";
+  summary?: string;
+  userId?: string;
+  approach?: "speed-write" | "educational" | "ai-voice";
   voice?: {
     id: string;
     name: string;
@@ -83,7 +83,7 @@ export interface UpdateScriptRequest {
 
 export interface ScriptsResponse {
   success: boolean;
-  scripts: Script[];
+  scripts?: Script[];
   error?: string;
 }
 

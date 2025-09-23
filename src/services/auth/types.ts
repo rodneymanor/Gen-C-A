@@ -18,6 +18,8 @@ export interface AuthUser {
   plan: 'free' | 'premium' | 'enterprise';
   preferences?: UserPreferences;
   emailVerified?: boolean;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }
 
 export interface UserPreferences {

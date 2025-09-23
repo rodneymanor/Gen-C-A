@@ -256,6 +256,7 @@ export class VideoProcessingService {
       return {
         success: true,
         data: {
+          success: true,
           platform: scrapedData.platform,
           videoData: {
             buffer: new ArrayBuffer(0), // Will be downloaded during streaming
