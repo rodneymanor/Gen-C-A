@@ -251,6 +251,38 @@ const formatScore = (value?: number) => {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 };
 
+const buildIdeaPrompt = (
+  idea: IdeaSeed,
+  transcript: string | undefined,
+  platform: AnalyzePlatform,
+): string => {
+  const parts: string[] = [];
+  parts.push(`Platform: ${describePlatform(platform)}`);
+  parts.push(`Core claim: ${idea.coreClaim}`);
+  if (idea.payoff) parts.push(`Payoff: ${idea.payoff}`);
+  if (idea.proof?.text) parts.push(`Proof: ${idea.proof.text}`);
+  if (idea.mechanismOrSteps?.length) {
+    parts.push('Steps:');
+    idea.mechanismOrSteps.slice(0, 4).forEach((step, index) => {
+      parts.push(`  ${index + 1}. ${step}`);
+    });
+  }
+  if (idea.cta?.prompt) parts.push(`Call to action: ${idea.cta.prompt}`);
+  if (idea.painPoint) parts.push(`Pain point: ${idea.painPoint}`);
+  if (idea.reasonToBelieve) parts.push(`Reason to believe: ${idea.reasonToBelieve}`);
+  if (idea.angle) parts.push(`Angle: ${idea.angle}`);
+  if (idea.entities?.length) parts.push(`Entities: ${idea.entities.join(', ')}`);
+
+  if (transcript?.trim()) {
+    const snippet = transcript.trim().slice(0, 900);
+    parts.push('Transcript snippet (for extra context, do not quote verbatim):');
+    parts.push(snippet);
+  }
+
+  parts.push('Generate a short-form video script that follows the structure: hook, bridge, golden nugget, CTA.');
+  return parts.join('\n');
+};
+
 type Phase = 'input' | 'generating' | 'result';
 
 type EntryMode = 'notes' | 'inspiration' | 'suggestions';
@@ -312,6 +344,8 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
   const [analyzeIdeaError, setAnalyzeIdeaError] = useState<string | null>(null);
   const [isAnalyzingClip, setIsAnalyzingClip] = useState(false);
   const [analyzeStage, setAnalyzeStage] = useState('');
+  const [selectedAnalyzeIdeaIndex, setSelectedAnalyzeIdeaIndex] = useState<number | null>(null);
+  const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -431,6 +465,8 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
       setAnalyzeIdeaError(null);
       setAnalyzeStage('');
       setIsAnalyzingClip(false);
+      setSelectedAnalyzeIdeaIndex(null);
+      setIsGeneratingIdea(false);
     }
   }, [entryMode]);
 
@@ -745,6 +781,8 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
     setAnalyzeIdeas([]);
     setAnalyzeMeta(null);
     setAnalyzeRawIdeasJson('');
+    setSelectedAnalyzeIdeaIndex(null);
+    setIsGeneratingIdea(false);
 
     try {
       if (platform === 'youtube') {
@@ -921,6 +959,109 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
       setIsAnalyzingClip(false);
     }
   }, [inspirationUrl]);
+
+  const handleGenerateIdeaScript = useCallback(async () => {
+    if (selectedAnalyzeIdeaIndex == null || !analyzeIdeas[selectedAnalyzeIdeaIndex]) {
+      setAnalyzeIdeaError('Select an idea to continue.');
+      return;
+    }
+
+    const idea = analyzeIdeas[selectedAnalyzeIdeaIndex];
+    const platform = analyzeResult?.platform ?? 'tiktok';
+    const prompt = buildIdeaPrompt(idea, analyzeResult?.transcript, platform);
+    const mappedLength = uiLengthToDuration(length);
+    const requestLength = uiLengthToRequestLength(length);
+
+    setAnalyzeIdeaError(null);
+    setIsGeneratingIdea(true);
+
+    try {
+      const response = await generateScript({
+        idea: prompt,
+        length: mappedLength,
+        brandVoiceId: selectedBrandVoice?.id,
+        brandVoiceCreatorId: selectedBrandVoice?.creatorId,
+      });
+
+      if (!response.success || !response.script) {
+        throw new Error(response.error || 'Failed to generate the script.');
+      }
+
+      const components: ScriptComponents = {
+        hook: response.script.hook,
+        bridge: response.script.bridge,
+        goldenNugget: response.script.goldenNugget,
+        wta: response.script.wta,
+      };
+
+      const scriptContent = formatScriptForEditor(components);
+      const request: AIGenerationRequest = {
+        prompt,
+        aiModel: 'creative',
+        length: requestLength,
+        style: 'engaging',
+        platform: platform === 'youtube' ? 'youtube' : 'tiktok',
+        brandVoiceId: selectedBrandVoice?.id,
+        brandVoiceCreatorId: selectedBrandVoice?.creatorId,
+        additionalSettings: {
+          entryMode: 'inspiration',
+          ideaIndex: selectedAnalyzeIdeaIndex,
+          ideaCoreClaim: idea.coreClaim,
+          sourceUrl: analyzeResult?.sourceUrl,
+        },
+      };
+
+      setGeneratedComponents(components);
+      setLastScriptContent(scriptContent);
+      setLastRequest(request);
+      setLastMappedLength(mappedLength);
+      setPhase('result');
+      setProgress(100);
+
+      const title = deriveScriptTitle(idea.coreClaim || prompt);
+      const savedScript = await persistGeneratedScript({
+        request,
+        scriptContent,
+        mappedLength,
+        components,
+        title,
+      });
+
+      const params = new URLSearchParams({
+        content: scriptContent,
+        title,
+        platform: request.platform,
+        length: request.length,
+        style: request.style,
+      });
+
+      if (savedScript?.id) {
+        params.set('scriptId', savedScript.id);
+      }
+      if (request.brandVoiceId) {
+        params.set('brandVoiceId', request.brandVoiceId);
+      }
+      if (request.brandVoiceCreatorId) {
+        params.set('brandVoiceCreatorId', request.brandVoiceCreatorId);
+      }
+      params.set('ideaIndex', String(selectedAnalyzeIdeaIndex));
+
+      setIsGeneratingIdea(false);
+      window.location.assign(`/editor?${params.toString()}`);
+    } catch (error) {
+      console.error('❌ [WritingRedesign] Failed to generate script from idea', error);
+      setAnalyzeIdeaError(error instanceof Error ? error.message : 'Failed to generate the script.');
+      setIsGeneratingIdea(false);
+    }
+  }, [
+    analyzeIdeas,
+    analyzeResult,
+    generateScript,
+    length,
+    persistGeneratedScript,
+    selectedAnalyzeIdeaIndex,
+    selectedBrandVoice,
+  ]);
 
   const containerStyles = css`
     min-height: 100vh;
@@ -1348,61 +1489,29 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
           <div
             css={css`
               display: flex;
+              gap: 12px;
               flex-wrap: wrap;
-              gap: 16px;
-              align-items: flex-end;
-              justify-content: space-between;
+              align-items: center;
             `}
           >
-            <div
-              css={css`
-                display: flex;
-                flex-wrap: wrap;
-                gap: 16px;
-              `}
-            >
-              <label css={css`display: grid; gap: 6px; min-width: 200px; font-size: 13px; color: rgba(9, 30, 66, 0.75);`}>
-                Brand voice
-                <GcDashDropdown
-                  label="Brand voice"
-                  options={brandVoiceOptions}
-                  selectedValue={voice}
-                  onSelect={(value) => setVoice(value)}
-                />
-              </label>
-              <label css={css`display: grid; gap: 6px; min-width: 200px; font-size: 13px; color: rgba(9, 30, 66, 0.75);`}>
-                Target length
-                <GcDashDropdown
-                  label="Video length"
-                  options={lengthOptions}
-                  selectedValue={length}
-                  onSelect={(value) => setLength(value)}
-                />
-              </label>
-            </div>
-            <div
-              css={css`
-                display: flex;
-                gap: 12px;
-              `}
-            >
-              <GcDashButton variant="ghost" onClick={() => {
-                setInspirationUrl('');
-                setAnalyzeError(null);
-                setAnalyzeIdeaError(null);
-                setAnalyzeResult(null);
-                setAnalyzeIdeas([]);
-                setAnalyzeMeta(null);
-                setAnalyzeRawIdeasJson('');
-                setAnalyzeStage('');
-                setIsAnalyzingClip(false);
-              }}>
-                Clear
-              </GcDashButton>
-              <GcDashButton onClick={handleAnalyzeClip} isLoading={isAnalyzingClip}>
-                Analyze clip
-              </GcDashButton>
-            </div>
+            <GcDashButton variant="ghost" onClick={() => {
+              setInspirationUrl('');
+              setAnalyzeError(null);
+              setAnalyzeIdeaError(null);
+              setAnalyzeResult(null);
+              setAnalyzeIdeas([]);
+              setAnalyzeMeta(null);
+              setAnalyzeRawIdeasJson('');
+              setAnalyzeStage('');
+              setIsAnalyzingClip(false);
+              setSelectedAnalyzeIdeaIndex(null);
+              setIsGeneratingIdea(false);
+            }}>
+              Clear
+            </GcDashButton>
+            <GcDashButton onClick={handleAnalyzeClip} isLoading={isAnalyzingClip}>
+              Analyze clip
+            </GcDashButton>
           </div>
           {(isAnalyzingClip || analyzeStage) && (
             <span css={analyzeStatusStyles}>
@@ -1453,7 +1562,32 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
             </div>
             <div css={ideaGridStyles}>
               {analyzeIdeas.map((idea, index) => (
-                <GcDashCard key={`${idea.coreClaim}-${index}`}>
+                <GcDashCard
+                  key={`${idea.coreClaim}-${index}`}
+                  interactive
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    setSelectedAnalyzeIdeaIndex(index);
+                    setAnalyzeIdeaError(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setSelectedAnalyzeIdeaIndex(index);
+                      setAnalyzeIdeaError(null);
+                    }
+                  }}
+                  css={css`
+                    border-color: ${selectedAnalyzeIdeaIndex === index
+                      ? 'var(--color-primary-500, #0b5cff)'
+                      : 'rgba(9, 30, 66, 0.16)'};
+                    background: ${selectedAnalyzeIdeaIndex === index
+                      ? 'rgba(11, 92, 255, 0.08)'
+                      : 'rgba(9, 30, 66, 0.02)'};
+                    cursor: pointer;
+                  `}
+                >
                   <GcDashCardBody css={css`gap: 10px;`}>
                     <strong>Core claim</strong>
                     <span>{idea.coreClaim}</span>
@@ -1498,17 +1632,45 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
         </GcDashCard>
       )}
 
-      {analyzeRawIdeasJson && (
+      {analyzeIdeas.length > 0 && (
         <GcDashCard>
-          <GcDashCardBody css={css`gap: 12px;`}>
-            <GcDashCardTitle>Idea JSON</GcDashCardTitle>
-            <GcDashTextArea
-              value={analyzeRawIdeasJson}
-              onChange={() => undefined}
-              readOnly
-              rows={10}
-              css={css`font-family: 'Menlo', 'SFMono-Regular', monospace;`}
-            />
+          <GcDashCardBody css={css`gap: 16px;`}>
+            <div
+              css={css`
+                display: flex;
+                flex-wrap: wrap;
+                gap: 16px;
+              `}
+            >
+              <label css={css`display: grid; gap: 6px; min-width: 220px; font-size: 13px; color: rgba(9, 30, 66, 0.75);`}>
+                Brand voice
+                <GcDashDropdown
+                  label="Brand voice"
+                  options={brandVoiceOptions}
+                  selectedValue={voice}
+                  onSelect={(value) => setVoice(value)}
+                />
+              </label>
+              <label css={css`display: grid; gap: 6px; min-width: 220px; font-size: 13px; color: rgba(9, 30, 66, 0.75);`}>
+                Target length
+                <GcDashDropdown
+                  label="Video length"
+                  options={lengthOptions}
+                  selectedValue={length}
+                  onSelect={(value) => setLength(value)}
+                />
+              </label>
+            </div>
+            {analyzeIdeaError && (
+              <span css={analyzeErrorStyles}>{analyzeIdeaError}</span>
+            )}
+            <GcDashButton
+              onClick={handleGenerateIdeaScript}
+              isLoading={isGeneratingIdea}
+              disabled={selectedAnalyzeIdeaIndex == null || isGeneratingIdea}
+            >
+              Generate script
+            </GcDashButton>
           </GcDashCardBody>
         </GcDashCard>
       )}
