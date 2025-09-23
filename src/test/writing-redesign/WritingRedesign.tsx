@@ -112,9 +112,148 @@ const deriveScriptTitle = (prompt: string): string => {
   return `${normalized.slice(0, 57).trim()}…`;
 };
 
+type AnalyzePlatform = 'youtube' | 'tiktok' | 'instagram';
+
+interface TranscriptChunk {
+  text: string;
+  start?: number;
+  end?: number;
+}
+
+interface TranscriptResponse {
+  url: string;
+  language?: string;
+  text: string;
+  availableLanguages?: string[];
+  chunks: TranscriptChunk[];
+}
+
+interface IdeaProof {
+  type: 'stat' | 'example' | 'quote' | 'demo' | 'trend';
+  text: string;
+  numbers?: string;
+}
+
+interface IdeaCta {
+  type: 'comment' | 'watch_full' | 'subscribe' | 'download' | 'signup' | 'follow' | 'buy' | 'share';
+  prompt: string;
+  target?: string | { videoTs: number };
+}
+
+interface IdeaScores {
+  hookPotential: number;
+  specificity: number;
+  actionability: number;
+  novelty: number;
+  overall: number;
+}
+
+interface IdeaSeed {
+  coreClaim: string;
+  payoff: string;
+  proof: IdeaProof;
+  mechanismOrSteps?: string[];
+  angle?: string;
+  painPoint?: string;
+  reasonToBelieve?: string;
+  context?: string;
+  promise?: string;
+  cta: IdeaCta;
+  entities?: string[];
+  audienceLevel?: 'beginner' | 'intermediate' | 'advanced';
+  provenance?: { startSec: number; endSec: number };
+  scores?: IdeaScores;
+}
+
+interface GenerationMeta {
+  model?: string;
+  durationMs?: number;
+  maxIdeas?: number;
+  minOverall?: number;
+  audienceLevel?: string;
+  transcriptChars?: number;
+}
+
+interface AnalyzeResult {
+  platform: AnalyzePlatform;
+  sourceUrl: string;
+  transcript: string;
+  transcriptLanguage?: string;
+  transcriptChunks?: TranscriptChunk[];
+  ideaCount?: number;
+}
+
+const detectVideoPlatform = (input: string): AnalyzePlatform | 'unknown' => {
+  if (!input) return 'unknown';
+  let url: URL | null = null;
+  try {
+    url = new URL(input.trim());
+  } catch {
+    return 'unknown';
+  }
+
+  const host = url.hostname.toLowerCase();
+  if (host.includes('youtube.com') || host.includes('youtu.be')) {
+    return 'youtube';
+  }
+  if (host.includes('tiktok.com') || host.includes('vm.tiktok.com')) {
+    return 'tiktok';
+  }
+  if (host.includes('instagram.com') || host.includes('cdninstagram.com') || host.includes('instagr.am')) {
+    return 'instagram';
+  }
+  return 'unknown';
+};
+
+const extractYouTubeId = (value: string): string | null => {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value.trim());
+    if (parsed.hostname === 'youtu.be') {
+      return parsed.pathname.split('/').filter(Boolean)[0] || null;
+    }
+    if (parsed.hostname.includes('youtube.com')) {
+      if (parsed.pathname === '/watch') {
+        return parsed.searchParams.get('v');
+      }
+      if (parsed.pathname.startsWith('/shorts/')) {
+        return parsed.pathname.split('/')[2] || null;
+      }
+      const segments = parsed.pathname.split('/').filter(Boolean);
+      if (segments.includes('shorts')) {
+        const index = segments.indexOf('shorts');
+        return segments[index + 1] || null;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const describePlatform = (platform: AnalyzePlatform) => {
+  switch (platform) {
+    case 'youtube':
+      return 'YouTube';
+    case 'tiktok':
+      return 'TikTok';
+    case 'instagram':
+      return 'Instagram';
+    default:
+      return 'Video';
+  }
+};
+
+const formatScore = (value?: number) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return 'n/a';
+  }
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+};
+
 type Phase = 'input' | 'generating' | 'result';
 
-type EntryMode = 'notes' | 'inspiration' | 'transcribe' | 'suggestions';
+type EntryMode = 'notes' | 'inspiration' | 'suggestions';
 
 const entryOptions: Array<{
   id: EntryMode;
@@ -133,11 +272,6 @@ const entryOptions: Array<{
     title: 'Get inspiration',
     description: 'Rewrite a short-form video script—drop a link to extract the key beats and craft your own take.',
     meta: 'Supports TikTok, Reels, Shorts',
-  },
-  {
-    id: 'transcribe',
-    title: 'Transcribe a video',
-    description: 'Paste a video link to pull the talking points before you remix them into your voice.',
   },
   {
     id: 'suggestions',
@@ -163,7 +297,6 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
   const [progress, setProgress] = useState(0);
   const [notesInput, setNotesInput] = useState('');
   const [inspirationUrl, setInspirationUrl] = useState('');
-  const [transcribeUrl, setTranscribeUrl] = useState('');
   const [generatedComponents, setGeneratedComponents] = useState<ScriptComponents | null>(null);
   const [lastScriptContent, setLastScriptContent] = useState<string>('');
   const [lastRequest, setLastRequest] = useState<AIGenerationRequest | null>(null);
@@ -171,6 +304,14 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
   const [localError, setLocalError] = useState<string | null>(null);
   const [isPersistingScript, setIsPersistingScript] = useState(false);
   const [currentNotesDraft, setCurrentNotesDraft] = useState<string>('');
+  const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResult | null>(null);
+  const [analyzeIdeas, setAnalyzeIdeas] = useState<IdeaSeed[]>([]);
+  const [analyzeMeta, setAnalyzeMeta] = useState<GenerationMeta | null>(null);
+  const [analyzeRawIdeasJson, setAnalyzeRawIdeasJson] = useState('');
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [analyzeIdeaError, setAnalyzeIdeaError] = useState<string | null>(null);
+  const [isAnalyzingClip, setIsAnalyzingClip] = useState(false);
+  const [analyzeStage, setAnalyzeStage] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -280,6 +421,16 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
       setLastRequest(null);
       setLastScriptContent('');
       setCurrentNotesDraft('');
+    }
+    if (entryMode !== 'inspiration') {
+      setAnalyzeResult(null);
+      setAnalyzeIdeas([]);
+      setAnalyzeMeta(null);
+      setAnalyzeRawIdeasJson('');
+      setAnalyzeError(null);
+      setAnalyzeIdeaError(null);
+      setAnalyzeStage('');
+      setIsAnalyzingClip(false);
     }
   }, [entryMode]);
 
@@ -573,13 +724,203 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
     }
   }, [generateScript, length, notesInput, selectedBrandVoice]);
 
-  const handleSubmitVideo = (url: string, mode: 'inspiration' | 'transcribe') => {
-    if (!url.trim()) {
-      alert('Paste a video URL to continue.');
+  const handleAnalyzeClip = useCallback(async () => {
+    const trimmedUrl = inspirationUrl.trim();
+    if (!trimmedUrl) {
+      setAnalyzeError('Paste a video URL to continue.');
       return;
     }
-    alert(`Start ${mode === 'inspiration' ? 'inspiration' : 'transcription'} flow with ${url}`);
-  };
+
+    const platform = detectVideoPlatform(trimmedUrl);
+    if (platform === 'unknown') {
+      setAnalyzeError('Only YouTube, TikTok, or Instagram video URLs are supported for analysis.');
+      return;
+    }
+
+    setAnalyzeError(null);
+    setAnalyzeIdeaError(null);
+    setAnalyzeStage('Preparing');
+    setIsAnalyzingClip(true);
+    setAnalyzeResult(null);
+    setAnalyzeIdeas([]);
+    setAnalyzeMeta(null);
+    setAnalyzeRawIdeasJson('');
+
+    try {
+      if (platform === 'youtube') {
+        setAnalyzeStage('Fetching transcript');
+        const transcriptResponse = await fetch('/api/video/youtube-transcript', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: trimmedUrl, lang: 'en' }),
+        });
+        const transcriptPayload = await transcriptResponse.json().catch(() => null);
+        if (!transcriptResponse.ok || !transcriptPayload?.success || !transcriptPayload?.transcript) {
+          throw new Error(transcriptPayload?.error || 'Failed to fetch the YouTube transcript.');
+        }
+
+        const transcriptData: TranscriptResponse = transcriptPayload.transcript;
+        const transcriptText = transcriptData.text ?? '';
+        if (!transcriptText.trim()) {
+          throw new Error('The transcript service returned no content.');
+        }
+
+        setAnalyzeResult({
+          platform,
+          sourceUrl: trimmedUrl,
+          transcript: transcriptText,
+          transcriptLanguage: transcriptData.language,
+          transcriptChunks: transcriptData.chunks,
+        });
+
+        const videoId = extractYouTubeId(trimmedUrl) ?? undefined;
+
+        try {
+          setAnalyzeStage('Generating video ideas');
+          const ideaResponse = await fetch('/api/scripts/youtube-ideas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: trimmedUrl,
+              transcript: transcriptText,
+              chunks: transcriptData.chunks ?? [],
+              videoId,
+              lang: transcriptData.language ?? 'en',
+              maxIdeas: 8,
+              minOverall: 70,
+              audienceLevel: 'intermediate',
+            }),
+          });
+
+          const ideasText = await ideaResponse.text();
+          if (!ideaResponse.ok) {
+            let message = ideasText || 'Failed to generate idea seeds.';
+            try {
+              const parsed = JSON.parse(ideasText);
+              message = parsed.error || message;
+            } catch (error) {
+              // ignore JSON parse errors, keep raw message
+            }
+            throw new Error(message);
+          }
+
+          try {
+            const parsed = JSON.parse(ideasText);
+            if (!parsed?.success) {
+              throw new Error(parsed?.error || 'Idea generation was unsuccessful.');
+            }
+            const ideas: IdeaSeed[] = Array.isArray(parsed.ideas) ? parsed.ideas : [];
+            setAnalyzeIdeas(ideas);
+            setAnalyzeMeta(parsed.meta ?? null);
+            setAnalyzeRawIdeasJson(JSON.stringify(ideas, null, 2));
+            setAnalyzeResult((prev) =>
+              prev ? { ...prev, ideaCount: ideas.length } : prev,
+            );
+          } catch (parseError) {
+            throw new Error('Failed to parse idea seed response.');
+          }
+        } catch (ideaError) {
+          setAnalyzeIdeaError(ideaError instanceof Error ? ideaError.message : 'Idea generation failed.');
+        }
+      } else {
+        setAnalyzeStage('Resolving media');
+        const scrapeResponse = await fetch('/api/video/scrape-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: trimmedUrl }),
+        });
+        const scrapePayload = await scrapeResponse.json().catch(() => null);
+        if (!scrapeResponse.ok || !scrapePayload?.success || !scrapePayload?.result) {
+          throw new Error(scrapePayload?.error || 'Failed to resolve the video media URL.');
+        }
+
+        const downloadUrl = scrapePayload.result.audioUrl || scrapePayload.result.downloadUrl;
+        if (!downloadUrl) {
+          throw new Error('Unable to find a downloadable media URL for this video.');
+        }
+
+        setAnalyzeStage('Transcribing video');
+        const transcribeResponse = await fetch('/api/video/transcribe-from-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoUrl: downloadUrl, platform }),
+        });
+        const transcribePayload = await transcribeResponse.json().catch(() => null);
+        if (!transcribeResponse.ok || !transcribePayload?.success) {
+          throw new Error(transcribePayload?.error || 'Failed to transcribe the video.');
+        }
+
+        const transcriptText: string = transcribePayload.transcript ?? '';
+        if (!transcriptText.trim()) {
+          throw new Error('Transcription completed but returned empty content.');
+        }
+
+        setAnalyzeResult({
+          platform,
+          sourceUrl: trimmedUrl,
+          transcript: transcriptText,
+        });
+
+        try {
+          setAnalyzeStage('Generating video ideas');
+          const ideaResponse = await fetch('/api/scripts/youtube-ideas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: trimmedUrl,
+              transcript: transcriptText,
+              maxIdeas: 6,
+              minOverall: 65,
+              audienceLevel: 'intermediate',
+              sourcePlatform: platform,
+            }),
+          });
+
+          const ideasText = await ideaResponse.text();
+          if (!ideaResponse.ok) {
+            let message = ideasText || 'Failed to generate video ideas.';
+            try {
+              const parsed = JSON.parse(ideasText);
+              message = parsed.error || message;
+            } catch (error) {
+              // ignore JSON parse errors
+            }
+            throw new Error(message);
+          }
+
+          try {
+            const parsed = JSON.parse(ideasText);
+            if (!parsed?.success) {
+              throw new Error(parsed?.error || 'Idea generation was unsuccessful.');
+            }
+            const ideas: IdeaSeed[] = Array.isArray(parsed.ideas) ? parsed.ideas : [];
+            setAnalyzeIdeas(ideas);
+            setAnalyzeMeta(parsed.meta ?? null);
+            setAnalyzeRawIdeasJson(JSON.stringify(ideas, null, 2));
+            setAnalyzeResult((prev) =>
+              prev ? { ...prev, ideaCount: ideas.length } : prev,
+            );
+          } catch (parseError) {
+            throw new Error('Failed to parse idea seed response.');
+          }
+        } catch (ideaError) {
+          setAnalyzeIdeaError(ideaError instanceof Error ? ideaError.message : 'Idea generation failed.');
+        }
+      }
+
+      setAnalyzeStage('');
+    } catch (error) {
+      setAnalyzeStage('');
+      setAnalyzeResult(null);
+      setAnalyzeIdeas([]);
+      setAnalyzeMeta(null);
+      setAnalyzeRawIdeasJson('');
+      setAnalyzeIdeaError(null);
+      setAnalyzeError(error instanceof Error ? error.message : 'Failed to analyze the video.');
+    } finally {
+      setIsAnalyzingClip(false);
+    }
+  }, [inspirationUrl]);
 
   const containerStyles = css`
     min-height: 100vh;
@@ -633,6 +974,27 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
     display: grid;
     gap: 24px;
     max-width: 960px;
+  `;
+
+  const analyzeStatusStyles = css`
+    font-size: 13px;
+    color: rgba(9, 30, 66, 0.65);
+  `;
+
+  const analyzeErrorStyles = css`
+    font-size: 13px;
+    color: #b42318;
+  `;
+
+  const analyzeWarningStyles = css`
+    font-size: 13px;
+    color: #a15c00;
+  `;
+
+  const ideaGridStyles = css`
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
   `;
 
   const generatingSection = (
@@ -966,18 +1328,23 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
   const inspirationView = (
     <div css={singleColumnStyles}>
       <GcDashCard>
-        <GcDashCardBody>
-          <GcDashCardTitle>Get inspiration from an existing video</GcDashCardTitle>
-          <GcDashCardSubtitle>
-            Paste a TikTok, Reels, or Shorts link. The AI assistant will extract the structure so you can remix the idea in your brand voice.
-          </GcDashCardSubtitle>
+        <GcDashCardBody css={css`gap: 20px;`}>
+          <div css={css`display: flex; flex-direction: column; gap: 4px;`}>
+            <GcDashCardTitle>Analyze a clip</GcDashCardTitle>
+            <GcDashCardSubtitle>
+              Drop a YouTube, TikTok, or Instagram video link. We’ll fetch the transcript and surface ready-to-use idea starters.
+            </GcDashCardSubtitle>
+          </div>
           <GcDashInput
             type="url"
             inputMode="url"
-            placeholder="https://www.tiktok.com/@creator/video/123"
+            placeholder="https://www.youtube.com/watch?v=..."
             value={inspirationUrl}
             onChange={(event) => setInspirationUrl(event.target.value)}
           />
+          {analyzeError && (
+            <span css={analyzeErrorStyles}>{analyzeError}</span>
+          )}
           <div
             css={css`
               display: flex;
@@ -1004,7 +1371,7 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
                 />
               </label>
               <label css={css`display: grid; gap: 6px; min-width: 200px; font-size: 13px; color: rgba(9, 30, 66, 0.75);`}>
-                Video length
+                Target length
                 <GcDashDropdown
                   label="Video length"
                   options={lengthOptions}
@@ -1019,60 +1386,132 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
                 gap: 12px;
               `}
             >
-              <GcDashButton variant="ghost" onClick={() => setInspirationUrl('')}>
+              <GcDashButton variant="ghost" onClick={() => {
+                setInspirationUrl('');
+                setAnalyzeError(null);
+                setAnalyzeIdeaError(null);
+                setAnalyzeResult(null);
+                setAnalyzeIdeas([]);
+                setAnalyzeMeta(null);
+                setAnalyzeRawIdeasJson('');
+                setAnalyzeStage('');
+                setIsAnalyzingClip(false);
+              }}>
                 Clear
               </GcDashButton>
-              <GcDashButton onClick={() => handleSubmitVideo(inspirationUrl, 'inspiration')}>
+              <GcDashButton onClick={handleAnalyzeClip} isLoading={isAnalyzingClip}>
                 Analyze clip
               </GcDashButton>
             </div>
           </div>
+          {(isAnalyzingClip || analyzeStage) && (
+            <span css={analyzeStatusStyles}>
+              {isAnalyzingClip ? (analyzeStage ? `${analyzeStage}…` : 'Analyzing video…') : analyzeStage}
+            </span>
+          )}
+          {analyzeIdeaError && !isAnalyzingClip && (
+            <span css={analyzeWarningStyles}>{analyzeIdeaError}</span>
+          )}
         </GcDashCardBody>
       </GcDashCard>
 
       <GcDashFeatureCard
         title="What you get"
-        description="We break the clip into hook, story beats, and CTA, then suggest fresh angles and talking points aligned to your audience."
+        description="Full transcript plus structured video ideas you can hand off to the writer."
       />
-    </div>
-  );
 
-  const transcribeView = (
-    <div css={singleColumnStyles}>
-      <GcDashCard>
-        <GcDashCardBody>
-          <GcDashCardTitle>Transcribe a video</GcDashCardTitle>
-          <GcDashCardSubtitle>
-            Drop a link to pull the transcript from an Instagram Reel, TikTok, or YouTube video. Use it as source material for your next draft.
-          </GcDashCardSubtitle>
-          <GcDashInput
-            type="url"
-            inputMode="url"
-            placeholder="https://youtu.be/abc123"
-            value={transcribeUrl}
-            onChange={(event) => setTranscribeUrl(event.target.value)}
-          />
-          <div
-            css={css`
-              display: flex;
-              justify-content: flex-end;
-              gap: 12px;
-            `}
-          >
-            <GcDashButton variant="ghost" onClick={() => setTranscribeUrl('')}>
-              Clear
-            </GcDashButton>
-            <GcDashButton onClick={() => handleSubmitVideo(transcribeUrl, 'transcribe')}>
-              Transcribe video
-            </GcDashButton>
-          </div>
-        </GcDashCardBody>
-      </GcDashCard>
+      {analyzeResult && (
+        <GcDashCard>
+          <GcDashCardBody css={css`gap: 16px;`}>
+            <GcDashCardTitle>
+              Transcript · {describePlatform(analyzeResult.platform)}
+            </GcDashCardTitle>
+            <GcDashCardSubtitle>
+              We captured the complete narration so you can highlight, remix, or feed it into the notes flow.
+            </GcDashCardSubtitle>
+            <GcDashTextArea
+              value={analyzeResult.transcript}
+              onChange={() => undefined}
+              readOnly
+              rows={18}
+              css={css`min-height: 260px;`}
+            />
+          </GcDashCardBody>
+        </GcDashCard>
+      )}
 
-      <GcDashFeatureCard
-        title="Pro tip"
-        description="Keep the transcript handy—you can highlight the strongest lines and feed them into the notes flow to remix in your voice."
-      />
+      {analyzeIdeas.length > 0 && (
+        <GcDashCard>
+          <GcDashCardBody css={css`gap: 20px;`}>
+            <div css={css`display: flex; flex-direction: column; gap: 4px;`}>
+              <GcDashCardTitle>Video ideas ({analyzeIdeas.length})</GcDashCardTitle>
+              {analyzeMeta && (
+                <GcDashCardSubtitle>
+                  Generated with {analyzeMeta.model ?? 'Gemini'} · {analyzeMeta.maxIdeas ? `${analyzeMeta.maxIdeas} max ideas` : 'adaptive count'}
+                </GcDashCardSubtitle>
+              )}
+            </div>
+            <div css={ideaGridStyles}>
+              {analyzeIdeas.map((idea, index) => (
+                <GcDashCard key={`${idea.coreClaim}-${index}`}>
+                  <GcDashCardBody css={css`gap: 10px;`}>
+                    <strong>Core claim</strong>
+                    <span>{idea.coreClaim}</span>
+                    <strong>Payoff</strong>
+                    <span>{idea.payoff}</span>
+                    {idea.proof?.text && (
+                      <div>
+                        <strong>Proof</strong>
+                        <p css={css`margin: 0;`}>{idea.proof.text}</p>
+                        {idea.proof.numbers && <small>Numbers: {idea.proof.numbers}</small>}
+                      </div>
+                    )}
+                    {Array.isArray(idea.mechanismOrSteps) && idea.mechanismOrSteps.length > 0 && (
+                      <div>
+                        <strong>Steps</strong>
+                        <ol css={css`margin: 0 0 0 16px; display: grid; gap: 4px;`}>
+                          {idea.mechanismOrSteps.map((step, stepIndex) => (
+                            <li key={stepIndex}>{step}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+                    <div>
+                      <strong>CTA</strong>
+                      <p css={css`margin: 0;`}>{idea.cta?.prompt}</p>
+                    </div>
+                    {idea.provenance && (
+                      <small>
+                        Provenance: {idea.provenance.startSec ?? 0}s → {idea.provenance.endSec ?? 0}s
+                      </small>
+                    )}
+                    {idea.scores && (
+                      <small>
+                        Scores · Hook {formatScore(idea.scores.hookPotential)} · Specificity {formatScore(idea.scores.specificity)} · Actionability {formatScore(idea.scores.actionability)} · Novelty {formatScore(idea.scores.novelty)} · Overall {formatScore(idea.scores.overall)}
+                      </small>
+                    )}
+                  </GcDashCardBody>
+                </GcDashCard>
+              ))}
+            </div>
+          </GcDashCardBody>
+        </GcDashCard>
+      )}
+
+      {analyzeRawIdeasJson && (
+        <GcDashCard>
+          <GcDashCardBody css={css`gap: 12px;`}>
+            <GcDashCardTitle>Idea JSON</GcDashCardTitle>
+            <GcDashTextArea
+              value={analyzeRawIdeasJson}
+              onChange={() => undefined}
+              readOnly
+              rows={10}
+              css={css`font-family: 'Menlo', 'SFMono-Regular', monospace;`}
+            />
+          </GcDashCardBody>
+        </GcDashCard>
+      )}
     </div>
   );
 
@@ -1082,8 +1521,6 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
         return notesView;
       case 'inspiration':
         return inspirationView;
-      case 'transcribe':
-        return transcribeView;
       case 'suggestions':
         return suggestionsView;
       default:
