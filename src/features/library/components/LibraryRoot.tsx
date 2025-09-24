@@ -223,7 +223,7 @@ const primaryActionSurfaceStyles = css`
   padding: 28px 32px;
   border-radius: 24px;
   border: 1px solid rgba(11, 92, 255, 0.24);
-  background: linear-gradient(135deg, rgba(11, 92, 255, 0.12), rgba(11, 92, 255, 0.03));
+  background: #ffffff;
   box-shadow: 0 22px 40px rgba(11, 92, 255, 0.14);
 
   @media (max-width: 900px) {
