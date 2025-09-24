@@ -40,6 +40,24 @@ const footerStyles = css`
   gap: 12px;
 `;
 
+const YOUTUBE_PATTERNS = [
+  /[?&]v=([A-Za-z0-9_-]{11})/i,
+  /youtu\.be\/([A-Za-z0-9_-]{11})/i,
+  /youtube\.com\/embed\/([A-Za-z0-9_-]{11})/i,
+  /youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/i,
+];
+
+function extractYouTubeId(value: string): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  for (const pattern of YOUTUBE_PATTERNS) {
+    const match = trimmed.match(pattern);
+    if (match) return match[1];
+  }
+  if (/^[A-Za-z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  return null;
+}
+
 export const AddViralVideoModal: React.FC<AddViralVideoModalProps> = ({
   open,
   onClose,
@@ -47,7 +65,7 @@ export const AddViralVideoModal: React.FC<AddViralVideoModalProps> = ({
   onSubmitStart,
   onSubmitEnd,
 }) => {
-  const [platform, setPlatform] = useState<Exclude<Platform, 'all' | 'youtube'>>('instagram');
+  const [platform, setPlatform] = useState<Exclude<Platform, 'all'>>('instagram');
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,7 +95,14 @@ export const AddViralVideoModal: React.FC<AddViralVideoModalProps> = ({
     return /tiktok\.com\//i.test(value);
   }, [inputValue, platform]);
 
-  const canSubmit = !isSubmitting && (platform === 'instagram' ? Boolean(detectedShortcode) : isTikTokUrlValid);
+  const youtubeId = useMemo(() => {
+    if (platform !== 'youtube') return null;
+    return extractYouTubeId(inputValue);
+  }, [inputValue, platform]);
+
+  const canSubmit = !isSubmitting && (
+    platform === 'instagram' ? Boolean(detectedShortcode) : platform === 'tiktok' ? isTikTokUrlValid : Boolean(youtubeId)
+  );
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent) => {
@@ -97,12 +122,18 @@ export const AddViralVideoModal: React.FC<AddViralVideoModalProps> = ({
             throw new Error('Enter a valid Instagram shortcode.');
           }
           payload = { ...payload, shortcode: trimmedShortcode };
-        } else {
+        } else if (platform === 'tiktok') {
           const trimmedUrl = inputValue.trim();
           if (!/tiktok\.com\//i.test(trimmedUrl)) {
             throw new Error('Enter a valid TikTok URL.');
           }
           payload = { ...payload, videoUrl: trimmedUrl };
+        } else {
+          const id = youtubeId;
+          if (!id) {
+            throw new Error('Enter a valid YouTube video URL.');
+          }
+          payload = { ...payload, videoUrl: `https://www.youtube.com/watch?v=${id}` };
         }
 
         const response = await fetch('/api/viral-content/admin/video', {
@@ -171,14 +202,23 @@ export const AddViralVideoModal: React.FC<AddViralVideoModalProps> = ({
         >
           <option value="instagram">Instagram</option>
           <option value="tiktok">TikTok</option>
+          <option value="youtube">YouTube</option>
         </select>
 
         <Input
-          label={platform === 'instagram' ? 'Instagram shortcode or URL' : 'TikTok URL'}
+          label={
+            platform === 'instagram'
+              ? 'Instagram shortcode or URL'
+              : platform === 'tiktok'
+              ? 'TikTok URL'
+              : 'YouTube URL'
+          }
           placeholder={
             platform === 'instagram'
               ? 'e.g. DOwMDS1ja3A or https://www.instagram.com/p/DOwMDS1ja3A/'
-              : 'https://www.tiktok.com/@username/video/1234567890'
+              : platform === 'tiktok'
+              ? 'https://www.tiktok.com/@username/video/1234567890'
+              : 'https://www.youtube.com/watch?v=G33j5Qi4rE8'
           }
           value={inputValue}
           onChange={(event) => setInputValue(event.target.value)}
@@ -187,10 +227,15 @@ export const AddViralVideoModal: React.FC<AddViralVideoModalProps> = ({
         <div className="helper">
           {platform === 'instagram'
             ? 'Paste the Instagram shortcode or full post URL; we’ll extract the code automatically.'
-            : 'Paste the full TikTok video URL.'}
+            : platform === 'tiktok'
+            ? 'Paste the full TikTok video URL.'
+            : 'Paste the YouTube video URL (any format).'}
         </div>
         {platform === 'instagram' && detectedShortcode && (
           <div className="detected">Detected shortcode: {detectedShortcode}</div>
+        )}
+        {platform === 'youtube' && youtubeId && (
+          <div className="detected">Detected video ID: {youtubeId}</div>
         )}
 
         {error && <div className="error">{error}</div>}

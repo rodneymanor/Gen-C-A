@@ -146,6 +146,7 @@ async function fetchYoutubeVideoDetails(videoUrl: string): Promise<RapidApiVideo
     urlAccess: 'normal',
     videos: 'auto',
     audios: 'auto',
+    subtitles: 'true',
   });
   const apiUrl = `https://${host}/v2/video/details?${query.toString()}`;
   const json = await rapidApiFetch(apiUrl, host);

@@ -39,6 +39,23 @@ function parseInstagramCodeFromInput(input: string): string | null {
   return null;
 }
 
+function parseYouTubeVideoId(input: string): string | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  const matchQuery = trimmed.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+  if (matchQuery) return matchQuery[1];
+  const matchShort = trimmed.match(/youtu\.be\/([A-Za-z0-9_-]{11})/i);
+  if (matchShort) return matchShort[1];
+  const matchEmbed = trimmed.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/i);
+  if (matchEmbed) return matchEmbed[1];
+  const matchShorts = trimmed.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/i);
+  if (matchShorts) return matchShorts[1];
+  if (/^[A-Za-z0-9_-]{11}$/.test(trimmed)) {
+    return trimmed;
+  }
+  return null;
+}
+
 function inferVideoLength(platform: ViralPlatform): 'short' | 'long' {
   return platform === 'youtube' ? 'long' : 'short';
 }
@@ -185,8 +202,14 @@ router.post('/admin/video', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Valid TikTok video URL is required' });
     }
     videoUrl = videoUrlBody;
+  } else if (platform === 'youtube') {
+    const videoId = parseYouTubeVideoId(videoUrlBody);
+    if (!videoId) {
+      return res.status(400).json({ success: false, error: 'Valid YouTube video URL is required' });
+    }
+    videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   } else {
-    return res.status(400).json({ success: false, error: 'Only Instagram and TikTok are supported right now' });
+    return res.status(400).json({ success: false, error: 'Only Instagram, TikTok, and YouTube are supported right now' });
   }
 
   try {

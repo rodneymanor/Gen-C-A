@@ -143,21 +143,21 @@ const titleStyles = css`
   overflow: hidden;
 `;
 
-const descriptionStyles = css`
+const creatorStyles = css`
+  font-size: 13px;
+  color: rgba(9, 30, 66, 0.55);
+  font-weight: 500;
+`;
+
+const youtubeDescriptionStyles = css`
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
   color: rgba(9, 30, 66, 0.68);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-`;
-
-const creatorStyles = css`
-  font-size: 13px;
-  color: rgba(9, 30, 66, 0.55);
-  font-weight: 500;
 `;
 
 const metricRowStyles = css`
@@ -279,10 +279,10 @@ export const ViralClipCard: React.FC<ViralClipCardProps> = ({
       </div>
       <GcDashCardBody css={bodyStyles}>
         <h3 css={titleStyles}>{video.title}</h3>
-        {video.description && video.description !== video.title ? (
-          <p css={descriptionStyles}>{video.description}</p>
-        ) : null}
         <span css={creatorStyles}>{video.creator}</span>
+        {video.platform === 'youtube' && video.description ? (
+          <p css={youtubeDescriptionStyles}>{video.description}</p>
+        ) : null}
         <div css={metricRowStyles}>
           {video.metrics.map((metricItem) => {
             const IconComponent = metricIconComponents[metricItem.id.toLowerCase()];
