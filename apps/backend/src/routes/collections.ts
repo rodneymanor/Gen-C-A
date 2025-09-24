@@ -196,6 +196,27 @@ async function copyVideo(req: Request, res: Response) {
   }
 }
 
+async function deleteVideo(req: Request, res: Response) {
+  const userId = extractUserId(req, res);
+  if (!userId) return;
+
+  const { videoId } = (req.body ?? {}) as Record<string, unknown>;
+  if (!videoId) {
+    res.status(400).json({ success: false, error: 'videoId required' });
+    return;
+  }
+
+  const service = getCollectionsService(res);
+  if (!service) return;
+
+  try {
+    await service.deleteVideo(userId, { videoId });
+    res.json({ success: true, message: 'Video deleted successfully', videoId: String(videoId) });
+  } catch (error) {
+    handleCollectionsError(res, error, 'Failed to delete video.');
+  }
+}
+
 async function addVideoToCollection(req: Request, res: Response) {
   const userId = extractUserId(req, res);
   if (!userId) return;
@@ -251,3 +272,4 @@ collectionsRouter.post('/copy-video', copyVideo);
 
 collectionVideosRouter.post('/add-to-collection', addVideoToCollection);
 collectionVideosRouter.post('/collection', listCollectionVideos);
+collectionVideosRouter.post('/delete', deleteVideo);

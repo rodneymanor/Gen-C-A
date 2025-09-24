@@ -1,7 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { action } from '@storybook/addon-actions';
-import { ViralClipCard } from '../../features/viral-content/components/ViralClipCard';
-import type { ViralVideo } from '../../features/viral-content/types';
+import { ViralClipCard } from '../features/viral-content/components/ViralClipCard';
+import type { ViralVideo } from '../features/viral-content/types';
+
+const logAction = (label: string) => (
+  (...args: unknown[]) => {
+    // eslint-disable-next-line no-console
+    console.log(`[Storybook:${label}]`, ...args);
+  }
+);
 
 const sampleVideo: ViralVideo = {
   id: 'sample-clip',
@@ -28,10 +34,10 @@ const meta: Meta<typeof ViralClipCard> = {
     layout: 'centered',
   },
   args: {
-    onOpen: action('open'),
-    onFindSimilar: action('find-similar'),
-    onAddToProject: action('add-to-project'),
-    onPlay: action('play'),
+    onOpen: logAction('open'),
+    onFindSimilar: logAction('find-similar'),
+    onAddToProject: logAction('add-to-project'),
+    onPlay: logAction('play'),
     video: sampleVideo,
   },
 };

@@ -124,8 +124,12 @@ async function fetchVideosFromRapidAPI(platform, userId) {
  * Fetch Instagram videos using RapidAPI Instagram endpoints
  */
 async function fetchInstagramVideosFromRapidAPI(username) {
-  const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '7d8697833dmsh0919d85dc19515ap1175f7jsn0f8bb6dae84e';
+  const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
   const RAPIDAPI_HOST = 'instagram-api-fast-reliable-data-scraper.p.rapidapi.com';
+
+  if (!RAPIDAPI_KEY) {
+    throw new Error('RAPIDAPI_KEY is not configured');
+  }
 
   try {
     console.log(`📱 [RAPIDAPI] Getting Instagram videos for: ${username}`);

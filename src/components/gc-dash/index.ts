@@ -10,6 +10,31 @@ export type { GcDashAvatarProps, GcDashAvatarSize, GcDashAvatarStatus } from './
 export { GcDashLoadingSpinner } from './GcDashLoadingSpinner';
 export type { GcDashLoadingSpinnerProps } from './GcDashLoadingSpinner';
 
+export { GcDashHeader, GcDashHeaderSearchInput } from './GcDashHeader';
+export type { GcDashHeaderProps, GcDashHeaderSearchInputProps } from './GcDashHeader';
+
+export {
+  GcDashVideoGrid,
+  GcDashCollectionGrid,
+  GcDashCreatorGrid,
+  GcDashVideoGridControls,
+  GcDashVideoGridSlideout,
+  GcDashVideoCard,
+  GcDashCollectionCard,
+  GcDashCreatorCard,
+} from './GcDashVideoGrid';
+export type {
+  GcDashVideoGridProps,
+  GcDashCollectionGridProps,
+  GcDashCreatorGridProps,
+  GcDashVideoGridControlsProps,
+  GcDashVideoGridSlideoutProps,
+  GcDashVideoData,
+  GcDashCollectionData,
+  GcDashCreatorData,
+  GcDashGridType,
+} from './GcDashVideoGrid';
+
 export { GcDashInput } from './GcDashInput';
 export type { GcDashInputProps, GcDashInputTone } from './GcDashInput';
 

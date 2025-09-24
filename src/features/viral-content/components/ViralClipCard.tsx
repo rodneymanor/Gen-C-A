@@ -1,11 +1,6 @@
 import React from 'react';
 import { css } from '@emotion/react';
-import {
-  GcDashButton,
-  GcDashCard,
-  GcDashCardBody,
-  GcDashCardSubtitle,
-} from '@/components/gc-dash';
+import { GcDashButton, GcDashCard, GcDashCardBody } from '@/components/gc-dash';
 import MediaServicesPresentationIcon from '@atlaskit/icon/glyph/media-services/presentation';
 import AddIcon from '@atlaskit/icon/glyph/add';
 import PlayIcon from '@atlaskit/icon/glyph/vid-play';
@@ -98,6 +93,21 @@ const platformBadgeStyles = css`
   backdrop-filter: blur(6px);
 `;
 
+const newBadgeStyles = css`
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(11, 92, 255, 0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 12px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  box-shadow: 0 10px 16px rgba(11, 92, 255, 0.28);
+`;
+
 const overlayStyles = css`
   position: absolute;
   inset: 0;
@@ -118,13 +128,25 @@ const bodyStyles = css`
   padding: 16px 18px 20px;
 `;
 
-const captionStyles = css`
+const titleStyles = css`
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.4;
-  color: rgba(9, 30, 66, 0.78);
+  font-weight: 700;
+  color: rgba(9, 30, 66, 0.9);
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
+const descriptionStyles = css`
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(9, 30, 66, 0.68);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 `;
@@ -208,6 +230,7 @@ export const ViralClipCard: React.FC<ViralClipCardProps> = ({
   return (
     <GcDashCard interactive css={cardStyles} onClick={handleOpen}>
       <div css={thumbnailWrapperStyles}>
+        {video.isNew ? <span css={newBadgeStyles}>New</span> : null}
         <img src={video.thumbnail} alt={video.title} loading="lazy" />
         <span css={platformBadgeStyles}>
           {PLATFORM_EMOJI[video.platform]} {PLATFORM_LABELS[video.platform]}
@@ -243,7 +266,10 @@ export const ViralClipCard: React.FC<ViralClipCardProps> = ({
         </div>
       </div>
       <GcDashCardBody css={bodyStyles}>
-        <GcDashCardSubtitle css={captionStyles}>{video.description}</GcDashCardSubtitle>
+        <h3 css={titleStyles}>{video.title}</h3>
+        {video.description && video.description !== video.title ? (
+          <p css={descriptionStyles}>{video.description}</p>
+        ) : null}
         <span css={creatorStyles}>{video.creator}</span>
         <div css={metricRowStyles}>
           {video.metrics.map((metricItem) => (

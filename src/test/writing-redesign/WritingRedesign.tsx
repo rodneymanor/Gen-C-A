@@ -158,7 +158,7 @@ interface IdeaSeed {
   reasonToBelieve?: string;
   context?: string;
   promise?: string;
-  cta: IdeaCta;
+  cta?: IdeaCta;
   entities?: string[];
   audienceLevel?: 'beginner' | 'intermediate' | 'advanced';
   provenance?: { startSec: number; endSec: number };
@@ -181,6 +181,13 @@ interface AnalyzeResult {
   transcriptLanguage?: string;
   transcriptChunks?: TranscriptChunk[];
   ideaCount?: number;
+}
+
+interface RecentNoteItem {
+  id: string;
+  title: string;
+  content: string;
+  updatedAt?: string;
 }
 
 const detectVideoPlatform = (input: string): AnalyzePlatform | 'unknown' => {
@@ -312,11 +319,21 @@ const entryOptions: Array<{
   },
 ];
 
-export interface WritingRedesignShowcaseProps {
-  onNavigateNext?: () => void;
+export interface WritingRedesignScriptLaunchPayload {
+  request: AIGenerationRequest;
+  scriptContent: string;
+  mappedLength: '15' | '20' | '30' | '45' | '60' | '90';
+  components: ScriptComponents;
+  title: string;
+  brandVoice?: BrandVoice | null;
 }
 
-export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = ({ onNavigateNext }) => {
+export interface WritingRedesignShowcaseProps {
+  onNavigateNext?: () => void;
+  onLaunchScriptFlow?: (payload: WritingRedesignScriptLaunchPayload) => Promise<void>;
+}
+
+export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = ({ onNavigateNext, onLaunchScriptFlow }) => {
   const [entryMode, setEntryMode] = useState<EntryMode | null>(null);
   const [phase, setPhase] = useState<Phase>('input');
   const [activeTab, setActiveTab] = useState(scriptTabs[0]!.id);
@@ -346,6 +363,60 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
   const [analyzeStage, setAnalyzeStage] = useState('');
   const [selectedAnalyzeIdeaIndex, setSelectedAnalyzeIdeaIndex] = useState<number | null>(null);
   const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
+  const [recentNotes, setRecentNotes] = useState<RecentNoteItem[]>([]);
+  const [isLoadingRecentNotes, setIsLoadingRecentNotes] = useState(false);
+  const [recentNotesError, setRecentNotesError] = useState<string | null>(null);
+  const [recentNoteSelection, setRecentNoteSelection] = useState<string | null>(null);
+
+  const resolveAuthToken = useCallback(async (): Promise<string | null> => {
+    if (!auth) return null;
+
+    try {
+      const maybeAuthStateReady = (auth as unknown as { authStateReady?: () => Promise<void> }).authStateReady;
+      if (typeof maybeAuthStateReady === 'function') {
+        try {
+          await maybeAuthStateReady.call(auth);
+        } catch (readyError) {
+          console.warn('⚠️ [WritingRedesign] authStateReady check failed', readyError);
+        }
+      }
+
+      if (auth.currentUser) {
+        return await auth.currentUser.getIdToken();
+      }
+
+      return await new Promise<string | null>((resolve) => {
+        let resolved = false;
+        let unsubscribe: (() => void) | null = null;
+
+        const finalize = (token: string | null) => {
+          if (resolved) return;
+          resolved = true;
+          if (unsubscribe) unsubscribe();
+          resolve(token);
+        };
+
+        const timeoutId = setTimeout(() => finalize(null), 5000);
+
+        unsubscribe = onAuthStateChanged(
+          auth,
+          async (user) => {
+            clearTimeout(timeoutId);
+            const token = user ? await user.getIdToken().catch(() => null) : null;
+            finalize(token);
+          },
+          (listenerError) => {
+            clearTimeout(timeoutId);
+            console.warn('⚠️ [WritingRedesign] Auth listener error while resolving token', listenerError);
+            finalize(null);
+          },
+        );
+      });
+    } catch (tokenError) {
+      console.warn('⚠️ [WritingRedesign] Unexpected error resolving auth token', tokenError);
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -404,6 +475,79 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const loadRecentNotes = async () => {
+      setIsLoadingRecentNotes(true);
+      setRecentNotesError(null);
+      try {
+        const token = await resolveAuthToken();
+        if (!token) {
+          setRecentNotesError('Sign in to load recent notes.');
+          return;
+        }
+
+        const headers: Record<string, string> = {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+          'X-Client': 'writing-redesign-notes',
+        };
+
+        const response = await fetch('/api/notes', {
+          method: 'GET',
+          headers,
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          const message = await response.text().catch(() => '');
+          throw new Error(message || `Failed to load notes (${response.status})`);
+        }
+
+        const data = await response.json().catch(() => null);
+        const notesArray: any[] = Array.isArray(data?.notes) ? data.notes : [];
+        const mapped: RecentNoteItem[] = notesArray.slice(0, 12).map((note) => ({
+          id: String(note?.id ?? ''),
+          title: (note?.title && typeof note.title === 'string') ? note.title : 'Untitled note',
+          content: typeof note?.content === 'string'
+            ? note.content
+            : note?.content
+              ? JSON.stringify(note.content)
+              : '',
+          updatedAt: typeof note?.updatedAt === 'string' ? note.updatedAt : undefined,
+        })).filter((item) => item.id);
+
+        if (isMounted) {
+          setRecentNotes(mapped);
+        }
+      } catch (error) {
+        if (!isMounted || (error instanceof DOMException && error.name === 'AbortError')) {
+          return;
+        }
+        const message = error instanceof Error ? error.message : 'Failed to load recent notes.';
+        setRecentNotesError(message);
+      } finally {
+        if (isMounted) {
+          setIsLoadingRecentNotes(false);
+        }
+      }
+    };
+
+    loadRecentNotes().catch((error) => {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        console.error('Failed to load recent notes', error);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [resolveAuthToken]);
+
   const brandVoiceOptions = useMemo<GcDashDropdownOption[]>(() => {
     if (!brandVoices.length) {
       return [{ value: DEFAULT_BRAND_VOICE_ID, label: DEFAULT_BRAND_VOICE_NAME }];
@@ -455,6 +599,7 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
       setLastRequest(null);
       setLastScriptContent('');
       setCurrentNotesDraft('');
+      setRecentNoteSelection(null);
     }
     if (entryMode !== 'inspiration') {
       setAnalyzeResult(null);
@@ -517,6 +662,32 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
     return '';
   }, [generatedComponents, lastScriptContent]);
 
+  const recentNoteOptions = useMemo<GcDashDropdownOption[]>(() => {
+    if (isLoadingRecentNotes) {
+      return [{ value: 'loading', label: 'Loading notes…', disabled: true }];
+    }
+    if (!recentNotes.length) {
+      return [{ value: 'empty', label: 'No recent notes found', disabled: true }];
+    }
+
+    return recentNotes.map((note) => {
+      const snippet = note.content.trim().replace(/\s+/g, ' ').slice(0, 60);
+      const subtitle = snippet.length < note.content.trim().length ? `${snippet}…` : snippet;
+      const timestamp = note.updatedAt ? new Date(note.updatedAt).toLocaleDateString() : '';
+      const labelParts = [note.title || 'Untitled note'];
+      if (subtitle) {
+        labelParts.push(subtitle);
+      }
+      if (timestamp) {
+        labelParts.push(timestamp);
+      }
+      return {
+        value: note.id,
+        label: labelParts.join(' • '),
+      } satisfies GcDashDropdownOption;
+    });
+  }, [isLoadingRecentNotes, recentNotes]);
+
   const handleGenerate = () => {
     setPhase('generating');
   };
@@ -568,56 +739,6 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
         'X-Client': 'writing-redesign',
       };
 
-      const resolveAuthToken = async (): Promise<string | null> => {
-        if (!auth) return null;
-
-        try {
-          const maybeAuthStateReady = (auth as unknown as { authStateReady?: () => Promise<void> }).authStateReady;
-          if (typeof maybeAuthStateReady === 'function') {
-            try {
-              await maybeAuthStateReady.call(auth);
-            } catch (readyError) {
-              console.warn('⚠️ [WritingRedesign] authStateReady check failed', readyError);
-            }
-          }
-
-          if (auth.currentUser) {
-            return await auth.currentUser.getIdToken();
-          }
-
-          return await new Promise<string | null>((resolve) => {
-            let resolved = false;
-            let unsubscribe: (() => void) | null = null;
-
-            const finalize = (token: string | null) => {
-              if (resolved) return;
-              resolved = true;
-              if (unsubscribe) unsubscribe();
-              resolve(token);
-            };
-
-            const timeoutId = setTimeout(() => finalize(null), 5000);
-
-            unsubscribe = onAuthStateChanged(
-              auth,
-              async (user) => {
-                clearTimeout(timeoutId);
-                const token = user ? await user.getIdToken().catch(() => null) : null;
-                finalize(token);
-              },
-              (listenerError) => {
-                clearTimeout(timeoutId);
-                console.warn('⚠️ [WritingRedesign] Auth listener error while resolving token', listenerError);
-                finalize(null);
-              },
-            );
-          });
-        } catch (tokenError) {
-          console.warn('⚠️ [WritingRedesign] Unexpected error resolving auth token', tokenError);
-          return null;
-        }
-      };
-
       try {
         const token = await resolveAuthToken();
         if (token) {
@@ -652,7 +773,7 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
       console.error('❌ [WritingRedesign] Persisting script failed', error);
       return null;
     }
-  }, [brandVoices]);
+  }, [brandVoices, resolveAuthToken]);
 
   const handleOpenEditor = useCallback(async () => {
     if (!lastRequest || !generatedComponents || !lastScriptContent) {
@@ -665,6 +786,22 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
 
     try {
       const title = deriveScriptTitle(lastRequest.prompt);
+      const brandVoiceForRequest = lastRequest.brandVoiceId
+        ? brandVoices.find((item) => item.id === lastRequest.brandVoiceId) ?? selectedBrandVoice
+        : selectedBrandVoice;
+
+      if (onLaunchScriptFlow) {
+        await onLaunchScriptFlow({
+          request: lastRequest,
+          scriptContent: lastScriptContent,
+          mappedLength: lastMappedLength,
+          components: generatedComponents,
+          title,
+          brandVoice: brandVoiceForRequest,
+        });
+        return;
+      }
+
       const savedScript = await persistGeneratedScript({
         request: lastRequest,
         scriptContent: lastScriptContent,
@@ -700,7 +837,16 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
     } finally {
       setIsPersistingScript(false);
     }
-  }, [generatedComponents, lastMappedLength, lastRequest, lastScriptContent, persistGeneratedScript]);
+  }, [
+    brandVoices,
+    generatedComponents,
+    lastMappedLength,
+    lastRequest,
+    lastScriptContent,
+    onLaunchScriptFlow,
+    persistGeneratedScript,
+    selectedBrandVoice,
+  ]);
 
   const handleSubmitNotes = useCallback(async () => {
     const trimmedNotes = notesInput.trim();
@@ -736,6 +882,7 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
       };
 
       const scriptContent = formatScriptForEditor(components);
+      const title = deriveScriptTitle(trimmedNotes);
       const request: AIGenerationRequest = {
         prompt: trimmedNotes,
         aiModel: 'creative',
@@ -753,12 +900,28 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
       setLastMappedLength(mappedLength);
       setPhase('result');
       setProgress(100);
+
+      if (onLaunchScriptFlow) {
+        try {
+          await onLaunchScriptFlow({
+            request,
+            scriptContent,
+            mappedLength,
+            components,
+            title,
+            brandVoice: selectedBrandVoice,
+          });
+        } catch (error) {
+          console.error('❌ [WritingRedesign] Failed to launch script flow from notes', error);
+          setLocalError('We drafted your script, but opening the editor failed. Try again.');
+        }
+      }
     } else {
       setPhase('input');
       setProgress(0);
       setLocalError(response.error ?? 'We could not generate a script this time. Please try again.');
     }
-  }, [generateScript, length, notesInput, selectedBrandVoice]);
+  }, [generateScript, length, notesInput, onLaunchScriptFlow, selectedBrandVoice]);
 
   const handleAnalyzeClip = useCallback(async () => {
     const trimmedUrl = inspirationUrl.trim();
@@ -848,9 +1011,10 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
               throw new Error(parsed?.error || 'Idea generation was unsuccessful.');
             }
             const ideas: IdeaSeed[] = Array.isArray(parsed.ideas) ? parsed.ideas : [];
-            setAnalyzeIdeas(ideas);
+            const sanitizedIdeas = ideas.map((idea) => ({ ...idea, cta: undefined }));
+            setAnalyzeIdeas(sanitizedIdeas);
             setAnalyzeMeta(parsed.meta ?? null);
-            setAnalyzeRawIdeasJson(JSON.stringify(ideas, null, 2));
+            setAnalyzeRawIdeasJson(JSON.stringify(sanitizedIdeas, null, 2));
             setAnalyzeResult((prev) =>
               prev ? { ...prev, ideaCount: ideas.length } : prev,
             );
@@ -932,9 +1096,10 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
               throw new Error(parsed?.error || 'Idea generation was unsuccessful.');
             }
             const ideas: IdeaSeed[] = Array.isArray(parsed.ideas) ? parsed.ideas : [];
-            setAnalyzeIdeas(ideas);
+            const sanitizedIdeas = ideas.map((idea) => ({ ...idea, cta: undefined }));
+            setAnalyzeIdeas(sanitizedIdeas);
             setAnalyzeMeta(parsed.meta ?? null);
-            setAnalyzeRawIdeasJson(JSON.stringify(ideas, null, 2));
+            setAnalyzeRawIdeasJson(JSON.stringify(sanitizedIdeas, null, 2));
             setAnalyzeResult((prev) =>
               prev ? { ...prev, ideaCount: ideas.length } : prev,
             );
@@ -1437,14 +1602,40 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
                   onSelect={(value) => setLength(value)}
                 />
               </label>
+              <label css={css`display: grid; gap: 6px; min-width: 220px; font-size: 13px; color: rgba(9, 30, 66, 0.75);`}>
+                Recent notes
+                <GcDashDropdown
+                  label="Recent notes"
+                  options={recentNoteOptions}
+                  selectedValue={recentNoteSelection ?? undefined}
+                  onSelect={(value) => {
+                    if (value === 'loading' || value === 'empty') return;
+                    setRecentNoteSelection(value);
+                    const matched = recentNotes.find((note) => note.id === value);
+                    if (matched) {
+                      setNotesInput(matched.content);
+                    }
+                  }}
+                  disabled={isLoadingRecentNotes || !recentNotes.length}
+                />
+              </label>
             </div>
+            {recentNotesError && (
+              <span css={analyzeErrorStyles}>{recentNotesError}</span>
+            )}
             <div
               css={css`
                 display: flex;
                 gap: 12px;
               `}
             >
-              <GcDashButton variant="ghost" onClick={() => setNotesInput('')}>
+              <GcDashButton
+                variant="ghost"
+                onClick={() => {
+                  setNotesInput('');
+                  setRecentNoteSelection(null);
+                }}
+              >
                 Clear
               </GcDashButton>
               <GcDashButton onClick={handleSubmitNotes} isLoading={isGenerating}>

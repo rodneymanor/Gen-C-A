@@ -17,7 +17,8 @@ import MediaServicesPresentationIcon from '@atlaskit/icon/glyph/media-services/p
 import VideoFilledIcon from '@atlaskit/icon/glyph/video-filled';
 import ImageIcon from '@atlaskit/icon/glyph/image';
 import type { Platform, ViralVideo } from '../types';
-import { fetchMockVideos, PLATFORM_EMOJI, PLATFORM_LABELS } from '../constants/feed';
+import { PLATFORM_EMOJI, PLATFORM_LABELS } from '../constants/feed';
+import { fetchViralFeed } from '../api';
 import {
   pageContainerStyles,
   shellStyles,
@@ -92,7 +93,7 @@ export const ViralContentRoot: React.FC = () => {
   const loadPage = useCallback(async () => {
     if (isLoading || !hasMore) return;
     setIsLoading(true);
-    const { items, hasMore: nextHasMore } = await fetchMockVideos(page, platform, searchQuery);
+    const { items, hasMore: nextHasMore } = await fetchViralFeed(page, platform, searchQuery);
     setVideos((prev) => (page === 0 ? items : [...prev, ...items]));
     setHasMore(nextHasMore);
     setIsLoading(false);

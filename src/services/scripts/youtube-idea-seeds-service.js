@@ -264,7 +264,9 @@ function sanitizeIdeaSeed(seed) {
     }
   }
 
-  if (Array.isArray(clone.mechanismOrSteps)) {
+  if (clone.mechanismOrSteps == null) {
+    delete clone.mechanismOrSteps;
+  } else if (Array.isArray(clone.mechanismOrSteps)) {
     const cleaned = clone.mechanismOrSteps
       .filter((entry) => typeof entry === 'string' && entry.trim())
       .map((entry) => entry.trim())

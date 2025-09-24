@@ -29,6 +29,7 @@ import AddIcon from '@atlaskit/icon/glyph/add';
 import RefreshIcon from '@atlaskit/icon/glyph/refresh';
 import EditIcon from '@atlaskit/icon/glyph/edit';
 import TrashIcon from '@atlaskit/icon/glyph/trash';
+import DocumentIcon from '@atlaskit/icon/glyph/document';
 import type { ContentType } from '../types';
 import { useLibrary } from '../hooks/useLibrary';
 import { getEditorPath } from '../utils/editorNavigation';
@@ -230,6 +231,74 @@ const tagSurfaceStyles = css`
   border: 1px solid rgba(9, 30, 66, 0.1);
   background: rgba(11, 92, 255, 0.04);
   color: rgba(9, 30, 66, 0.75);
+`;
+
+const primaryActionSurfaceStyles = css`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 28px 32px;
+  border-radius: 24px;
+  border: 1px solid rgba(11, 92, 255, 0.24);
+  background: linear-gradient(135deg, rgba(11, 92, 255, 0.12), rgba(11, 92, 255, 0.03));
+  box-shadow: 0 22px 40px rgba(11, 92, 255, 0.14);
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+    justify-items: flex-start;
+  }
+`;
+
+const primaryActionCopyStyles = css`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 520px;
+
+  h2 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: rgba(9, 30, 66, 0.95);
+  }
+
+  p {
+    margin: 0;
+    font-size: 15px;
+    color: rgba(9, 30, 66, 0.72);
+  }
+`;
+
+const primaryActionButtonsStyles = css`
+  display: inline-flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+
+  @media (max-width: 900px) {
+    width: 100%;
+    justify-content: flex-start;
+  }
+`;
+
+const ctaButtonStyles = css`
+  position: relative;
+  display: inline-flex;
+  border-radius: 999px;
+  box-shadow: 0 18px 36px rgba(11, 92, 255, 0.16);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 999px;
+    background: radial-gradient(circle at top, rgba(11, 92, 255, 0.24), transparent 65%);
+    z-index: -1;
+  }
 `;
 
 const contentLayoutStyles = css`
@@ -648,6 +717,14 @@ export const LibraryRoot: React.FC = () => {
     navigate('/write');
   }, [navigate]);
 
+  const handleCreateNote = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set('title', 'New note');
+    params.set('content', '');
+    params.set('source', 'library');
+    navigate({ pathname: '/editor', search: `?${params.toString()}` });
+  }, [navigate]);
+
   const recentScriptOptions = useMemo(() => {
     return recentScripts.map((script) => ({
       value: script.id,
@@ -680,22 +757,40 @@ export const LibraryRoot: React.FC = () => {
         disabled: false,
       },
       {
-        id: 'open-latest',
-        label: recentScripts[0]
-          ? `Jump back into “${recentScripts[0]!.title}”`
-          : 'Jump back into your latest script',
-        caption: recentScripts[0]
-          ? `Updated ${formatRelativeTime(recentScripts[0]!.updated)}`
-          : 'We’ll surface your newest script once the library syncs.',
-        onClick: recentScripts[0]
-          ? () => {
-              handleOpenEditor(recentScripts[0]!);
-            }
-          : undefined,
-        disabled: !recentScripts[0],
+        id: 'new-note',
+        label: 'Capture a new note',
+        caption: 'Drop research, hooks, or ideas into the note pad — it auto-saves to your library.',
+        onClick: handleCreateNote,
+        disabled: false,
       },
     ],
-    [handleWriteScript, recentScripts, handleOpenEditor]
+    [handleWriteScript, handleCreateNote]
+  );
+
+  const recentNotes = useMemo(() => {
+    return content
+      .filter((item) => item.type === 'note')
+      .slice()
+      .sort((a, b) => b.updated.getTime() - a.updated.getTime())
+      .slice(0, 10);
+  }, [content]);
+
+  const recentNoteOptions = useMemo(() => {
+    return recentNotes.map((note) => ({
+      value: note.id,
+      label: truncate(note.title, 54),
+      description: `Updated ${formatRelativeTime(note.updated)}`,
+    }));
+  }, [recentNotes]);
+
+  const handleSelectRecentNote = useCallback(
+    (value: string) => {
+      const note = recentNotes.find((item) => item.id === value);
+      if (note) {
+        handleOpenEditor(note);
+      }
+    },
+    [handleOpenEditor, recentNotes]
   );
 
   const handlePreviousNav = () => navigate('/collections');
@@ -818,9 +913,54 @@ export const LibraryRoot: React.FC = () => {
                     width: 100%;
                   `}
                 />
+                <GcDashDropdown
+                  label="Recent notes"
+                  placeholder={recentNoteOptions.length ? 'Open a recent note' : 'No notes yet'}
+                  options={recentNoteOptions}
+                  onSelect={handleSelectRecentNote}
+                  disabled={recentNoteOptions.length === 0}
+                  align="start"
+                  css={css`
+                    width: 100%;
+                  `}
+                />
               </div>
             </GcDashCardBody>
           </GcDashCard>
+        </section>
+
+        <section css={primaryActionSurfaceStyles}>
+          <div css={primaryActionCopyStyles}>
+            <GcDashLabel tone="primary" variant="soft" uppercase={false}>
+              Quick capture
+            </GcDashLabel>
+            <h2>Capture the next piece before the spark fades</h2>
+            <p>
+              Stay in flow by jotting a research note or launching a fresh script right from the library dashboard.
+            </p>
+          </div>
+          <div css={primaryActionButtonsStyles}>
+            <div css={ctaButtonStyles}>
+              <GcDashButton
+                variant="secondary"
+                size="lg"
+                leadingIcon={<DocumentIcon label="" />}
+                onClick={handleCreateNote}
+              >
+                Capture a new note
+              </GcDashButton>
+            </div>
+            <div css={ctaButtonStyles}>
+              <GcDashButton
+                variant="primary"
+                size="lg"
+                leadingIcon={<AddIcon label="" />}
+                onClick={handleWriteScript}
+              >
+                Draft a new script
+              </GcDashButton>
+            </div>
+          </div>
         </section>
 
         {topTags.length > 0 && (
@@ -865,14 +1005,6 @@ export const LibraryRoot: React.FC = () => {
               }}
             >
               Refresh
-            </GcDashButton>
-            <GcDashButton
-              variant="primary"
-              size="sm"
-              leadingIcon={<AddIcon label="" />}
-              onClick={handleWriteScript}
-            >
-              New script
             </GcDashButton>
           </div>
         </div>

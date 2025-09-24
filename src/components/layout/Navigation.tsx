@@ -36,7 +36,6 @@ const navigationData: NavigationSection[] = [
       { path: '/collections', label: 'Collections', icon: <FolderIcon label="Collections" /> },
       { path: '/viral-content', label: 'Viral Feed', icon: <VideoFilledIcon label="Viral Feed" /> },
       { path: '/library', label: 'Library', icon: <BookIcon label="Library" /> },
-      { path: '/youtube-ideas', label: 'YouTube Seeds', icon: <GraphLineIcon label="YouTube Seeds" /> },
     ]
   },
   {

@@ -23,4 +23,6 @@ export interface ViralVideo {
   publishedAt: string;
   type: VideoLength;
   metrics: ViralMetric[];
+  isNew?: boolean;
+  firstSeenAt?: string;
 }

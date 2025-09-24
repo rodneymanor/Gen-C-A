@@ -347,6 +347,10 @@ const pinnedTitleStyles = css`
   white-space: nowrap;
   flex: 1;
   min-width: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
 `;
 
 const pinnedDescriptionStyles = css`
@@ -377,6 +381,14 @@ const pinnedHeaderStyles = css`
   gap: 4px;
   width: 100%;
   min-height: 16px;
+`;
+
+const pinnedIconStyles = css`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  width: 16px;
 `;
 
 const defaultMetaColorStyles = css`
@@ -1288,6 +1300,7 @@ export const CollectionsRoot: React.FC = () => {
       <GcDashCard
         key={collection.id}
         interactive
+        bleed={isPinned}
         onClick={() => handleViewCollection(collection)}
         css={cardStyles.length > 0 ? cardStyles : undefined}
       >
@@ -1295,7 +1308,9 @@ export const CollectionsRoot: React.FC = () => {
           {isPinned ? (
             <>
               <div css={pinnedHeaderStyles}>
-                <StarFilledIcon label="Pinned collection" size="small" />
+                <span css={pinnedIconStyles}>
+                  <StarFilledIcon label="Pinned collection" size="small" />
+                </span>
                 <GcDashCardTitle css={pinnedTitleStyles}>{collection.name}</GcDashCardTitle>
               </div>
               <GcDashCardSubtitle css={pinnedDescriptionStyles}>
