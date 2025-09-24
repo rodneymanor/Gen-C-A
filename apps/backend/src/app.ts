@@ -14,6 +14,7 @@ import { creatorLookupRouter } from './routes/creator-lookup';
 import { brandVoicesRouter } from './routes/brand-voices';
 import { extensionRouter } from './routes/extension/index.js';
 import { keysRouter } from './routes/keys.js';
+import { viralContentRouter } from './routes/viral-content';
 
 export function createApp() {
   const app = express();
@@ -55,6 +56,7 @@ export function createApp() {
   app.use('/api/creator', creatorLookupRouter);
   app.use('/api/brand-voices', brandVoicesRouter);
   app.use('/api/chrome-extension', extensionRouter);
+  app.use('/api/viral-content', viralContentRouter);
 
   return app;
 }

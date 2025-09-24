@@ -13,8 +13,8 @@ echo "⏳ Waiting for processes to terminate..."
 sleep 3
 
 # Clear any potential port conflicts
-echo "🧹 Clearing ports 3000-3004..."
-lsof -ti:3000,3001,3002,3003,3004 | xargs kill -9 2>/dev/null || true
+echo "🧹 Clearing ports 3000-3004 & 5000-5004..."
+lsof -ti:3000,3001,3002,3003,3004,5000,5001,5002,5003,5004 | xargs kill -9 2>/dev/null || true
 
 # Wait a bit more to ensure ports are freed
 sleep 2

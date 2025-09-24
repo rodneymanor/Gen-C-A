@@ -13,10 +13,11 @@ import {
   GcDashLabel,
 } from '@/components/gc-dash';
 import { ViralClipCard } from './ViralClipCard';
-import AddIcon from '@atlaskit/icon/glyph/add';
+import { AddViralVideoModal } from './AddViralVideoModal';
 import MediaServicesPresentationIcon from '@atlaskit/icon/glyph/media-services/presentation';
 import VideoFilledIcon from '@atlaskit/icon/glyph/video-filled';
 import ImageIcon from '@atlaskit/icon/glyph/image';
+import PersonIcon from '@atlaskit/icon/glyph/person';
 import type { Platform, ViralVideo } from '../types';
 import { PLATFORM_EMOJI, PLATFORM_LABELS } from '../constants/feed';
 import { fetchViralFeed } from '../api';
@@ -33,6 +34,11 @@ import {
   gridStyles,
   masonrySentinelStyles,
 } from './styles';
+
+const SUPPORTED_PLATFORMS: ReadonlyArray<Exclude<Platform, 'all'>> = ['instagram', 'tiktok', 'youtube'];
+
+const isSupportedPlatform = (value: Platform): value is Exclude<Platform, 'all'> =>
+  SUPPORTED_PLATFORMS.includes(value as Exclude<Platform, 'all'>);
 
 const skeletonStyles = css`
   border-radius: 20px;
@@ -63,6 +69,8 @@ export const ViralContentRoot: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const [isAddVideoOpen, setIsAddVideoOpen] = useState(false);
+  const [isAddingVideo, setIsAddingVideo] = useState(false);
 
   const platformOptions = useMemo(
     () => [
@@ -139,6 +147,39 @@ export const ViralContentRoot: React.FC = () => {
     console.log('add-to-project', video.id);
   }, []);
 
+  const ensureSupportedPlatform = useCallback(() => {
+    if (!isSupportedPlatform(platform)) {
+      return null;
+    }
+    return platform;
+  }, [platform]);
+
+  const reloadFirstPage = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { items, hasMore: nextHasMore } = await fetchViralFeed(0, platform, searchQuery);
+      setVideos(items);
+      setHasMore(nextHasMore);
+      setPage(1);
+    } catch (error) {
+      console.warn('Failed to refresh viral content', error);
+      setHasMore(false);
+    } finally {
+      setIsLoading(false);
+      setIsAddingVideo(false);
+    }
+  }, [platform, searchQuery]);
+
+  const handleAddVideo = useCallback(() => {
+    setIsAddVideoOpen(true);
+  }, []);
+
+  const handleAddCreator = useCallback(() => {
+    const currentPlatform = ensureSupportedPlatform();
+    if (!currentPlatform) return;
+    console.log('add-creator', { platform: currentPlatform });
+  }, [ensureSupportedPlatform]);
+
   const handlePreviousNav = () => navigate('/dashboard');
   const handleNextNav = () => navigate('/collections');
 
@@ -202,18 +243,25 @@ export const ViralContentRoot: React.FC = () => {
               </div>
             </div>
             <div css={controlsRightStyles}>
+      <GcDashButton
+        variant="primary"
+        leadingIcon={<VideoFilledIcon label="" />}
+        onClick={handleAddVideo}
+      >
+                Add video
+              </GcDashButton>
               <GcDashButton
-                variant="primary"
-                leadingIcon={<AddIcon label="" />}
-                onClick={() => navigate('/collections')}
+                variant="secondary"
+                leadingIcon={<PersonIcon label="" />}
+                onClick={handleAddCreator}
               >
-                Save to collection
+                Add creator
               </GcDashButton>
             </div>
           </GcDashCardBody>
         </GcDashCard>
 
-        {videos.length === 0 && !isLoading ? (
+        {videos.length === 0 && !isLoading && !isAddingVideo ? (
           <GcDashBlankSlate
             title="Nothing viral matched that filter"
             description="Try switching platforms or clearing your search to bring back today’s feed."
@@ -236,6 +284,7 @@ export const ViralContentRoot: React.FC = () => {
           />
         ) : (
           <section css={gridStyles}>
+            {isAddingVideo && <GcDashCard key="manual-add-skeleton" css={skeletonStyles} />}
             {videos.map((video) => (
               <ViralClipCard
                 key={video.id}
@@ -313,6 +362,13 @@ export const ViralContentRoot: React.FC = () => {
           </GcDashBlankSlate>
         )}
       </div>
+      <AddViralVideoModal
+        open={isAddVideoOpen}
+        onClose={() => setIsAddVideoOpen(false)}
+        onSubmitStart={() => setIsAddingVideo(true)}
+        onSubmitEnd={() => setIsAddingVideo(false)}
+        onSuccess={reloadFirstPage}
+      />
     </div>
   );
 };

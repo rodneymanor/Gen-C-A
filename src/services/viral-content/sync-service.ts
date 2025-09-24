@@ -3,11 +3,13 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { fetchVideosForCreator } from './fetchers';
 import { TRACKED_CREATORS } from './config';
 import { ViralContentRepository } from './repository';
+import { fetchVideoDetailsFromUrl } from './manual-fetchers';
 import type {
   NormalizedViralVideo,
   SyncPerCreatorSummary,
   SyncSummary,
   TrackedCreator,
+  ViralPlatform,
 } from './types';
 
 function formatSyncDate(date: Date): string {
@@ -47,6 +49,10 @@ export class ViralContentSyncService {
     }
     this.repository = new ViralContentRepository({ db });
     this.creators = creators;
+  }
+
+  getCreatorBySlug(slug: string): TrackedCreator | undefined {
+    return this.creators.find((creator) => creator.slug.toLowerCase() === slug.toLowerCase());
   }
 
   async syncAll(options: {
@@ -197,6 +203,35 @@ export class ViralContentSyncService {
     return this.repository.upsertVideo(video, {
       bunnyUrl: bunnyUrl ?? undefined,
       syncDate,
+    });
+  }
+
+  async addVideoFromUrl(payload: { platform: ViralPlatform; videoUrl: string }) {
+    const { platform, videoUrl } = payload;
+
+    const details = await fetchVideoDetailsFromUrl({ platform, videoUrl });
+
+    const creatorSlug = details.creator.slug || `${platform}-${details.platformVideoId}`;
+
+    return this.addManualVideo({
+      platform,
+      creatorSlug,
+      creatorName: details.creator.displayName,
+      platformVideoId: details.platformVideoId,
+      url: details.url,
+      title: details.title,
+      description: details.description,
+      thumbnailUrl: details.thumbnailUrl,
+      publishedAt: details.publishedAt,
+      metrics: {
+        views: details.metrics.views,
+        likes: details.metrics.likes,
+        comments: details.metrics.comments,
+        shares: details.metrics.shares,
+        followers: details.metrics.followers,
+      },
+      raw: details.raw,
+      creatorPlatformId: details.creator.platformId,
     });
   }
 }
