@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 let db: Firestore | null = null;
+let settingsApplied = false;
 
 export function getAdminDb(): Firestore | null {
   try {
@@ -51,8 +52,10 @@ export function getAdminDb(): Firestore | null {
     }
 
     db = getFirestore();
-    // Be tolerant of undefined fields
-    db.settings({ ignoreUndefinedProperties: true });
+    if (!settingsApplied) {
+      db.settings({ ignoreUndefinedProperties: true });
+      settingsApplied = true;
+    }
     return db;
   } catch (err) {
     console.error('[firebase-admin] init error:', err);
