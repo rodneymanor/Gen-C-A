@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { css } from '@emotion/react';
 import { useNavigate } from 'react-router-dom';
 import type { ContentItem } from '@/types';
@@ -12,7 +12,8 @@ import {
 import {
   GcDashPlanChip,
   GcDashNavButtons,
-  GcDashSearchBar,
+  GcDashHeader,
+  GcDashHeaderSearchInput,
   GcDashButton,
   GcDashCard,
   GcDashCardHeader,
@@ -55,25 +56,6 @@ const shellStyles = css`
   display: flex;
   flex-direction: column;
   gap: 32px;
-`;
-
-const headerRowStyles = css`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 24px;
-`;
-
-const headerLeftStyles = css`
-  display: inline-flex;
-  align-items: center;
-  gap: 16px;
-`;
-
-const searchBarStyles = css`
-  flex: 1;
-  min-width: 280px;
-  margin-left: auto;
 `;
 
 const filtersRowStyles = css`
@@ -634,6 +616,12 @@ export const LibraryRoot: React.FC = () => {
     refreshContent,
   } = useLibrary();
 
+  const [searchDraft, setSearchDraft] = useState(searchQuery);
+
+  useEffect(() => {
+    setSearchDraft(searchQuery);
+  }, [searchQuery]);
+
   useEffect(() => {
     if (!filteredContent.length) {
       selectItem(null);
@@ -799,26 +787,40 @@ export const LibraryRoot: React.FC = () => {
   return (
     <div css={pageContainerStyles}>
       <div css={shellStyles}>
-        <header css={headerRowStyles}>
-          <div css={headerLeftStyles}>
-            <GcDashPlanChip planName="Content library" info={headerInfo} highlighted />
-            <GcDashNavButtons onPrevious={handlePreviousNav} onNext={handleNextNav} />
-          </div>
-          <GcDashSearchBar
-            css={searchBarStyles}
-            placeholder="Search titles, descriptions, tags"
-            defaultValue={searchQuery}
-            submitLabel="Filter"
-            onSubmitSearch={(value) => setSearchQuery(value)}
-            filters={
-              searchQuery && (
-                <GcDashButton variant="ghost" size="sm" onClick={() => setSearchQuery('')}>
-                  Clear
-                </GcDashButton>
-              )
-            }
-          />
-        </header>
+        <GcDashHeader
+          leading={
+            <>
+              <GcDashPlanChip planName="Content library" info={headerInfo} highlighted />
+              <GcDashNavButtons onPrevious={handlePreviousNav} onNext={handleNextNav} />
+            </>
+          }
+          search={
+            <GcDashHeaderSearchInput
+              placeholder="Search titles, descriptions, tags"
+              ariaLabel="Search the content library"
+              value={searchDraft}
+              onValueChange={setSearchDraft}
+              onSearch={(value) => setSearchQuery(value)}
+              size="medium"
+            />
+          }
+          actions={
+            searchQuery
+              ? (
+                  <GcDashButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchDraft('');
+                    }}
+                  >
+                    Clear
+                  </GcDashButton>
+                )
+              : undefined
+          }
+        />
 
         <section css={heroRowStyles}>
           <GcDashCard>

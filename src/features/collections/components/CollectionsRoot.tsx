@@ -19,11 +19,12 @@ import {
   GcDashCardBody,
   GcDashCardSubtitle,
   GcDashCardTitle,
+  GcDashHeader,
+  GcDashHeaderSearchInput,
   GcDashInput,
   GcDashLabel,
   GcDashNavButtons,
   GcDashPlanChip,
-  GcDashSearchBar,
   GcDashTextArea,
 } from '../../../components/gc-dash';
 import { useDebugger, DEBUG_LEVELS } from '../../../utils/debugger';
@@ -50,19 +51,6 @@ const shellStyles = css`
   display: flex;
   flex-direction: column;
   gap: 32px;
-`;
-
-const headerRowStyles = css`
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
-`;
-
-const headerLeftStyles = css`
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
 `;
 
 
@@ -1733,26 +1721,24 @@ export const CollectionsRoot: React.FC = () => {
     <div css={pageContainerStyles}>
       {modals}
       <div css={shellStyles}>
-        <header css={headerRowStyles}>
-          <div css={headerLeftStyles}>
-            <GcDashPlanChip planName="Collections" info={headerInfo} highlighted />
-            <GcDashNavButtons
-              onPrevious={handlePreviousNav}
-              onNext={handleNextNav}
+        <GcDashHeader
+          leading={
+            <>
+              <GcDashPlanChip planName="Collections" info={headerInfo} highlighted />
+              <GcDashNavButtons onPrevious={handlePreviousNav} onNext={handleNextNav} />
+            </>
+          }
+          search={
+            <GcDashHeaderSearchInput
+              placeholder="Search collections and videos"
+              ariaLabel="Search collections and videos"
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+              onSearch={setSearchQuery}
+              size="medium"
             />
-          </div>
-          <GcDashSearchBar
-            placeholder="Search collections and videos"
-            submitLabel="Search"
-            defaultValue={searchQuery}
-            onSubmitSearch={(value) => setSearchQuery(value)}
-            css={css`
-              flex: 1;
-              max-width: 640px;
-              margin-left: auto;
-            `}
-          />
-        </header>
+          }
+        />
 
         {view === 'detail' && selectedCollection ? detailContent : gridContent}
       </div>

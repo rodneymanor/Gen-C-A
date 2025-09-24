@@ -13,7 +13,8 @@ import {
   GcDashInput,
   GcDashNavButtons,
   GcDashPlanChip,
-  GcDashSearchBar,
+  GcDashHeader,
+  GcDashHeaderSearchInput,
   GcDashTabs,
   GcDashTextArea,
   type GcDashTabItem,
@@ -1884,42 +1885,41 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
   return (
     <div css={containerStyles}>
       <div css={shellStyles}>
-        <header
-          css={css`
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 24px;
-          `}
-        >
-          <div css={css`display: inline-flex; align-items: center; gap: 12px;`}>
-            <GcDashPlanChip
-              planName="Writing workspace"
-              info={entryMode === 'suggestions' ? (phase === 'result' ? 'Draft ready' : 'Script builder') : 'Quick start'}
-              highlighted
-            />
-            <GcDashNavButtons
-              disablePrevious
-              onNext={() => {
-                if (onNavigateNext) {
-                  onNavigateNext();
-                } else {
-                  alert('Smooth transition to Viral Video Library view.');
+        <GcDashHeader
+          leading={
+            <>
+              <GcDashPlanChip
+                planName="Writing workspace"
+                info={
+                  entryMode === 'suggestions'
+                    ? phase === 'result'
+                      ? 'Draft ready'
+                      : 'Script builder'
+                    : 'Quick start'
                 }
-              }}
+                highlighted
+              />
+              <GcDashNavButtons
+                disablePrevious
+                onNext={() => {
+                  if (onNavigateNext) {
+                    onNavigateNext();
+                  } else {
+                    alert('Smooth transition to Viral Video Library view.');
+                  }
+                }}
+              />
+            </>
+          }
+          search={
+            <GcDashHeaderSearchInput
+              placeholder="Search ideas, drafts, @mentions"
+              ariaLabel="Search the writing workspace"
+              onSearch={() => undefined}
+              size="medium"
             />
-          </div>
-          <GcDashSearchBar
-            placeholder="Search ideas, drafts, @mentions"
-            submitLabel="Search"
-            onSubmitSearch={() => undefined}
-            css={css`
-              flex: 1;
-              max-width: 640px;
-              margin-left: auto;
-            `}
-          />
-        </header>
+          }
+        />
 
         <main css={mainColumnStyles}>
           <section

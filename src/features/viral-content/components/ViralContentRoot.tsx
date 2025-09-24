@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   GcDashPlanChip,
   GcDashNavButtons,
-  GcDashSearchBar,
+  GcDashHeader,
+  GcDashHeaderSearchInput,
   GcDashButton,
   GcDashCard,
   GcDashCardBody,
@@ -22,9 +23,6 @@ import { fetchViralFeed } from '../api';
 import {
   pageContainerStyles,
   shellStyles,
-  headerRowStyles,
-  headerLeftStyles,
-  headerRightStyles,
   heroStyles,
   heroTitleStyles,
   highlightRowStyles,
@@ -58,6 +56,7 @@ export const ViralContentRoot: React.FC = () => {
   const navigate = useNavigate();
   const [platform, setPlatform] = useState<Platform>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchDraft, setSearchDraft] = useState('');
   const [page, setPage] = useState(0);
   const [videos, setVideos] = useState<ViralVideo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,6 +78,10 @@ export const ViralContentRoot: React.FC = () => {
     const label = platform === 'all' ? 'All platforms' : PLATFORM_LABELS[platform];
     return `${videos.length} pieces · ${label}`;
   }, [videos.length, platform]);
+
+  useEffect(() => {
+    setSearchDraft(searchQuery);
+  }, [searchQuery]);
 
   const resetFeed = useCallback(() => {
     setVideos([]);
@@ -142,20 +145,24 @@ export const ViralContentRoot: React.FC = () => {
   return (
     <div css={pageContainerStyles}>
       <div css={shellStyles}>
-        <header css={headerRowStyles}>
-          <div css={headerLeftStyles}>
-            <GcDashPlanChip planName="Viral feed" info={resultSummary} highlighted />
-            <GcDashNavButtons onPrevious={handlePreviousNav} onNext={handleNextNav} />
-          </div>
-          <div css={headerRightStyles}>
-            <GcDashSearchBar
+        <GcDashHeader
+          leading={
+            <>
+              <GcDashPlanChip planName="Viral feed" info={resultSummary} highlighted />
+              <GcDashNavButtons onPrevious={handlePreviousNav} onNext={handleNextNav} />
+            </>
+          }
+          search={
+            <GcDashHeaderSearchInput
               placeholder="Search creators, hooks, formats"
-              defaultValue={searchQuery}
-              submitLabel="Search"
-              onSubmitSearch={(value) => setSearchQuery(value)}
+              ariaLabel="Search the viral feed"
+              value={searchDraft}
+              onValueChange={setSearchDraft}
+              onSearch={(value) => setSearchQuery(value)}
+              size="medium"
             />
-          </div>
-        </header>
+          }
+        />
 
         <section css={heroStyles}>
           <div css={heroTitleStyles}>
@@ -211,7 +218,13 @@ export const ViralContentRoot: React.FC = () => {
             title="Nothing viral matched that filter"
             description="Try switching platforms or clearing your search to bring back today’s feed."
             primaryAction={
-              <GcDashButton variant="primary" onClick={() => setSearchQuery('')}>
+              <GcDashButton
+                variant="primary"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSearchDraft('');
+                }}
+              >
                 Clear search
               </GcDashButton>
             }

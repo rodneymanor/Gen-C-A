@@ -23,28 +23,6 @@ export const shellStyles = css`
   gap: 32px;
 `;
 
-export const headerRowStyles = css`
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
-  justify-content: space-between;
-`;
-
-export const headerLeftStyles = css`
-  display: inline-flex;
-  align-items: center;
-  gap: 16px;
-`;
-
-export const headerRightStyles = css`
-  margin-left: auto;
-  flex: 1 1 320px;
-  display: flex;
-  justify-content: flex-end;
-  min-width: 280px;
-`;
-
 export const heroStyles = css`
   display: grid;
   gap: 20px;
