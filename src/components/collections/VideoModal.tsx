@@ -1,32 +1,43 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { css } from '@emotion/react';
-import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
-import { formatDuration, formatViewCount, formatRelativeTime, getPlatformIcon } from '../../utils/format';
-import type { ContentItem } from '../../types';
-import { token } from '@atlaskit/tokens';
-
-// Atlassian Design System Icons
 import CrossIcon from '@atlaskit/icon/glyph/cross';
-import ChevronUpIcon from '@atlaskit/icon/glyph/chevron-up';
-import ChevronDownIcon from '@atlaskit/icon/glyph/chevron-down';
 import VidPlayIcon from '@atlaskit/icon/glyph/vid-play';
 import PersonIcon from '@atlaskit/icon/glyph/person';
-import EyeIcon from '@atlaskit/icon/glyph/watch';
 import CopyIcon from '@atlaskit/icon/glyph/copy';
 import DownloadIcon from '@atlaskit/icon/glyph/download';
 
-export interface VideoModalProps {
-  isOpen: boolean;
-  video: ContentItem | null;
-  videos: ContentItem[];
-  onClose: () => void;
-  onNavigateVideo: (direction: 'prev' | 'next') => void;
-}
+import {
+  GcDashButton,
+  GcDashIconButton,
+  GcDashTabs,
+  GcDashLabel,
+  GcDashCard,
+  GcDashCardHeader,
+  GcDashCardTitle,
+  GcDashCardBody,
+  GcDashCardFooter,
+  GcDashCardSubtitle,
+  GcDashNavButtons,
+  GcDashBlankSlate,
+} from '../gc-dash';
+import type { GcDashLabelTone } from '../gc-dash';
+import { gcDashColor, gcDashShape, gcDashSpacing, gcDashTypography } from '../gc-dash/styleUtils';
+import {
+  formatDuration,
+  formatViewCount,
+  formatRelativeTime,
+  getPlatformIcon,
+  formatReadingTime,
+} from '../../utils/format';
+import type { ContentItem } from '../../types';
+
+type VideoModalTab = 'overview' | 'script' | 'transcript' | 'analysis';
+
+type ScriptComponentType = 'hook' | 'bridge' | 'golden_nugget' | 'call_to_action';
 
 interface ScriptComponent {
   id: string;
-  type: 'hook' | 'bridge' | 'golden_nugget' | 'call_to_action';
+  type: ScriptComponentType;
   label: string;
   content: string;
 }
@@ -41,667 +52,664 @@ interface VideoInsights {
   };
 }
 
-const modalOverlayStyles = css`
+export interface VideoModalProps {
+  isOpen: boolean;
+  video: ContentItem | null;
+  videos: ContentItem[];
+  onClose: () => void;
+  onNavigateVideo: (direction: 'prev' | 'next') => void;
+}
+
+const statusToneMap: Record<ContentItem['status'], GcDashLabelTone> = {
+  draft: 'warning',
+  published: 'success',
+  archived: 'neutral',
+};
+
+const scriptComponentMeta: Record<ScriptComponentType, { label: string; tone: GcDashLabelTone; icon: string }> = {
+  hook: { label: 'Hook', tone: 'primary', icon: '⚡️' },
+  bridge: { label: 'Bridge', tone: 'info', icon: '🌉' },
+  golden_nugget: { label: 'Golden Nugget', tone: 'success', icon: '✨' },
+  call_to_action: { label: 'WTA / CTA', tone: 'warning', icon: '🎯' },
+};
+
+const overlayStyles = css`
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: ${token('color.blanket', 'rgba(0, 0, 0, 0.8)')};
-  backdrop-filter: blur(4px);
-  z-index: 1000;
+  inset: 0;
+  background: rgba(5, 12, 30, 0.78);
+  backdrop-filter: blur(28px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-4);
-  
-  /* Prevent body scroll when modal is open */
-  overflow: hidden;
+  padding: clamp(16px, 3vw, 40px);
+  z-index: 1100;
 `;
 
-const modalContentStyles = css`
+const modalShellStyles = css`
   position: relative;
-  width: 100%;
-  height: 100%;
-  max-width: 1400px;
-  max-height: 900px;
-  background: ${token('color.background.default', 'white')};
-  border-radius: var(--radius-large);
+  width: min(1600px, 100%);
+  height: min(94vh, 960px);
+  border-radius: ${gcDashShape.radiusXl};
+  background: linear-gradient(145deg, rgba(11, 92, 255, 0.08) 0%, rgba(7, 19, 44, 0.04) 32%, #ffffff 100%);
+  box-shadow: 0 42px 120px rgba(2, 10, 28, 0.42);
   overflow: hidden;
-  display: flex;
-  box-shadow: var(--shadow-overlay);
-  
-  /* Mobile responsive */
-  @media (max-width: 768px) {
-    flex-direction: column;
-    max-height: 100vh;
-    border-radius: 0;
-  }
-`;
-
-const closeButtonStyles = css`
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  z-index: 10;
-  background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.9)')};
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--color-neutral-200);
-  border-radius: var(--radius-full);
-  padding: var(--space-2);
-  cursor: pointer;
-  transition: var(--transition-all);
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  &:hover {
-    background: var(--color-neutral-50);
-    transform: scale(1.05);
-  }
-`;
-
-const videoPlayerSectionStyles = css`
-  flex: 1;
   display: flex;
   flex-direction: column;
-  background: ${token('color.background.neutral.bold', 'black')};
-  position: relative;
-  min-height: 400px;
-  
-  @media (max-width: 768px) {
-    flex: none;
-    height: 50vh;
-    min-height: 300px;
+`;
+
+const topBarStyles = css`
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: ${gcDashSpacing.md};
+  padding: ${gcDashSpacing.md} ${gcDashSpacing.lg};
+  border-bottom: 1px solid rgba(9, 30, 66, 0.16);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(16px);
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+    align-items: flex-start;
   }
 `;
 
-const videoPlayerStyles = css`
-  flex: 1;
+const topBarInfoStyles = css`
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: ${gcDashSpacing.sm};
+  min-width: 0;
+
+  @media (max-width: 1024px) {
+    order: 1;
+  }
+`;
+
+const titleStyles = css`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+
+  h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.015em;
+    color: ${gcDashColor.textPrimary};
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: ${gcDashColor.textMuted};
+  }
+`;
+
+const headerRightStyles = css`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: ${gcDashSpacing.xs};
+
+  @media (max-width: 1024px) {
+    width: 100%;
+    align-items: stretch;
+    order: 2;
+  }
+`;
+
+const headerControlsRowStyles = css`
+  display: flex;
+  align-items: center;
+  gap: ${gcDashSpacing.sm};
+  justify-content: flex-end;
+
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+`;
+
+const tabSwitcherStyles = css`
+  width: auto;
+
+  > section[role='tabpanel'] {
+    display: none;
+  }
+
+  > div[role='tablist'] {
+    background: rgba(9, 30, 66, 0.08);
+    padding: 4px;
+    border-radius: ${gcDashShape.radiusLg};
+  }
+
+  button[role='tab'] {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 14px;
+  }
+`;
+
+const layoutStyles = css`
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(480px, 3fr) minmax(520px, 4fr);
+  gap: 0;
+  min-height: 0;
+
+  @media (max-width: 1280px) {
+    grid-template-columns: minmax(420px, 2.5fr) minmax(460px, 3.5fr);
+  }
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 45vh) minmax(0, 55vh);
+  }
+`;
+
+const videoPaneStyles = css`
   position: relative;
-  
-  .video-embed {
+  background: radial-gradient(circle at 18% 16%, rgba(11, 92, 255, 0.3), rgba(4, 14, 36, 0.92));
+  display: flex;
+  flex-direction: column;
+  padding: ${gcDashSpacing.lg};
+  gap: ${gcDashSpacing.md};
+  color: rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+`;
+
+const videoFrameStyles = css`
+  position: relative;
+  width: 100%;
+  flex: 1;
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.82);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+
+  iframe {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     border: none;
-    background: ${token('color.background.neutral.bold', 'black')};
-  }
-  
-  .video-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: ${token('color.text.inverse', 'white')};
-    text-align: center;
-    padding: var(--space-6);
-    
-    .placeholder-icon {
-      font-size: 64px;
-      margin-bottom: var(--space-4);
-      opacity: 0.7;
-    }
-    
-    .placeholder-text {
-      font-size: var(--font-size-h4);
-      font-weight: var(--font-weight-medium);
-      margin-bottom: var(--space-2);
-    }
-    
-    .placeholder-subtitle {
-      font-size: var(--font-size-body);
-      opacity: 0.8;
-    }
   }
 `;
 
-const navigationStripStyles = css`
-  width: 64px;
-  background: linear-gradient(
-    to bottom,
-    ${token('color.background.neutral.bold', 'rgba(0, 0, 0, 0.8)')} 0%,
-    ${token('color.background.neutral.bold', 'rgba(0, 0, 0, 0.6)')} 100%
-  );
-  backdrop-filter: blur(8px);
+const videoPlaceholderStyles = css`
+  height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-4);
-  border-left: 1px solid var(--color-neutral-700);
-  border-right: 1px solid var(--color-neutral-700);
-  
-  @media (max-width: 768px) {
-    display: none;
-  }
-  
-  .nav-button {
-    background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.1)')};
-    border: 1px solid ${token('color.border.inverse', 'rgba(255, 255, 255, 0.2)')};
-    border-radius: var(--radius-full);
-    padding: var(--space-3);
-    cursor: pointer;
-    transition: var(--transition-all);
-    color: ${token('color.text.inverse', 'white')};
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    &:hover {
-      background: ${token('color.background.neutral', 'rgba(255, 255, 255, 0.2)')};
-      transform: translateY(-2px);
-    }
-    
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      
-      &:hover {
-        transform: none;
-      }
-    }
-  }
+  gap: ${gcDashSpacing.sm};
+  text-align: center;
+  color: rgba(255, 255, 255, 0.88);
+  padding: ${gcDashSpacing.lg};
 `;
 
-const insightsPanelStyles = css`
-  width: 600px;
+const videoMetaStyles = css`
   display: flex;
   flex-direction: column;
-  background: ${token('color.background.default', 'white')};
-  border-left: 1px solid var(--color-neutral-200);
-  
-  @media (max-width: 768px) {
-    width: 100%;
-    border-left: none;
-    border-top: 1px solid var(--color-neutral-200);
-    flex: 1;
-  }
+  gap: ${gcDashSpacing.sm};
 `;
 
-const tabsStyles = css`
+const videoMetaChipsStyles = css`
   display: flex;
-  border-bottom: 1px solid var(--color-neutral-200);
-  padding: 0 var(--space-4);
-  background: ${token('color.background.subtle', 'var(--color-neutral-50)')};
-  
-  .tab {
-    padding: var(--space-3) var(--space-4);
-    border: none;
-    background: none;
-    font-size: var(--font-size-body-small);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-neutral-600);
-    cursor: pointer;
-    transition: var(--transition-all);
-    border-bottom: 2px solid transparent;
-    white-space: nowrap;
-    
-    &:hover {
-      color: var(--color-neutral-800);
-      background: var(--color-neutral-100);
-    }
-    
-    &.active {
-      color: var(--color-primary-600);
-      border-bottom-color: var(--color-primary-500);
-      background: ${token('color.background.default', 'white')};
-    }
+  flex-wrap: wrap;
+  gap: ${gcDashSpacing.xs};
+`;
+
+const rightPaneStyles = css`
+  background: ${gcDashColor.surface};
+  padding: ${gcDashSpacing.lg};
+  display: flex;
+  flex-direction: column;
+  gap: ${gcDashSpacing.md};
+  overflow: hidden;
+`;
+
+const actionBarStyles = css`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${gcDashSpacing.sm};
+  align-items: center;
+`;
+
+const scrollRegionStyles = css`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: ${gcDashSpacing.lg};
+`;
+
+const metricBadgeStyles = css`
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 132px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(11, 92, 255, 0.08);
+  color: ${gcDashColor.textPrimary};
+  border: 1px solid rgba(11, 92, 255, 0.18);
+
+  span.metric-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: ${gcDashColor.textMuted};
+  }
+
+  span.metric-value {
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
   }
 `;
 
-const panelContentStyles = css`
-  flex: 1;
-  padding: var(--space-4);
-  overflow-y: auto;
-  
-  .video-meta {
-    margin-bottom: var(--space-4);
-    
-    .video-title {
-      font-size: var(--font-size-h4);
-      font-weight: var(--font-weight-semibold);
-      color: var(--color-neutral-800);
-      margin: 0 0 var(--space-2) 0;
-      line-height: var(--line-height-tight);
-    }
-    
-    .creator-info {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      margin-bottom: var(--space-2);
-      font-size: var(--font-size-body);
-      color: var(--color-neutral-700);
-    }
-    
-    .video-stats {
-      display: flex;
-      align-items: center;
-      gap: var(--space-4);
-      font-size: var(--font-size-body-small);
-      color: var(--color-neutral-600);
-    }
-  }
-  
-  .section {
-    margin-bottom: var(--space-6);
-    
-    .section-title {
-      font-size: var(--font-size-h5);
-      font-weight: var(--font-weight-semibold);
-      color: var(--color-neutral-800);
-      margin: 0 0 var(--space-3) 0;
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-    }
-  }
-  
-  .transcript-content {
-    background: var(--color-neutral-50);
-    border: 1px solid var(--color-neutral-200);
-    border-radius: var(--radius-medium);
-    padding: var(--space-4);
-    font-size: var(--font-size-body);
-    line-height: var(--line-height-relaxed);
-    color: var(--color-neutral-700);
-    max-height: 200px;
-    overflow-y: auto;
-  }
-  
-  .script-component {
-    background: var(--color-neutral-50);
-    border: 1px solid var(--color-neutral-200);
-    border-radius: var(--radius-medium);
-    margin-bottom: var(--space-3);
-    overflow: hidden;
-    
-    .component-header {
+const metricsGridStyles = css`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: ${gcDashSpacing.sm};
+`;
+
+const sectionTitleStyles = css`
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: ${gcDashTypography.titleWeight};
+  color: ${gcDashColor.textPrimary};
+`;
+
+const sectionSubtitleStyles = css`
+  margin: 0 0 ${gcDashSpacing.sm} 0;
+  font-size: 13px;
+  color: ${gcDashColor.textMuted};
+`;
+
+const textBlockStyles = css`
+  font-size: 15px;
+  line-height: 1.6;
+  color: ${gcDashColor.textSecondary};
+  white-space: pre-wrap;
+`;
+
+const clampStyles = (lines: number) => css`
+  display: -webkit-box;
+  -webkit-line-clamp: ${lines};
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const scriptCardStyles = css`
+  display: flex;
+  flex-direction: column;
+  gap: ${gcDashSpacing.xs};
+`;
+
+const scriptContentStyles = css`
+  font-size: 15px;
+  line-height: 1.6;
+  color: ${gcDashColor.textSecondary};
+  white-space: pre-wrap;
+`;
+
+const scriptHeaderStyles = css`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${gcDashSpacing.xs};
+`;
+
+const analysisGridStyles = css`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: ${gcDashSpacing.md};
+`;
+
+const analysisDetailStyles = css`
+  display: grid;
+  gap: 12px;
+`;
+
+const AnalysisMetricRow: React.FC<{ label: string; value: string; emphasis?: boolean }> = ({
+  label,
+  value,
+  emphasis = false,
+}) => (
+  <div
+    css={css`
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: var(--space-3) var(--space-4);
-      background: var(--color-neutral-100);
-      border-bottom: 1px solid var(--color-neutral-200);
-      
-      .component-label {
-        display: flex;
-        align-items: center;
-        gap: var(--space-2);
-        font-weight: var(--font-weight-medium);
-        color: var(--color-neutral-800);
-        
-        .component-type {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 24px;
-          height: 24px;
-          border-radius: var(--radius-small);
-          background: var(--color-primary-100);
-          color: var(--color-primary-600);
-          font-size: var(--font-size-caption);
-          font-weight: var(--font-weight-bold);
+      gap: ${gcDashSpacing.sm};
+      font-size: 14px;
+      color: ${emphasis ? gcDashColor.textPrimary : gcDashColor.textSecondary};
+      font-weight: ${emphasis ? 600 : 500};
+    `}
+  >
+    <span>{label}</span>
+    <span>{value}</span>
+  </div>
+);
+
+const MetricBadge: React.FC<{ label: string; value: string; icon?: string }> = ({ label, value, icon }) => (
+  <div css={metricBadgeStyles}>
+    <span className="metric-label">{label}</span>
+    <span className="metric-value">
+      {icon && <span style={{ marginRight: 6 }}>{icon}</span>}
+      {value}
+    </span>
+  </div>
+);
+
+const collectCandidateObjects = (item: ContentItem | null): Record<string, any>[] => {
+  if (!item) return [];
+
+  const metadata = item.metadata ?? {};
+  const rawSource = metadata.rawSource ?? {};
+  const roots = [metadata, metadata.contentMetadata, rawSource, metadata.analysis, metadata.metrics].filter(Boolean);
+
+  const collected: Record<string, any>[] = [];
+  const visited = new Set<any>();
+
+  const stack = [...roots];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current || typeof current !== 'object') continue;
+    if (visited.has(current)) continue;
+    visited.add(current);
+
+    collected.push(current as Record<string, any>);
+
+    Object.values(current).forEach((value) => {
+      if (value && typeof value === 'object') {
+        stack.push(value);
+      }
+    });
+  }
+
+  return collected;
+};
+
+const transcriptKeywords = /transcript|caption|transcription|captions|full_text/i;
+
+const flattenTranscriptValue = (value: unknown): string => {
+  if (!value) return '';
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => flattenTranscriptValue(entry))
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  if (typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>)
+      .map((entry) => flattenTranscriptValue(entry))
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  return '';
+};
+
+const extractTranscript = (item: ContentItem | null): string => {
+  if (!item) return '';
+
+  const potentialSources: Array<string | undefined> = [];
+  const metadata = item.metadata ?? {};
+  const rawSource = metadata.rawSource ?? {};
+
+  potentialSources.push(metadata.transcript);
+  potentialSources.push(metadata.fullTranscript);
+  potentialSources.push(metadata.caption);
+  potentialSources.push(metadata.captions);
+  potentialSources.push(rawSource.transcript);
+  potentialSources.push(rawSource.caption);
+
+  for (const candidate of potentialSources) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  const candidates = collectCandidateObjects(item);
+  for (const candidate of candidates) {
+    for (const [key, value] of Object.entries(candidate)) {
+      if (transcriptKeywords.test(key)) {
+        const flattened = flattenTranscriptValue(value);
+        if (flattened.trim()) {
+          return flattened.trim();
         }
       }
-      
-      .copy-button {
-        padding: var(--space-1) var(--space-2);
-        font-size: var(--font-size-caption);
-        display: flex;
-        align-items: center;
-        gap: var(--space-1);
-      }
-    }
-    
-    .component-content {
-      padding: var(--space-4);
-      font-size: var(--font-size-body);
-      line-height: var(--line-height-normal);
-      color: var(--color-neutral-700);
     }
   }
-  
-  .performance-metrics {
-    .metric {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--space-3);
-      
-      .metric-label {
-        font-size: var(--font-size-body);
-        color: var(--color-neutral-700);
-      }
-      
-      .metric-value {
-        font-size: var(--font-size-body);
-        font-weight: var(--font-weight-semibold);
-        color: var(--color-neutral-800);
-      }
-    }
-  }
-  
-  .actions {
-    margin-top: var(--space-6);
-    display: flex;
-    gap: var(--space-3);
-    
-    @media (max-width: 768px) {
-      flex-direction: column;
-    }
-  }
-`;
 
-const mobileNavigationStyles = css`
-  display: none;
-  
-  @media (max-width: 768px) {
-    display: flex;
-    justify-content: space-between;
-    padding: var(--space-4);
-    background: var(--color-neutral-50);
-    border-top: 1px solid var(--color-neutral-200);
-    
-    .mobile-nav-button {
-      flex: 1;
-      margin: 0 var(--space-2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-2);
-      
-      &:first-of-type {
-        margin-left: 0;
-      }
-      
-      &:last-of-type {
-        margin-right: 0;
+  return '';
+};
+
+const extractScriptComponents = (item: ContentItem | null): ScriptComponent[] => {
+  if (!item) return [];
+
+  const roots = collectCandidateObjects(item);
+  const quickCandidates = [
+    item.metadata?.scriptComponents,
+    item.metadata?.components,
+    item.metadata?.script?.components,
+    item.metadata?.analysis?.components,
+    item.metadata?.contentMetadata?.scriptComponents,
+    item.metadata?.rawSource?.scriptComponents,
+    item.metadata?.rawSource?.components,
+  ];
+
+  const normalizeType = (value: string): ScriptComponentType => {
+    const normalized = value.toLowerCase();
+    if (normalized === 'wta' || normalized === 'cta' || normalized.includes('call')) return 'call_to_action';
+    if (normalized.includes('golden') || normalized.includes('nugget')) return 'golden_nugget';
+    if (normalized.includes('bridge')) return 'bridge';
+    return 'hook';
+  };
+
+  const results: ScriptComponent[] = [];
+  const visited = new Set<any>();
+  const stack = roots.flatMap((root) => Object.entries(root).map(([key, value]) => ({ key, value })));
+
+  const pushComponent = (id: string, type: ScriptComponentType, label: string, raw: unknown) => {
+    const source = typeof raw === 'string'
+      ? raw
+      : (raw as any)?.content ?? (raw as any)?.text ?? (raw as any)?.script ?? raw;
+    const text = typeof source === 'string' ? source.trim() : '';
+    if (!text) return;
+    results.push({ id, type, label, content: text });
+  };
+
+  quickCandidates.forEach((candidate) => {
+    if (!candidate) return;
+    if (Array.isArray(candidate)) {
+      candidate.forEach((entry: any, index: number) => {
+        if (!entry) return;
+        const type = normalizeType(entry.type ?? 'hook');
+        const label = entry.label ?? entry.title ?? `Component ${index + 1}`;
+        pushComponent(entry.id ?? `component-${index}`, type, label, entry);
+      });
+    } else if (typeof candidate === 'object') {
+      Object.entries(candidate).forEach(([key, value], index) => {
+        const type = normalizeType(key);
+        const label = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        pushComponent(`${key}-${index}`, type, label, value);
+      });
+    }
+  });
+
+  while (stack.length > 0) {
+    const { key, value } = stack.pop()!;
+
+    if (value && typeof value === 'object') {
+      if (visited.has(value)) continue;
+      visited.add(value);
+    }
+
+    if (typeof key === 'string' && /component|script|hook|cta|bridge|nugget/i.test(key)) {
+      if (Array.isArray(value)) {
+        value.forEach((entry, index) => {
+          if (!entry) return;
+          const type = normalizeType(entry.type ?? key);
+          const label = entry.label ?? entry.title ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+          pushComponent(entry.id ?? `${key}-${index}`, type, label, entry);
+        });
+      } else if (value && typeof value === 'object') {
+        const direct = (value as any).content ?? (value as any).text ?? (value as any).script;
+        if (typeof direct === 'string' && direct.trim()) {
+          const type = normalizeType((value as any).type ?? key);
+          const label = (value as any).label ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+          pushComponent((value as any).id ?? key, type, label, direct);
+        } else {
+          Object.entries(value).forEach(([childKey, childValue]) => {
+            const label = childKey.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+            const type = normalizeType(childKey);
+            pushComponent(`${key}-${childKey}`, type, label, childValue);
+          });
+        }
+      } else if (typeof value === 'string') {
+        const type = normalizeType(key);
+        const label = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        pushComponent(key, type, label, value);
       }
     }
+
+    if (Array.isArray(value)) {
+      value.forEach((entry, index) => {
+        if (entry && typeof entry === 'object') {
+          stack.push({ key: `${key}[${index}]`, value: entry });
+        }
+      });
+    } else if (value && typeof value === 'object') {
+      Object.entries(value).forEach(([childKey, childValue]) => {
+        stack.push({ key: childKey, value: childValue });
+      });
+    }
   }
-`;
+
+  if (results.length === 0) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  return results.filter((component) => {
+    const fingerprint = `${component.type}-${component.label}-${component.content}`;
+    if (seen.has(fingerprint)) return false;
+    seen.add(fingerprint);
+    return true;
+  });
+};
+
+const computeEmbedSrc = (rawUrl?: string, platform?: string | null): string => {
+  if (!rawUrl) return '';
+  try {
+    const u = new URL(rawUrl);
+    const host = u.hostname.toLowerCase();
+
+    if (host.includes('iframe.mediadelivery.net')) return rawUrl;
+
+    if (host.includes('youtube.com')) {
+      const v = u.searchParams.get('v');
+      if (v) return `https://www.youtube.com/embed/${v}`;
+      const parts = u.pathname.split('/');
+      const embedIdx = parts.indexOf('embed');
+      if (embedIdx >= 0 && parts[embedIdx + 1]) return rawUrl;
+    }
+
+    if (host === 'youtu.be') {
+      const id = u.pathname.replace('/', '');
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+
+    if (host.includes('tiktok.com') || host.includes('instagram.com')) return '';
+
+    return rawUrl;
+  } catch {
+    return '';
+  }
+};
+
+const formatScore = (value: number | null): string => {
+  if (typeof value === 'number' && !Number.isNaN(value)) {
+    return `${value.toFixed(1).replace(/\.0$/, '')}/10`;
+  }
+  return '—';
+};
+
+const deriveComplexity = (readability: number | null, wordCount: number): { grade: string; descriptor: string } => {
+  if (readability === null) {
+    if (wordCount > 600) {
+      return { grade: 'B', descriptor: 'Detailed narrative with moderate density' };
+    }
+    return { grade: 'B+', descriptor: 'Balanced delivery, optimise hooks for more punch' };
+  }
+
+  if (readability >= 8.5) {
+    return { grade: 'A', descriptor: 'Conversational pacing; easy to digest' };
+  }
+  if (readability >= 7.5) {
+    return { grade: 'B+', descriptor: 'Balanced complexity; consider a sharper hook' };
+  }
+  if (readability >= 6.5) {
+    return { grade: 'B', descriptor: 'Slightly dense; simplify phrasing for reach' };
+  }
+  return { grade: 'C+', descriptor: 'High complexity; tighten structure to maintain attention' };
+};
 
 export const VideoModal: React.FC<VideoModalProps> = ({
   isOpen,
   video,
   videos,
   onClose,
-  onNavigateVideo
+  onNavigateVideo,
 }) => {
-  const [activeTab, setActiveTab] = useState<'video' | 'script' | 'hooks' | 'analytics' | 'more'>('video');
+  const [activeTab, setActiveTab] = useState<VideoModalTab>('overview');
+  const [transcriptExpanded, setTranscriptExpanded] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [scriptExpanded, setScriptExpanded] = useState<Record<string, boolean>>({});
 
-  const collectCandidateObjects = (item: ContentItem | null) => {
-    if (!item) return [] as Record<string, any>[];
-    const metadata = item.metadata ?? {};
-    const rawSource = metadata.rawSource ?? {};
-    const roots = [
-      metadata,
-      metadata.contentMetadata,
-      metadata.analysis,
-      metadata.metrics,
-      metadata.statistics,
-      metadata.insights,
-      rawSource,
-      rawSource.metadata,
-      rawSource.contentMetadata,
-      rawSource.analysis,
-      rawSource.metrics,
-      rawSource.statistics,
-    ];
-    return roots.filter((root): root is Record<string, any> => !!root && typeof root === 'object');
-  };
+  const transcript = useMemo(() => extractTranscript(video), [video]);
+  const scriptComponents = useMemo(() => extractScriptComponents(video), [video]);
 
-  const extractTranscript = (item: ContentItem | null) => {
-    const roots = collectCandidateObjects(item);
-    const flattenTranscriptValue = (value: any): string | null => {
-      if (!value) return null;
-      if (typeof value === 'string' && value.trim()) return value.trim();
-      if (Array.isArray(value)) {
-        const joined = value
-          .map((entry) => {
-            if (typeof entry === 'string') return entry;
-            if (entry && typeof entry === 'object') return entry.text ?? entry.content ?? entry.caption ?? '';
-            return '';
-          })
-          .filter(Boolean)
-          .join('\n');
-        return joined.trim() ? joined.trim() : null;
-      }
-      if (typeof value === 'object') {
-        const text = value.text ?? value.content ?? value.fullText ?? value.transcript ?? value.raw;
-        if (typeof text === 'string' && text.trim()) return text.trim();
-        const segments = value.segments ?? value.sentences ?? value.lines;
-        if (Array.isArray(segments)) return flattenTranscriptValue(segments);
-      }
-      return null;
+  const scriptComponentsByType = useMemo(() => {
+    const grouped: Record<ScriptComponentType, ScriptComponent[]> = {
+      hook: [],
+      bridge: [],
+      golden_nugget: [],
+      call_to_action: [],
     };
 
-    const quickCandidates = [
-      item?.metadata?.transcript,
-      item?.metadata?.transcriptText,
-      item?.metadata?.transcriptSegments,
-      item?.metadata?.transcription,
-      item?.metadata?.transcription?.text,
-      item?.metadata?.transcription?.segments,
-      item?.metadata?.caption,
-      item?.metadata?.captions,
-      item?.metadata?.rawSource?.transcript,
-      item?.metadata?.rawSource?.transcriptSegments,
-      item?.metadata?.rawSource?.transcription,
-      item?.metadata?.rawSource?.transcription?.segments,
-    ];
-
-    for (const candidate of quickCandidates) {
-      const flattened = flattenTranscriptValue(candidate);
-      if (flattened) return flattened;
-    }
-
-    const visited = new Set<any>();
-    const stack = roots.flatMap((root) => Object.entries(root).map(([key, value]) => ({ key, value })));
-    while (stack.length > 0) {
-      const { key, value } = stack.pop()!;
-      if (value && typeof value === 'object') {
-        if (visited.has(value)) continue;
-        visited.add(value);
-      }
-
-      if (typeof key === 'string' && /transcript|caption|transcription/i.test(key)) {
-        const flattened = flattenTranscriptValue(value);
-        if (flattened) return flattened;
-      }
-
-      if (Array.isArray(value)) {
-        const flattened = flattenTranscriptValue(value);
-        if (flattened) return flattened;
-        value.forEach((entry, index) => {
-          if (entry && typeof entry === 'object') {
-            stack.push({ key: `${key}[${index}]`, value: entry });
-          }
-        });
-      } else if (value && typeof value === 'object') {
-        Object.entries(value).forEach(([childKey, childValue]) => {
-          stack.push({ key: childKey, value: childValue });
-        });
-      } else {
-        const flattened = flattenTranscriptValue(value);
-        if (flattened) return flattened;
-      }
-    }
-
-    return '';
-  };
-
-  const extractScriptComponents = (item: ContentItem | null): ScriptComponent[] => {
-    if (!item) return [];
-    const roots = collectCandidateObjects(item);
-
-    const normalizeType = (value: string): ScriptComponent['type'] => {
-      const normalized = value.toLowerCase();
-      if (normalized === 'wta') return 'call_to_action';
-      if (normalized.includes('call_to_action') || normalized === 'cta') return 'call_to_action';
-      if (normalized.includes('golden') || normalized.includes('nugget')) return 'golden_nugget';
-      if (normalized.includes('bridge')) return 'bridge';
-      return 'hook';
-    };
-
-    const quickCandidates = [
-      item.metadata?.scriptComponents,
-      item.metadata?.components,
-      item.metadata?.script?.components,
-      item.metadata?.analysis?.components,
-      item.metadata?.contentMetadata?.scriptComponents,
-      item.metadata?.rawSource?.scriptComponents,
-      item.metadata?.rawSource?.components,
-    ];
-
-    const results: ScriptComponent[] = [];
-    const visited = new Set<any>();
-    const stack = roots.flatMap((root) => Object.entries(root).map(([key, value]) => ({ key, value })));
-
-    quickCandidates.forEach((candidate) => {
-      if (!candidate) return;
-      if (Array.isArray(candidate)) {
-        candidate.forEach((entry: any, index: number) => {
-          if (!entry) return;
-          const content = typeof entry === 'string' ? entry : entry.content ?? entry.text ?? '';
-          if (!content) return;
-          const type = normalizeType(entry.type ?? 'hook');
-          const label = entry.label ?? entry.title ?? `Component ${index + 1}`;
-          results.push({ id: entry.id ?? `component-${index}`, type, label, content: String(content) });
-        });
-      } else if (candidate && typeof candidate === 'object') {
-        Object.entries(candidate).forEach(([childKey, childValue], index) => {
-          const content = typeof childValue === 'string' ? childValue : childValue?.content ?? childValue?.text ?? '';
-          if (!content) return;
-          results.push({
-            id: `${childKey}-${index}`,
-            type: normalizeType(childKey),
-            label: childKey.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-            content: String(content),
-          });
-        });
-      }
+    scriptComponents.forEach((component) => {
+      grouped[component.type].push(component);
     });
 
-    while (stack.length > 0) {
-      const { key, value } = stack.pop()!;
-      if (value && typeof value === 'object') {
-        if (visited.has(value)) continue;
-        visited.add(value);
-      }
-
-      if (typeof key === 'string' && /component|script|hook|cta|bridge|nugget/i.test(key)) {
-        if (Array.isArray(value)) {
-          value.forEach((entry, index) => {
-            if (!entry) return;
-            const content = typeof entry === 'string' ? entry : entry.content ?? entry.text ?? '';
-            if (!content) return;
-            const type = normalizeType(entry.type ?? key);
-            const label = entry.label ?? entry.title ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-            results.push({ id: entry.id ?? `${key}-${index}`, type, label, content: String(content) });
-          });
-        } else if (value && typeof value === 'object') {
-          const content = value.content ?? value.text ?? value.script ?? '';
-          if (content) {
-            results.push({
-              id: value.id ?? key,
-              type: normalizeType(value.type ?? key),
-              label: value.label ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-              content: String(content),
-            });
-          } else {
-            Object.entries(value).forEach(([childKey, childValue]) => {
-              const text = typeof childValue === 'string' ? childValue : childValue?.content ?? childValue?.text ?? '';
-              if (!text) return;
-              results.push({
-                id: `${key}-${childKey}`,
-                type: normalizeType(childKey),
-                label: childKey.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-                content: String(text),
-              });
-            });
-          }
-        } else if (typeof value === 'string' && value.trim()) {
-          results.push({
-            id: key,
-            type: normalizeType(key),
-            label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-            content: value.trim(),
-          });
-        }
-      }
-
-      if (Array.isArray(value)) {
-        value.forEach((entry, index) => {
-          if (entry && typeof entry === 'object') {
-            stack.push({ key: `${key}[${index}]`, value: entry });
-          }
-        });
-      } else if (value && typeof value === 'object') {
-        Object.entries(value).forEach(([childKey, childValue]) => {
-          stack.push({ key: childKey, value: childValue });
-        });
-      }
-    }
-
-    if (results.length > 0) {
-      const seen = new Set<string>();
-      return results.filter((component) => {
-        const key = `${component.type}-${component.label}-${component.content}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    }
-
-    return [];
-  };
-
-  const computeEmbedSrc = (rawUrl?: string, platform?: string): string => {
-    if (!rawUrl) return '';
-    try {
-      const u = new URL(rawUrl);
-      const host = u.hostname.toLowerCase();
-      // Bunny CDN or any direct iframe URL
-      if (host.includes('iframe.mediadelivery.net')) return rawUrl;
-      // YouTube standard/watch URLs
-      if (host.includes('youtube.com')) {
-        const v = u.searchParams.get('v');
-        if (v) return `https://www.youtube.com/embed/${v}`;
-        const parts = u.pathname.split('/');
-        const embedIdx = parts.indexOf('embed');
-        if (embedIdx >= 0 && parts[embedIdx + 1]) return rawUrl; // already embed
-      }
-      // YouTube short URLs
-      if (host === 'youtu.be') {
-        const id = u.pathname.replace('/', '');
-        if (id) return `https://www.youtube.com/embed/${id}`;
-      }
-      // Block known non-embeddable platforms (TikTok/Instagram) to avoid X-Frame errors.
-      if (host.includes('tiktok.com') || host.includes('instagram.com')) return '';
-      // Otherwise attempt raw URL as a best effort (for test/demo or custom CDN)
-      return rawUrl;
-    } catch {
-      return '';
-    }
-  };
-  
-  // Mock video insights data - in real app this would come from props or API
-  const transcript = useMemo(() => extractTranscript(video), [video]);
-
-  const scriptComponents = useMemo(() => extractScriptComponents(video), [video]);
+    return grouped;
+  }, [scriptComponents]);
 
   const performanceMetrics: VideoInsights['performanceMetrics'] = useMemo(() => {
     const analysis = video?.metadata?.analysis || video?.metadata?.metrics || {};
     const metricsSource = analysis?.performance || analysis?.scores || analysis;
+
     const pickValue = (keys: string[]): number | null => {
       for (const key of keys) {
         const value = metricsSource?.[key];
@@ -719,13 +727,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
     };
   }, [video]);
 
-  const formattedTranscript = transcript || 'Transcript not available yet.';
-
-  const videoInsights: VideoInsights = useMemo(() => ({
-    transcript,
-    scriptComponents,
-    performanceMetrics,
-  }), [performanceMetrics, scriptComponents, transcript]);
+  const formattedTranscript = useMemo(() => transcript?.trim() ?? '', [transcript]);
 
   const views = video?.metadata?.views ?? video?.metadata?.metrics?.views;
   const likes = video?.metadata?.likes ?? video?.metadata?.metrics?.likes;
@@ -733,357 +735,574 @@ export const VideoModal: React.FC<VideoModalProps> = ({
   const saves = video?.metadata?.saves ?? video?.metadata?.metrics?.saves;
   const shares = video?.metadata?.shares ?? video?.metadata?.metrics?.shares;
 
-  const hasPerformanceMetrics = useMemo(() => {
-    return [
-      performanceMetrics.readability,
-      performanceMetrics.engagement,
-      performanceMetrics.hookStrength,
-    ].some((value) => typeof value === 'number' && !Number.isNaN(value));
-  }, [performanceMetrics]);
-
-  const currentVideoIndex = videos.findIndex(v => v.id === video?.id);
+  const currentVideoIndex = useMemo(() => videos.findIndex((v) => v.id === video?.id), [videos, video?.id]);
   const canNavigatePrev = currentVideoIndex > 0;
   const canNavigateNext = currentVideoIndex < videos.length - 1;
 
-  const handleCopyToClipboard = async (text: string) => {
+  const embedSrc = useMemo(() => {
+    if (!video) return '';
+    const metadata = video.metadata ?? {};
+    const rawSource = metadata.rawSource ?? {};
+
+    const rawEmbedUrl =
+      metadata.iframeUrl ||
+      metadata.embedUrl ||
+      metadata.playerUrl ||
+      metadata.videoUrl ||
+      metadata.embed?.src ||
+      metadata.iframe?.src ||
+      metadata.contentMetadata?.embedUrl ||
+      metadata.contentMetadata?.iframeUrl ||
+      rawSource.embedUrl ||
+      rawSource.iframeUrl ||
+      rawSource.playerUrl ||
+      rawSource.videoUrl ||
+      rawSource.url ||
+      video.url;
+
+    return computeEmbedSrc(rawEmbedUrl, video.platform);
+  }, [video]);
+
+  const relativeCreated = useMemo(() => (video ? formatRelativeTime(video.created) : '—'), [video]);
+
+  const metricItems = useMemo(() => {
+    const items: Array<{ id: string; label: string; value: string; icon?: string }> = [];
+    if (typeof views === 'number') items.push({ id: 'views', label: 'Views', value: formatViewCount(views), icon: '👀' });
+    if (typeof likes === 'number') items.push({ id: 'likes', label: 'Likes', value: formatViewCount(likes), icon: '❤️' });
+    if (typeof comments === 'number') items.push({ id: 'comments', label: 'Comments', value: formatViewCount(comments), icon: '💬' });
+    if (typeof shares === 'number') items.push({ id: 'shares', label: 'Shares', value: formatViewCount(shares), icon: '🚀' });
+    if (typeof saves === 'number') items.push({ id: 'saves', label: 'Saves', value: formatViewCount(saves), icon: '📌' });
+    if (video?.duration) items.push({ id: 'duration', label: 'Runtime', value: formatDuration(video.duration), icon: '⏱️' });
+    return items;
+  }, [views, likes, comments, shares, saves, video?.duration]);
+
+  const metaChips = useMemo(() => {
+    if (!video) return [] as Array<{ id: string; label: string; tone: GcDashLabelTone; icon?: string }>;
+    const chips: Array<{ id: string; label: string; tone: GcDashLabelTone; icon?: string }> = [];
+    if (video.platform) {
+      const platformName = video.platform.charAt(0).toUpperCase() + video.platform.slice(1);
+      chips.push({ id: 'platform', label: `${platformName}`, tone: 'primary', icon: getPlatformIcon(video.platform) });
+    }
+    chips.push({ id: 'status', label: video.status, tone: statusToneMap[video.status] });
+    chips.push({ id: 'published', label: relativeCreated, tone: 'info' });
+    return chips;
+  }, [video, relativeCreated]);
+
+  const transcriptWordCount = useMemo(() => {
+    if (!formattedTranscript) return 0;
+    return formattedTranscript.split(/\s+/).filter(Boolean).length;
+  }, [formattedTranscript]);
+
+  const scriptWordCount = useMemo(
+    () =>
+      scriptComponents.reduce((total, component) => {
+        const words = component.content.split(/\s+/).filter(Boolean).length;
+        return total + words;
+      }, 0),
+    [scriptComponents]
+  );
+
+  const averageScore = useMemo(() => {
+    const values = [
+      performanceMetrics.readability,
+      performanceMetrics.engagement,
+      performanceMetrics.hookStrength,
+    ].filter((value): value is number => typeof value === 'number' && !Number.isNaN(value));
+
+    if (values.length === 0) return null;
+    return values.reduce((a, b) => a + b, 0) / values.length;
+  }, [performanceMetrics]);
+
+  const complexity = useMemo(() => deriveComplexity(performanceMetrics.readability, transcriptWordCount || scriptWordCount), [
+    performanceMetrics.readability,
+    transcriptWordCount,
+    scriptWordCount,
+  ]);
+
+  const analysisSummary = useMemo(() => {
+    const grade = (() => {
+      if (averageScore === null) return 'Pending';
+      if (averageScore >= 8.5) return 'A';
+      if (averageScore >= 7.5) return 'B+';
+      if (averageScore >= 6.5) return 'B';
+      return 'C';
+    })();
+
+    return {
+      grade,
+      summary: complexity.descriptor,
+      averageScore,
+    };
+  }, [averageScore, complexity]);
+
+  const tabs = useMemo(
+    () => [
+      { id: 'overview', label: 'Overview', badge: undefined, content: null },
+      {
+        id: 'script',
+        label: 'Script',
+        badge: scriptComponents.length ? scriptComponents.length.toString() : undefined,
+        content: null,
+      },
+      {
+        id: 'transcript',
+        label: 'Transcript',
+        badge: transcriptWordCount ? transcriptWordCount.toLocaleString() : undefined,
+        content: null,
+      },
+      {
+        id: 'analysis',
+        label: 'Analysis',
+        badge: averageScore ? analysisSummary.grade : undefined,
+        content: null,
+      },
+    ],
+    [scriptComponents.length, formattedTranscript, transcriptWordCount, averageScore, analysisSummary.grade]
+  );
+
+  const handleCopyToClipboard = useCallback(async (text: string) => {
+    if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      // In a real app, you'd show a toast notification here
-      console.log('Copied to clipboard:', text);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
+      console.log('Copied to clipboard');
+    } catch (error) {
+      console.error('Failed to copy text', error);
     }
-  };
+  }, []);
 
-  const handleCopyAll = async () => {
-    const allComponents = videoInsights.scriptComponents
-      .map(comp => `${comp.label}: ${comp.content}`)
-      .join('\n\n');
+  const handleCopyAll = useCallback(async () => {
+    if (scriptComponents.length === 0) return;
+    const allComponents = scriptComponents.map((component) => `${component.label}: ${component.content}`).join('\n\n');
     await handleCopyToClipboard(allComponents);
-  };
+  }, [handleCopyToClipboard, scriptComponents]);
 
-  const getComponentTypeIcon = (type: string) => {
-    const iconMap = {
-      hook: 'H',
-      bridge: 'B',
-      golden_nugget: 'G',
-      call_to_action: 'C'
-    };
-    return iconMap[type as keyof typeof iconMap] || 'C';
-  };
+  const openOriginal = useCallback(() => {
+    if (video?.url) {
+      window.open(video.url, '_blank', 'noopener,noreferrer');
+    }
+  }, [video?.url]);
 
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         onClose();
       }
-    };
-
-    const handleKeyNavigation = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft' && canNavigatePrev) {
+      if (event.key === 'ArrowLeft' && canNavigatePrev) {
+        event.preventDefault();
         onNavigateVideo('prev');
-      } else if (e.key === 'ArrowRight' && canNavigateNext) {
+      }
+      if (event.key === 'ArrowRight' && canNavigateNext) {
+        event.preventDefault();
         onNavigateVideo('next');
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.addEventListener('keydown', handleKeyNavigation);
-      document.body.style.overflow = 'hidden';
-    }
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.removeEventListener('keydown', handleKeyNavigation);
-      document.body.style.overflow = 'unset';
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
     };
   }, [isOpen, onClose, onNavigateVideo, canNavigatePrev, canNavigateNext]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab('overview');
+      setTranscriptExpanded(false);
+      setDescriptionExpanded(false);
+      setScriptExpanded({});
+    }
+  }, [isOpen, video?.id]);
 
   if (!isOpen || !video) {
     return null;
   }
 
-  const renderTabContent = () => {
+  const overviewContent = (
+    <GcDashCard>
+      <GcDashCardHeader css={css`flex-direction: column; align-items: flex-start; gap: ${gcDashSpacing.sm};`}>
+        <div>
+          <h2 css={sectionTitleStyles}>Performance Snapshot</h2>
+          <p css={sectionSubtitleStyles}>Key metrics from the latest crawl of this clip.</p>
+        </div>
+        <div css={metricsGridStyles}>
+          {metricItems.length ? (
+            metricItems.map((metric) => (
+              <MetricBadge key={metric.id} label={metric.label} value={metric.value} icon={metric.icon} />
+            ))
+          ) : (
+            <GcDashBlankSlate description="Metrics will populate once the video sync completes." />
+          )}
+        </div>
+      </GcDashCardHeader>
+      {(video.description || video.metadata?.caption) && (
+        <GcDashCardBody css={css`display: flex; flex-direction: column; gap: ${gcDashSpacing.xs};`}>
+          <h3 css={sectionTitleStyles}>Description & Caption</h3>
+          <p
+            css={[textBlockStyles, !descriptionExpanded && clampStyles(5)]}
+          >
+            {video.description || video.metadata?.caption}
+          </p>
+          {(video.description?.length ?? video.metadata?.caption?.length ?? 0) > 320 && (
+            <GcDashButton
+              variant="ghost"
+              size="sm"
+              onClick={() => setDescriptionExpanded((expanded) => !expanded)}
+            >
+              {descriptionExpanded ? 'Show less' : 'Show more'}
+            </GcDashButton>
+          )}
+        </GcDashCardBody>
+      )}
+    </GcDashCard>
+  );
+
+  const scriptContent = (
+    <div css={css`display: grid; gap: ${gcDashSpacing.md};`}>
+      <div css={css`display: flex; align-items: center; justify-content: space-between; gap: ${gcDashSpacing.sm}; flex-wrap: wrap;`}>
+        <div>
+          <h2 css={sectionTitleStyles}>Script Beats</h2>
+          <p css={sectionSubtitleStyles}>Hook-to-close structure pulled from scripting data.</p>
+        </div>
+        <div css={css`display: inline-flex; gap: ${gcDashSpacing.xs}; flex-wrap: wrap;`}>
+          <GcDashButton variant="ghost" size="sm" onClick={handleCopyAll} disabled={scriptComponents.length === 0}>
+            <CopyIcon label="" size="small" primaryColor="currentColor" />
+            Copy all
+          </GcDashButton>
+          <GcDashButton variant="secondary" size="sm" disabled>
+            <DownloadIcon label="" size="small" primaryColor="currentColor" />
+            Export outline
+          </GcDashButton>
+        </div>
+      </div>
+
+      {scriptComponents.length === 0 ? (
+        <GcDashBlankSlate
+          title="No scripted beats yet"
+          description="Once this video has structured components, they will appear here for remixing."
+        />
+      ) : (
+        Object.entries(scriptComponentsByType)
+          .filter(([, components]) => components.length > 0)
+          .map(([type, components]) => {
+            const meta = scriptComponentMeta[type as ScriptComponentType];
+            return (
+              <div key={type} css={css`display: grid; gap: ${gcDashSpacing.sm};`}>
+                <div css={scriptHeaderStyles}>
+                  <GcDashLabel tone={meta.tone} variant="soft" uppercase={false}>
+                    {meta.icon} {meta.label}
+                  </GcDashLabel>
+                  <span css={css`font-size: 13px; color: ${gcDashColor.textMuted};`}>
+                    {components.length} {components.length === 1 ? 'moment' : 'moments'}
+                  </span>
+                </div>
+                <div css={css`display: grid; gap: ${gcDashSpacing.sm};`}>
+                  {components.map((component) => {
+                    const expanded = scriptExpanded[component.id];
+                    const contentLength = component.content.length;
+                    const shouldClamp = contentLength > 320;
+
+                    return (
+                      <GcDashCard key={component.id}>
+                        <GcDashCardBody css={scriptCardStyles}>
+                          <h4 css={css`margin: 0; font-size: 15px; font-weight: 600; color: ${gcDashColor.textPrimary};`}>
+                            {component.label}
+                          </h4>
+                          <p css={[scriptContentStyles, !expanded && shouldClamp && clampStyles(6)]}>{component.content}</p>
+                        </GcDashCardBody>
+                        <GcDashCardFooter>
+                          <GcDashButton
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCopyToClipboard(component.content)}
+                          >
+                            <CopyIcon label="" size="small" primaryColor="currentColor" />
+                            Copy
+                          </GcDashButton>
+                          {shouldClamp && (
+                            <GcDashButton
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setScriptExpanded((prev) => ({ ...prev, [component.id]: !expanded }))
+                              }
+                            >
+                              {expanded ? 'Show less' : 'Show more'}
+                            </GcDashButton>
+                          )}
+                        </GcDashCardFooter>
+                      </GcDashCard>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })
+      )}
+    </div>
+  );
+
+  const transcriptContent = (
+    <GcDashCard>
+      <GcDashCardHeader>
+        <GcDashCardTitle>Full Transcript</GcDashCardTitle>
+        <GcDashButton
+          variant="ghost"
+          size="sm"
+          onClick={() => formattedTranscript && handleCopyToClipboard(formattedTranscript)}
+          disabled={!formattedTranscript}
+        >
+          <CopyIcon label="" size="small" primaryColor="currentColor" />
+          Copy transcript
+        </GcDashButton>
+      </GcDashCardHeader>
+      <GcDashCardBody css={css`display: grid; gap: ${gcDashSpacing.sm};`}>
+        <p css={[textBlockStyles, !transcriptExpanded && clampStyles(12)]}>
+          {formattedTranscript || 'Transcript not available yet.'}
+        </p>
+        {formattedTranscript && formattedTranscript.length > 900 && (
+          <GcDashButton
+            variant="ghost"
+            size="sm"
+            onClick={() => setTranscriptExpanded((expanded) => !expanded)}
+          >
+            {transcriptExpanded ? 'Show less' : 'Show more'}
+          </GcDashButton>
+        )}
+      </GcDashCardBody>
+    </GcDashCard>
+  );
+
+  const analysisContent = (
+    <div css={analysisGridStyles}>
+      <GcDashCard>
+        <GcDashCardHeader>
+          <div>
+            <GcDashCardTitle>Delivery Grade</GcDashCardTitle>
+            <GcDashCardSubtitle>{analysisSummary.summary}</GcDashCardSubtitle>
+          </div>
+        </GcDashCardHeader>
+        <GcDashCardBody css={analysisDetailStyles}>
+          <div
+            css={css`
+              font-size: 42px;
+              font-weight: 700;
+              letter-spacing: -0.03em;
+              color: ${gcDashColor.textPrimary};
+            `}
+          >
+            {analysisSummary.grade}
+          </div>
+          <AnalysisMetricRow label="Average score" value={averageScore ? formatScore(averageScore) : 'Pending'} emphasis />
+          <AnalysisMetricRow label="Readability" value={formatScore(performanceMetrics.readability)} />
+          <AnalysisMetricRow label="Engagement" value={formatScore(performanceMetrics.engagement)} />
+          <AnalysisMetricRow label="Hook strength" value={formatScore(performanceMetrics.hookStrength)} />
+        </GcDashCardBody>
+      </GcDashCard>
+
+      <GcDashCard>
+        <GcDashCardHeader>
+          <GcDashCardTitle>Script Density</GcDashCardTitle>
+        </GcDashCardHeader>
+        <GcDashCardBody css={analysisDetailStyles}>
+          <AnalysisMetricRow label="Transcript words" value={transcriptWordCount ? transcriptWordCount.toLocaleString() : '—'} />
+          <AnalysisMetricRow label="Structured beats" value={scriptComponents.length ? scriptComponents.length.toString() : '—'} />
+          <AnalysisMetricRow label="Reading time" value={transcriptWordCount ? formatReadingTime(transcriptWordCount) : '—'} />
+          <AnalysisMetricRow
+            label="Narrative complexity"
+            value={`${complexity.grade} • ${complexity.descriptor}`}
+            emphasis
+          />
+        </GcDashCardBody>
+      </GcDashCard>
+
+      <GcDashCard>
+        <GcDashCardHeader>
+          <GcDashCardTitle>Opportunities</GcDashCardTitle>
+        </GcDashCardHeader>
+        <GcDashCardBody css={analysisDetailStyles}>
+          <ul
+            css={css`
+              margin: 0;
+              padding-left: 18px;
+              display: grid;
+              gap: 8px;
+              font-size: 14px;
+              color: ${gcDashColor.textSecondary};
+            `}
+          >
+            <li>Tighten your hook to land in the first 3 seconds.</li>
+            <li>Repurpose the golden nugget into carousels or reels.</li>
+            <li>Use WTA as a modular CTA for collection follow-ups.</li>
+          </ul>
+        </GcDashCardBody>
+      </GcDashCard>
+    </div>
+  );
+
+  const renderActiveContent = () => {
     switch (activeTab) {
-      case 'video':
-        return (
-          <>
-            <div className="video-meta">
-              <h1 className="video-title">{video.title}</h1>
-              <div className="creator-info">
-                <PersonIcon label="" size="small" primaryColor={token('color.icon')} />
-                <span>@{video.creator || 'unknown'}</span>
-                <Badge variant="neutral" size="small" icon={getPlatformIcon(video.platform || 'other')}>
-                  {video.platform}
-                </Badge>
-              </div>
-              <div className="video-stats">
-                <span>
-                  <EyeIcon label="" size="small" primaryColor={token('color.icon')} />
-                  {typeof views === 'number' ? formatViewCount(views) : 'Unknown'} views
-                </span>
-                {typeof likes === 'number' && (
-                  <span>❤️ {formatViewCount(likes)} likes</span>
-                )}
-                {typeof comments === 'number' && (
-                  <span>💬 {formatViewCount(comments)} comments</span>
-                )}
-                {typeof saves === 'number' && (
-                  <span>🔖 {formatViewCount(saves)} saves</span>
-                )}
-                {typeof shares === 'number' && (
-                  <span>🚀 {formatViewCount(shares)} shares</span>
-                )}
-                <span>⏱️ {video.duration ? formatDuration(video.duration) : 'Unknown'} duration</span>
-                <span>{formatRelativeTime(video.created)}</span>
-              </div>
-            </div>
-
-            <div className="section">
-              <h2 className="section-title">
-                📝 Full Transcript
-              </h2>
-              <div className="transcript-content">
-                {formattedTranscript}
-              </div>
-            </div>
-          </>
-        );
-
+      case 'overview':
+        return overviewContent;
       case 'script':
-        return (
-          <div className="section">
-            <h2 className="section-title">
-              📋 Script Components
-            </h2>
-            {videoInsights.scriptComponents.length === 0 ? (
-              <p>No script components available yet.</p>
-            ) : (
-              videoInsights.scriptComponents.map((component) => (
-                <div key={component.id} className="script-component">
-                  <div className="component-header">
-                    <div className="component-label">
-                      <span className="component-type">
-                        {getComponentTypeIcon(component.type)}
-                      </span>
-                      {component.label}
-                    </div>
-                    <Button
-                      variant="subtle"
-                      size="small"
-                      className="copy-button"
-                      onClick={() => handleCopyToClipboard(component.content)}
-                    >
-                      <CopyIcon label="" size="small" primaryColor={token('color.icon')} />
-                      Copy
-                    </Button>
-                  </div>
-                  <div className="component-content">
-                    {component.content}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        );
-
-      case 'analytics':
-        return (
-          <div className="section">
-            <h2 className="section-title">
-              📊 Performance Metrics
-            </h2>
-            {hasPerformanceMetrics ? (
-              <div className="performance-metrics">
-                <div className="metric">
-                  <span className="metric-label">Readability Score</span>
-                  <span className="metric-value">
-                    {typeof videoInsights.performanceMetrics.readability === 'number'
-                      ? `${videoInsights.performanceMetrics.readability}/10`
-                      : '—'}
-                  </span>
-                </div>
-                <div className="metric">
-                  <span className="metric-label">Engagement Score</span>
-                  <span className="metric-value">
-                    {typeof videoInsights.performanceMetrics.engagement === 'number'
-                      ? `${videoInsights.performanceMetrics.engagement}/10`
-                      : '—'}
-                  </span>
-                </div>
-                <div className="metric">
-                  <span className="metric-label">Hook Strength</span>
-                  <span className="metric-value">
-                    {typeof videoInsights.performanceMetrics.hookStrength === 'number'
-                      ? `${videoInsights.performanceMetrics.hookStrength}/10`
-                      : '—'}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <p>Performance metrics will appear here once available.</p>
-            )}
-          </div>
-        );
-
+        return scriptContent;
+      case 'transcript':
+        return transcriptContent;
+      case 'analysis':
+        return analysisContent;
       default:
-        return (
-          <div className="section">
-            <h2 className="section-title">Coming Soon</h2>
-            <p>More features and insights will be available here.</p>
-          </div>
-        );
+        return null;
     }
   };
 
+  const dialogTitleId = `video-modal-title-${video.id}`;
+
   return (
-    <div css={modalOverlayStyles} onClick={onClose}>
-      <div css={modalContentStyles} onClick={(e) => e.stopPropagation()}>
-        <button css={closeButtonStyles} onClick={onClose} aria-label="Close modal">
-          <CrossIcon label="" size="medium" primaryColor={token('color.icon')} />
-        </button>
+    <div css={overlayStyles} onClick={onClose} role="presentation">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={dialogTitleId}
+        css={modalShellStyles}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header css={topBarStyles}>
+          <div
+            css={css`
+              display: flex;
+              align-items: center;
+              gap: ${gcDashSpacing.sm};
 
-        {/* Video Player Section */}
-        <div css={videoPlayerSectionStyles}>
-          <div css={videoPlayerStyles}>
-            {(() => {
-              const metadata = video.metadata ?? {};
-              const rawSource = metadata.rawSource ?? {};
-              const rawEmbedUrl =
-                video.url ||
-                metadata.iframeUrl ||
-                metadata.embedUrl ||
-                metadata.playerUrl ||
-                metadata.videoUrl ||
-                metadata.embed?.src ||
-                metadata.iframe?.src ||
-                metadata.contentMetadata?.embedUrl ||
-                metadata.contentMetadata?.iframeUrl ||
-                rawSource.embedUrl ||
-                rawSource.iframeUrl ||
-                rawSource.playerUrl ||
-                rawSource.videoUrl ||
-                rawSource.url;
-
-              const embedSrc = computeEmbedSrc(rawEmbedUrl, video.platform);
-              if (embedSrc) {
-                return (
-                  <iframe
-                    className="video-embed"
-                    src={embedSrc}
-                    title={video.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                );
+              @media (max-width: 1024px) {
+                order: 0;
               }
-              // Fallback UI when embed is not available
-              return (
-                <div className="video-placeholder">
-                  <div className="placeholder-icon">
-                    <VidPlayIcon label="" size="xlarge" primaryColor={token('color.icon.inverse')} />
-                  </div>
-                  <div className="placeholder-text">Preview Unavailable</div>
-                  <div className="placeholder-subtitle">
+            `}
+          >
+            <GcDashIconButton aria-label="Close modal" onClick={onClose}>
+              <CrossIcon label="" />
+            </GcDashIconButton>
+          </div>
+
+          <div css={topBarInfoStyles}>
+            <GcDashLabel tone="primary" variant="soft" uppercase={false}>
+              Video {currentVideoIndex + 1} of {videos.length}
+            </GcDashLabel>
+            <div css={titleStyles}>
+              <h1 id={dialogTitleId}>{video.title}</h1>
+              <span>
+                {video.creator && (
+                  <>
+                    <PersonIcon label="" size="small" primaryColor="currentColor" />
+                    @{video.creator}
+                    <span aria-hidden="true">•</span>
+                  </>
+                )}
+                {relativeCreated}
+              </span>
+            </div>
+          </div>
+
+          <div css={headerRightStyles}>
+            <div css={headerControlsRowStyles}>
+              <GcDashNavButtons
+                onPrevious={() => onNavigateVideo('prev')}
+                onNext={() => onNavigateVideo('next')}
+                disablePrevious={!canNavigatePrev}
+                disableNext={!canNavigateNext}
+                size="compact"
+              />
+            </div>
+            <GcDashTabs
+              tabs={tabs}
+              activeTabId={activeTab}
+              onChange={(tabId) => setActiveTab(tabId as VideoModalTab)}
+              variant="pill"
+              stretch={false}
+              css={tabSwitcherStyles}
+            />
+          </div>
+        </header>
+
+        <div css={layoutStyles}>
+          <aside css={videoPaneStyles}>
+            <div css={videoFrameStyles}>
+              {embedSrc ? (
+                <iframe
+                  src={embedSrc}
+                  title={video.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <div css={videoPlaceholderStyles}>
+                  <VidPlayIcon label="" size="xlarge" primaryColor="#ffffff" />
+                  <span css={css`font-size: 18px; font-weight: 700;`}>Preview unavailable</span>
+                  <span css={css`font-size: 14px; opacity: 0.85; max-width: 360px;`}>
                     {video.platform && (video.platform === 'tiktok' || video.platform === 'instagram')
-                      ? 'This platform does not allow iframe embeds. Use the button below to open the original video.'
-                      : 'Embed URL not available for this video.'}
-                  </div>
+                      ? 'This platform blocks iframe playback. Open the original post to watch it.'
+                      : 'We could not render an embeddable preview for this video.'}
+                  </span>
                   {video.url && (
-                    <div style={{ marginTop: 'var(--space-4)' }}>
-                      <Button
-                        variant="primary"
-                        onClick={() => window.open(video.url, '_blank', 'noopener,noreferrer')}
-                      >
-                        Open Original
-                      </Button>
-                    </div>
+                    <GcDashButton variant="primary" size="sm" onClick={openOriginal}>
+                      View on platform
+                    </GcDashButton>
                   )}
                 </div>
-              );
-            })()}
-          </div>
-        </div>
+              )}
+            </div>
 
-        {/* Navigation Strip */}
-        <div css={navigationStripStyles}>
-          <button
-            className="nav-button"
-            onClick={() => onNavigateVideo('prev')}
-            disabled={!canNavigatePrev}
-            aria-label="Previous video"
-          >
-            <ChevronUpIcon label="" size="medium" primaryColor="currentColor" />
-          </button>
-          <button
-            className="nav-button"
-            onClick={() => onNavigateVideo('next')}
-            disabled={!canNavigateNext}
-            aria-label="Next video"
-          >
-            <ChevronDownIcon label="" size="medium" primaryColor="currentColor" />
-          </button>
-        </div>
-
-        {/* Insights Panel */}
-        <div css={insightsPanelStyles}>
-          <div css={tabsStyles}>
-            {[
-              { id: 'video', label: 'Video' },
-              { id: 'script', label: 'Script' },
-              { id: 'hooks', label: 'Hooks' },
-              { id: 'analytics', label: 'Analytics' },
-              { id: 'more', label: 'More' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id as any)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <div css={panelContentStyles}>
-            {renderTabContent()}
-
-            {activeTab === 'script' && (
-              <div className="actions">
-                <Button variant="primary" onClick={handleCopyAll}>
-                  <CopyIcon label="" size="small" primaryColor={token('color.icon.inverse')} />
-                  Copy All
-                </Button>
-                <Button variant="secondary">
-                  <DownloadIcon label="" size="small" primaryColor={token('color.icon')} />
-                  Download
-                </Button>
+            <div css={videoMetaStyles}>
+              <div css={videoMetaChipsStyles}>
+                {metaChips.map((chip) => (
+                  <GcDashLabel key={chip.id} tone={chip.tone} variant="soft" uppercase={false}>
+                    {chip.icon && <span aria-hidden>{chip.icon}</span>}
+                    {chip.label}
+                  </GcDashLabel>
+                ))}
               </div>
-            )}
-          </div>
-        </div>
+              <div css={css`display: flex; flex-direction: column; gap: 6px;`}>
+                <span css={css`font-size: 17px; font-weight: 600;`}>{video.title}</span>
+                {video.creator && (
+                  <span css={css`font-size: 14px; opacity: 0.85;`}>@{video.creator}</span>
+                )}
+              </div>
+            </div>
 
-        {/* Mobile Navigation */}
-        <div css={mobileNavigationStyles}>
-          <Button
-            variant="secondary"
-            className="mobile-nav-button"
-            onClick={() => onNavigateVideo('prev')}
-            disabled={!canNavigatePrev}
-          >
-            ← Previous
-          </Button>
-          <Button
-            variant="secondary"
-            className="mobile-nav-button"
-            onClick={() => onNavigateVideo('next')}
-            disabled={!canNavigateNext}
-          >
-            Next →
-          </Button>
+            <div css={css`display: flex; gap: ${gcDashSpacing.xs}; flex-wrap: wrap;`}>
+              {video.url && (
+                <GcDashButton variant="secondary" size="sm" onClick={openOriginal}>
+                  Open original
+                </GcDashButton>
+              )}
+              <GcDashButton
+                variant="ghost"
+                size="sm"
+                onClick={() => formattedTranscript && handleCopyToClipboard(formattedTranscript)}
+                disabled={!formattedTranscript}
+              >
+                <CopyIcon label="" size="small" primaryColor="currentColor" />
+                Copy transcript
+              </GcDashButton>
+            </div>
+          </aside>
+
+          <section css={rightPaneStyles}>
+            <div css={actionBarStyles}>
+              <GcDashButton variant="primary" size="md">Rewrite as script</GcDashButton>
+              <GcDashButton variant="secondary" size="md">Extract content ideas</GcDashButton>
+              <GcDashButton variant="secondary" size="md">Generate hooks</GcDashButton>
+              <GcDashButton variant="ghost" size="md">Add to my collection</GcDashButton>
+            </div>
+
+            <div css={scrollRegionStyles}>{renderActiveContent()}</div>
+          </section>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

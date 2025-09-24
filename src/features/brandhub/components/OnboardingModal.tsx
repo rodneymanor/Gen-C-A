@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { css } from '@emotion/react'
 import StopwatchIcon from '@atlaskit/icon/glyph/stopwatch'
 import VidPlayIcon from '@atlaskit/icon/glyph/vid-play'
@@ -8,6 +8,7 @@ import { Badge } from '../../../components/ui/Badge'
 import { BasicModal } from '../../../components/ui/BasicModal'
 import { Button } from '../../../components/ui/Button'
 import { onboardingPrompts } from '../constants/onboarding'
+import { TextArea } from '../../../components/ui/TextArea'
 import { useSpeechTranscription } from '../hooks/useSpeechTranscription'
 import { formatTime } from '../utils/time'
 import {
@@ -118,13 +119,6 @@ const onboardingModalStyles = css`
     color: var(--color-neutral-600);
     text-transform: uppercase;
     letter-spacing: 0.04em;
-  }
-
-  .stream-output {
-    font-size: var(--font-size-body);
-    color: var(--color-neutral-800);
-    line-height: var(--line-height-relaxed, 1.6);
-    white-space: pre-wrap;
   }
 
   .response-controls {
@@ -291,6 +285,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
   const {
     liveTranscript,
+    updateTranscript,
     clearTranscript,
     isRecording,
     startRecording,
@@ -304,10 +299,18 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     onTranscriptChange: (value) => setResponse(currentQuestion.id, value)
   })
 
+  const persistCurrentResponse = useCallback(() => {
+    const storedValue = responses[currentQuestion.id] ?? ''
+    if (storedValue !== liveTranscript) {
+      setResponse(currentQuestion.id, liveTranscript)
+    }
+  }, [currentQuestion.id, liveTranscript, responses, setResponse])
+
   const [hasRecordingStarted, setHasRecordingStarted] = useState(false)
   const lastStartedQuestionRef = useRef<keyof OnboardingFormState | null>(null)
 
   const handleClose = () => {
+    persistCurrentResponse()
     if (hasRecordingStarted) {
       registerBoundary({
         questionId: currentQuestion.id,
@@ -324,6 +327,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   }
 
   const handlePrevious = () => {
+    persistCurrentResponse()
     if (hasRecordingStarted) {
       registerBoundary({
         questionId: currentQuestion.id,
@@ -337,6 +341,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   }
 
   const handleNext = () => {
+    persistCurrentResponse()
     if (isLastQuestion) {
       if (hasRecordingStarted) {
         registerBoundary({
@@ -430,10 +435,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     return hasRecordingStarted ? 'Resume recording' : 'Start recording'
   }, [hasRecordingStarted, isRecording])
 
-  const canAdvance = useMemo(
-    () => (responses[currentQuestion.id] ?? '').trim().length > 0,
-    [currentQuestion.id, responses]
-  )
+  const canAdvance = useMemo(() => {
+    const liveValue = liveTranscript.trim()
+    if (liveValue.length > 0) {
+      return true
+    }
+    const storedValue = (responses[currentQuestion.id] ?? '').trim()
+    return storedValue.length > 0
+  }, [currentQuestion.id, liveTranscript, responses])
 
   return (
     <BasicModal open={open} title="Interactive onboarding interview" onClose={handleClose} size="large">
@@ -484,9 +493,20 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             </div>
             <div className="transcript-stream">
               <span className="stream-label">Live transcript</span>
-              <div className="stream-output">
-                {liveTranscript || 'Your words will appear here as you speak.'}
-              </div>
+              <TextArea
+                value={liveTranscript}
+                onChange={(event) => updateTranscript(event.target.value)}
+                placeholder="Speak or type your answer here."
+                size="medium"
+                autoResize
+                aria-label="Interview response"
+                disabled={isRecording}
+                helperText={
+                  isRecording
+                    ? 'Pause recording to make edits, or keep speaking to update the text automatically.'
+                    : 'Edit the transcript directly if you prefer typing.'
+                }
+              />
             </div>
             {recordingError && <div className="error-banner">{recordingError}</div>}
             <div className="response-controls">

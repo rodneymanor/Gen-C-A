@@ -197,9 +197,9 @@ export const useSpeechTranscription = (
       setIsRecording(true)
       setElapsedSeconds(0)
       stopInterval()
-      segmentStartRef.current = sessionTranscriptRef.current.length
       setSessionTranscript('')
       sessionTranscriptRef.current = ''
+      segmentStartRef.current = 0
       if (typeof window !== 'undefined') {
         timerIntervalRef.current = window.setInterval(() => {
           setElapsedSeconds((prev) => prev + 1)

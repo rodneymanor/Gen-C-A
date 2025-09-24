@@ -144,10 +144,12 @@ export const BrandHub: React.FC = () => {
     setActiveQuestionIndex,
     completedCount,
     isQuestionnaireComplete,
+    sessionMeta,
     ensureSessionStarted,
     registerBoundary,
     finalizeSession,
-    updateSessionTranscript
+    updateSessionTranscript,
+    flushPendingSaves
   } = useBrandHubOnboarding({ userId: firebaseUser?.uid })
 
   const {
@@ -232,6 +234,39 @@ export const BrandHub: React.FC = () => {
     }
   }, [buildBrandProfilePayload, isQuestionnaireComplete])
 
+  const handleDownloadOnboardingResponses = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    flushPendingSaves()
+
+    const now = new Date()
+    const exportPayload = {
+      exportedAt: now.toISOString(),
+      questionnaireComplete: isQuestionnaireComplete,
+      responses,
+      selectedIntents,
+      sessionMeta
+    }
+
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
+      type: 'application/json'
+    })
+
+    const timestampSegment = now.toISOString().replace(/[:.]/g, '-').replace('T', '_').replace('Z', '')
+    const filename = `gen-c-onboarding-${timestampSegment}.json`
+
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = filename
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  }, [flushPendingSaves, isQuestionnaireComplete, responses, selectedIntents, sessionMeta])
+
   const handleIntentToggle = (intent: string) => {
     setSelectedIntents((prev) =>
       prev.includes(intent) ? prev.filter((item) => item !== intent) : [...prev, intent]
@@ -267,12 +302,14 @@ export const BrandHub: React.FC = () => {
 
   const handleCompleteOnboarding = () => {
     setCompleted(true)
+    flushPendingSaves()
     setIsOnboardingModalOpen(false)
     setActiveTab('blueprint')
     void handleGenerateBrandProfile()
   }
 
   const handleCloseOnboardingModal = () => {
+    flushPendingSaves()
     setIsOnboardingModalOpen(false)
   }
 
@@ -365,6 +402,7 @@ export const BrandHub: React.FC = () => {
           selectedIntents={selectedIntents}
           onToggleIntent={handleIntentToggle}
           intentOptions={intentOptions}
+          onDownloadResponses={handleDownloadOnboardingResponses}
         />
       )}
 

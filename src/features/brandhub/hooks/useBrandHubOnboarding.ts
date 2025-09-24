@@ -37,6 +37,7 @@ interface UseBrandHubOnboardingResult {
   registerBoundary: (boundary: OnboardingSessionBoundary) => void
   finalizeSession: (status: OnboardingSessionStatus) => void
   updateSessionTranscript: (transcript: string) => void
+  flushPendingSaves: () => void
 }
 
 export const useBrandHubOnboarding = (
@@ -49,6 +50,7 @@ export const useBrandHubOnboarding = (
   const [sessionMeta, setSessionMeta] = useState<OnboardingSessionMeta>(createInitialSessionMeta)
 
   const saveTimerRef = useRef<number | null>(null)
+  const isFlushingRef = useRef(false)
   const latestResponsesRef = useRef(responses)
   const latestCompletionRef = useRef(hasCompleted)
   const latestSessionMetaRef = useRef(sessionMeta)
@@ -61,11 +63,19 @@ export const useBrandHubOnboarding = (
   }, [])
 
   const resetInterview = useCallback(() => {
-    setResponses(createEmptyOnboardingResponses())
+    const initialResponses = createEmptyOnboardingResponses()
+    setResponses(initialResponses)
+    latestResponsesRef.current = initialResponses
+
     setHasCompleted(false)
+    latestCompletionRef.current = false
+
     setActiveQuestionIndex(0)
     setIsLoading(false)
-    setSessionMeta(createInitialSessionMeta())
+
+    const initialMeta = createInitialSessionMeta()
+    setSessionMeta(initialMeta)
+    latestSessionMetaRef.current = initialMeta
   }, [])
 
   useEffect(() => {
@@ -97,21 +107,28 @@ export const useBrandHubOnboarding = (
         }
 
         if (record.responses) {
-          setResponses((prev) => ({ ...prev, ...record.responses }))
+          setResponses((prev) => {
+            const next = { ...prev, ...record.responses }
+            latestResponsesRef.current = next
+            return next
+          })
         }
 
         if (record.status === 'completed') {
           setHasCompleted(true)
+          latestCompletionRef.current = true
         }
 
         if (record.sessionMeta) {
-          setSessionMeta({
+          const normalizedSessionMeta: OnboardingSessionMeta = {
             startedAt: record.sessionMeta.startedAt ?? null,
             stoppedAt: record.sessionMeta.stoppedAt ?? null,
             status: record.sessionMeta.status ?? 'idle',
             boundaries: record.sessionMeta.boundaries ?? [],
             transcript: record.sessionMeta.transcript ?? ''
-          })
+          }
+          setSessionMeta(normalizedSessionMeta)
+          latestSessionMetaRef.current = normalizedSessionMeta
         }
       } catch (error) {
         console.error('Failed to load onboarding responses:', error)
@@ -158,6 +175,38 @@ export const useBrandHubOnboarding = (
     }, SAVE_DEBOUNCE_MS)
   }, [userId])
 
+  const flushPendingSaves = useCallback(() => {
+    if (!userId) {
+      return
+    }
+
+    if (typeof window !== 'undefined' && saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+
+    if (isFlushingRef.current) {
+      return
+    }
+
+    isFlushingRef.current = true
+
+    const flushPromise = persistOnboardingResponses(
+      userId,
+      latestResponsesRef.current,
+      latestCompletionRef.current,
+      latestSessionMetaRef.current
+    )
+      .catch((error) => {
+        console.error('Failed to persist onboarding responses during flush:', error)
+      })
+      .finally(() => {
+        isFlushingRef.current = false
+      })
+
+    void flushPromise
+  }, [userId])
+
   useEffect(() => {
     enqueueSave()
 
@@ -180,26 +229,67 @@ export const useBrandHubOnboarding = (
         saveTimerRef.current = null
       }
       if (userId) {
-        void persistOnboardingResponses(
-          userId,
-          latestResponsesRef.current,
-          latestCompletionRef.current,
-          latestSessionMetaRef.current
-        )
+        flushPendingSaves()
       }
     }
-  }, [userId])
+  }, [flushPendingSaves, userId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushPendingSaves()
+      }
+    }
+
+    const handlePageHide = () => {
+      flushPendingSaves()
+    }
+
+    const handleBeforeUnload = () => {
+      flushPendingSaves()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [flushPendingSaves])
 
   const setResponse = useCallback((id: keyof OnboardingFormState, value: string) => {
-    setResponses((prev) => ({ ...prev, [id]: value }))
+    setResponses((prev) => {
+      const next = { ...prev, [id]: value }
+      latestResponsesRef.current = next
+      return next
+    })
   }, [])
 
   const setCompleted = useCallback((state: boolean) => {
     setHasCompleted(state)
+    latestCompletionRef.current = state
   }, [])
 
+  const updateSessionMetaState = useCallback(
+    (updater: (previous: OnboardingSessionMeta) => OnboardingSessionMeta) => {
+      setSessionMeta((prev) => {
+        const next = updater(prev)
+        latestSessionMetaRef.current = next
+        return next
+      })
+    },
+    []
+  )
+
   const ensureSessionStarted = useCallback(() => {
-    setSessionMeta((prev) => {
+    updateSessionMetaState((prev) => {
       if (prev.startedAt) {
         return prev.status === 'idle' ? { ...prev, status: 'in-progress' } : prev
       }
@@ -209,32 +299,39 @@ export const useBrandHubOnboarding = (
         status: 'in-progress'
       }
     })
-  }, [])
+  }, [updateSessionMetaState])
 
-  const registerBoundary = useCallback((boundary: OnboardingSessionBoundary) => {
-    setSessionMeta((prev) => ({
-      ...prev,
-      boundaries: [...prev.boundaries, boundary]
-    }))
-  }, [])
+  const registerBoundary = useCallback(
+    (boundary: OnboardingSessionBoundary) => {
+      updateSessionMetaState((prev) => ({
+        ...prev,
+        boundaries: [...prev.boundaries, boundary]
+      }))
+    },
+    [updateSessionMetaState]
+  )
 
   const finalizeSession = useCallback(
     (status: OnboardingSessionStatus) => {
-      setSessionMeta((prev) => ({
+      updateSessionMetaState((prev) => ({
         ...prev,
         status,
         stoppedAt: Date.now(),
         startedAt: prev.startedAt ?? Date.now()
       }))
     },
-  [])
+    [updateSessionMetaState]
+  )
 
-  const updateSessionTranscript = useCallback((transcript: string) => {
-    setSessionMeta((prev) => ({
-      ...prev,
-      transcript
-    }))
-  }, [])
+  const updateSessionTranscript = useCallback(
+    (transcript: string) => {
+      updateSessionMetaState((prev) => ({
+        ...prev,
+        transcript
+      }))
+    },
+    [updateSessionMetaState]
+  )
 
   const completedCount = useMemo(
     () =>
@@ -262,6 +359,7 @@ export const useBrandHubOnboarding = (
     ensureSessionStarted,
     registerBoundary,
     finalizeSession,
-    updateSessionTranscript
+    updateSessionTranscript,
+    flushPendingSaves
   }
 }

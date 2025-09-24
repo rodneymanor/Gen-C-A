@@ -1,5 +1,6 @@
 import React from 'react'
 import { css } from '@emotion/react'
+import DownloadIcon from '@atlaskit/icon/glyph/download'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
@@ -130,6 +131,7 @@ type OnboardingSectionProps = {
   selectedIntents: string[]
   onToggleIntent: (intent: string) => void
   intentOptions: readonly string[]
+  onDownloadResponses: () => void
 }
 
 export const OnboardingSection: React.FC<OnboardingSectionProps> = ({
@@ -140,7 +142,8 @@ export const OnboardingSection: React.FC<OnboardingSectionProps> = ({
   onViewBlueprint,
   selectedIntents,
   onToggleIntent,
-  intentOptions
+  intentOptions,
+  onDownloadResponses
 }) => {
   if (!hasCompleted) {
     return (
@@ -183,6 +186,9 @@ export const OnboardingSection: React.FC<OnboardingSectionProps> = ({
         </Button>
         <Button variant="secondary" onClick={onViewBlueprint}>
           View content blueprint
+        </Button>
+        <Button variant="tertiary" onClick={onDownloadResponses} iconBefore={<DownloadIcon label="" />}>
+          Download answers
         </Button>
       </div>
       <div className="intent-picker">

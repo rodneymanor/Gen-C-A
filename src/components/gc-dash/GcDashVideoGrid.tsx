@@ -180,7 +180,16 @@ const videoMediaStyles = css`
   background: #0a1425;
   overflow: hidden;
 
+  /* Fallback for browsers without aspect-ratio support */
+  &::before {
+    content: '';
+    display: block;
+    padding-top: calc(16 / 9 * 100%);
+  }
+
   img {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     display: block;

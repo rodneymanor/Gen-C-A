@@ -23,6 +23,8 @@ import BrandHub from './pages/BrandHub';
 import YouTubeIdeaSeeds from './pages/YouTubeIdeaSeeds';
 import WritingRedesignPage from './pages/WritingRedesignPage';
 import ViralContent from './pages/ViralContent';
+import VideoGridTest from './pages/VideoGridTest';
+import VideoOverlayShowcase from './pages/VideoOverlayShowcase';
 import './styles/globals.css';
 
 // Placeholder components for missing routes
@@ -76,6 +78,22 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Videos />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/video-grid-test" element={
+              <ProtectedRoute>
+                <Layout>
+                  <VideoGridTest />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/video-overlay-test" element={
+              <ProtectedRoute>
+                <Layout>
+                  <VideoOverlayShowcase />
                 </Layout>
               </ProtectedRoute>
             } />
