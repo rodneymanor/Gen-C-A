@@ -35,6 +35,10 @@ function parseInstagramCode(input: string): string | null {
   return null;
 }
 
+function isTikTokUrl(value: string): boolean {
+  return /tiktok\.com\//i.test(value);
+}
+
 function formatMetric(value: unknown): string {
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return '0';
@@ -61,23 +65,33 @@ export async function POST(request: NextRequest) {
     const shortcode = typeof payload.shortcode === 'string' ? payload.shortcode.trim() : '';
     const videoUrlInput = typeof payload.videoUrl === 'string' ? payload.videoUrl.trim() : '';
 
-    if (platform !== 'instagram') {
-      return NextResponse.json({ success: false, error: 'Only Instagram shortcodes are supported right now' }, { status: 400 });
+    if (!platform) {
+      return NextResponse.json({ success: false, error: 'Unsupported platform' }, { status: 400 });
     }
 
-    const effectiveShortcode = shortcode || parseInstagramCode(videoUrlInput);
-    if (!effectiveShortcode) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'shortcode is required',
-        },
-        { status: 400 },
-      );
+    let videoUrl: string;
+    if (platform === 'instagram') {
+      const effectiveShortcode = shortcode || parseInstagramCode(videoUrlInput);
+      if (!effectiveShortcode) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'shortcode is required',
+          },
+          { status: 400 },
+        );
+      }
+      videoUrl = `https://www.instagram.com/p/${effectiveShortcode.replace(/\//g, '')}/`;
+    } else if (platform === 'tiktok') {
+      if (!videoUrlInput || !isTikTokUrl(videoUrlInput)) {
+        return NextResponse.json({ success: false, error: 'A valid TikTok video URL is required' }, { status: 400 });
+      }
+      videoUrl = videoUrlInput;
+    } else {
+      return NextResponse.json({ success: false, error: 'Only Instagram and TikTok are supported right now' }, { status: 400 });
     }
 
     const syncService = new ViralContentSyncService();
-    const videoUrl = `https://www.instagram.com/p/${effectiveShortcode.replace(/\//g, '')}/`;
     const { record, isNew } = await syncService.addVideoFromUrl({ platform, videoUrl });
 
     const thumbnail = record.thumbnail?.bunny ?? record.thumbnail?.original ?? record.thumbnailUrl ?? '';

@@ -84,6 +84,8 @@ export const platformChipsStyles = css`
 export const controlsRightStyles = css`
   display: inline-flex;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-left: auto;
 
   @media (max-width: 720px) {

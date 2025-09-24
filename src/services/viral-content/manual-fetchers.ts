@@ -37,7 +37,7 @@ class RapidApiError extends Error {
 
 const RAPIDAPI_HOSTS: Record<ViralPlatform, string> = {
   instagram: 'instagram-api-fast-reliable-data-scraper.p.rapidapi.com',
-  tiktok: 'tiktok-scrapper-videos-music-challenges-downloader.p.rapidapi.com',
+  tiktok: 'tiktok-scraper7.p.rapidapi.com',
   youtube: 'youtube-media-downloader.p.rapidapi.com',
 };
 
@@ -240,48 +240,48 @@ async function fetchInstagramVideoDetails(videoUrl: string): Promise<RapidApiVid
 }
 
 async function fetchTikTokVideoDetails(videoUrl: string): Promise<RapidApiVideoDetails> {
-  const videoId = parseTikTokVideoId(videoUrl);
-  if (!videoId) {
-    throw new RapidApiError('Unable to extract TikTok video id from the URL provided');
+  const trimmedUrl = videoUrl.trim();
+  if (!trimmedUrl) {
+    throw new RapidApiError('TikTok video URL is required');
   }
 
   const host = RAPIDAPI_HOSTS.tiktok;
-  const apiUrl = `https://${host}/video/${encodeURIComponent(videoId)}?region=US`;
+  const query = new URLSearchParams({ url: trimmedUrl, hd: '1' });
+  const apiUrl = `https://${host}/?${query.toString()}`;
   const json = await rapidApiFetch(apiUrl, host);
-  const detail = json?.data?.aweme_detail;
-  if (!detail) {
-    throw new RapidApiError('TikTok response did not contain aweme_detail data');
+  const data = json?.data;
+  if (!data) {
+    throw new RapidApiError('TikTok response did not include video data');
   }
 
-  const author = detail.author ?? {};
+  const author = data.author ?? {};
   const username: string = author.unique_id ?? author.uniqueId ?? '';
-  const nickname: string = author.nickname ?? username ?? 'TikTok Creator';
-  const coverList: string[] = detail.video?.cover?.url_list ?? detail.video?.origin_cover?.url_list ?? [];
-  const thumbnailUrl = coverList.find((url) => Boolean(url)) ?? detail.video?.dynamic_cover?.url_list?.[0] ?? '';
+  const displayName: string = author.nickname ?? username ?? 'TikTok Creator';
+  const thumbnailUrl: string = data.cover ?? data.origin_cover ?? data.ai_dynamic_cover ?? '';
   if (!thumbnailUrl) {
     throw new RapidApiError('TikTok response did not include a thumbnail image');
   }
 
-  const stats = detail.statistics ?? detail.stats ?? {};
+  const platformVideoId = String(data.id ?? data.aweme_id ?? parseTikTokVideoId(trimmedUrl) ?? trimmedUrl);
+  const platformIdentifier = author.id ?? username ?? platformVideoId;
 
   return {
-    platformVideoId: detail.aweme_id ?? videoId,
-    url: username ? `https://www.tiktok.com/@${username}/video/${detail.aweme_id ?? videoId}` : videoUrl,
-    title: detail.desc?.split('\n')[0] ?? nickname,
-    description: detail.desc ?? '',
+    platformVideoId,
+    url: trimmedUrl,
+    title: data.title ?? displayName,
+    description: data.title ?? displayName,
     thumbnailUrl,
-    publishedAt: parseIsoDate(detail.create_time),
+    publishedAt: parseIsoDate(data.create_time),
     metrics: {
-      views: toNumber(stats.play_count),
-      likes: toNumber(stats.digg_count),
-      comments: toNumber(stats.comment_count),
-      shares: toNumber(stats.share_count),
-      followers: toNumber(author.follower_count),
+      views: toNumber(data.play_count),
+      likes: toNumber(data.digg_count),
+      comments: toNumber(data.comment_count),
+      shares: toNumber(data.share_count),
     },
     creator: {
-      slug: `tiktok-${(username || author.uid || videoId).toLowerCase()}`,
-      displayName: nickname,
-      platformId: String((author.uid ?? author.id ?? username) ?? videoId),
+      slug: `tiktok-${String(platformIdentifier).toLowerCase()}`,
+      displayName,
+      platformId: String(platformIdentifier),
       secondaryId: username || undefined,
     },
     raw: json ?? {},

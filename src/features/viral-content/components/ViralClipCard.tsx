@@ -4,6 +4,9 @@ import { GcDashButton, GcDashCard, GcDashCardBody } from '@/components/gc-dash';
 import MediaServicesPresentationIcon from '@atlaskit/icon/glyph/media-services/presentation';
 import AddIcon from '@atlaskit/icon/glyph/add';
 import PlayIcon from '@atlaskit/icon/glyph/vid-play';
+import DetailViewIcon from '@atlaskit/icon/glyph/detail-view';
+import LikeIcon from '@atlaskit/icon/glyph/like';
+import CommentIcon from '@atlaskit/icon/glyph/comment';
 import type { ViralVideo } from '../types';
 import { PLATFORM_EMOJI, PLATFORM_LABELS } from '../constants/feed';
 
@@ -163,7 +166,7 @@ const metricRowStyles = css`
   gap: 8px;
 `;
 
-const metricChipStyles = (tone: string | undefined) => {
+const metricPalette = (tone: string | undefined) => {
   const palette: Record<string, { bg: string; color: string }> = {
     primary: { bg: 'rgba(11, 92, 255, 0.12)', color: 'rgba(11, 92, 255, 1)' },
     success: { bg: 'rgba(0, 158, 115, 0.12)', color: 'rgba(0, 134, 83, 1)' },
@@ -171,8 +174,11 @@ const metricChipStyles = (tone: string | undefined) => {
     danger: { bg: 'rgba(225, 60, 60, 0.12)', color: 'rgba(191, 38, 0, 1)' },
     neutral: { bg: 'rgba(9, 30, 66, 0.08)', color: 'rgba(9, 30, 66, 0.7)' },
   };
-  const { bg, color } = palette[tone ?? 'neutral'];
+  return palette[tone ?? 'neutral'];
+};
 
+const metricChipStyles = (tone: string | undefined) => {
+  const { bg, color } = metricPalette(tone);
   return css`
     display: inline-flex;
     align-items: center;
@@ -191,6 +197,12 @@ const actionsButtonStyles = css`
   pointer-events: auto;
   min-width: 180px;
 `;
+
+const metricIconComponents: Record<string, React.ComponentType<{ label: string; size?: 'small' | 'medium' | 'large'; primaryColor?: string }>> = {
+  views: DetailViewIcon,
+  likes: LikeIcon,
+  comments: CommentIcon,
+};
 
 export const ViralClipCard: React.FC<ViralClipCardProps> = ({
   video,
@@ -272,11 +284,20 @@ export const ViralClipCard: React.FC<ViralClipCardProps> = ({
         ) : null}
         <span css={creatorStyles}>{video.creator}</span>
         <div css={metricRowStyles}>
-          {video.metrics.map((metricItem) => (
-            <span key={metricItem.id} css={metricChipStyles(metricItem.tone)}>
-              {metricItem.label}: {metricItem.value}
-            </span>
-          ))}
+          {video.metrics.map((metricItem) => {
+            const IconComponent = metricIconComponents[metricItem.id.toLowerCase()];
+            const { color } = metricPalette(metricItem.tone);
+            return (
+              <span key={metricItem.id} css={metricChipStyles(metricItem.tone)}>
+                {IconComponent ? (
+                  <IconComponent label="" size="small" primaryColor={color} />
+                ) : (
+                  <span>{metricItem.label}</span>
+                )}
+                <span>{metricItem.value}</span>
+              </span>
+            );
+          })}
         </div>
       </GcDashCardBody>
     </GcDashCard>

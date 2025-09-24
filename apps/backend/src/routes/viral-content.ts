@@ -155,6 +155,10 @@ function authorize(request: import('express').Request): boolean {
   return normalized === secret;
 }
 
+function isTikTokUrl(value: string): boolean {
+  return /tiktok\.com\//i.test(value);
+}
+
 router.post('/admin/video', async (req, res) => {
   if (!authorize(req)) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -165,16 +169,25 @@ router.post('/admin/video', async (req, res) => {
   const videoUrlBody = typeof req.body?.videoUrl === 'string' ? req.body.videoUrl.trim() : '';
 
   const platform = normalizePlatform(platformValue);
-  if (platform !== 'instagram') {
-    return res.status(400).json({ success: false, error: 'Only Instagram posts are supported in this flow' });
+  if (!platform) {
+    return res.status(400).json({ success: false, error: 'Unsupported platform' });
   }
 
-  const effectiveShortcode = shortcode || parseInstagramCodeFromInput(videoUrlBody);
-  if (!effectiveShortcode) {
-    return res.status(400).json({ success: false, error: 'shortcode is required' });
+  let videoUrl: string;
+  if (platform === 'instagram') {
+    const effectiveShortcode = shortcode || parseInstagramCodeFromInput(videoUrlBody);
+    if (!effectiveShortcode) {
+      return res.status(400).json({ success: false, error: 'shortcode is required' });
+    }
+    videoUrl = `https://www.instagram.com/p/${effectiveShortcode.replace(/\//g, '')}/`;
+  } else if (platform === 'tiktok') {
+    if (!videoUrlBody || !isTikTokUrl(videoUrlBody)) {
+      return res.status(400).json({ success: false, error: 'Valid TikTok video URL is required' });
+    }
+    videoUrl = videoUrlBody;
+  } else {
+    return res.status(400).json({ success: false, error: 'Only Instagram and TikTok are supported right now' });
   }
-
-  const videoUrl = `https://www.instagram.com/p/${effectiveShortcode.replace(/\//g, '')}/`;
 
   try {
     const syncService = new ViralContentSyncService();
