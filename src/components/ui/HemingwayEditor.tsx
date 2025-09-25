@@ -9,6 +9,7 @@ import ChevronRightIcon from '@atlaskit/icon/glyph/chevron-right';
 import ChevronLeftIcon from '@atlaskit/icon/glyph/chevron-left';
 import { Button } from './Button';
 import { EditableTitle } from './EditableTitle';
+import { EditorSidebar } from './EditorSidebar';
 import { FloatingToolbar } from './FloatingToolbar';
 import { ScriptComponentEditor } from './ScriptComponentEditor';
 import { InteractiveScript } from '../writing-analysis/interactive-script';
@@ -26,7 +27,7 @@ export interface HemingwayEditorProps {
   initialContent?: string;
   /** Initial title for the document */
   initialTitle?: string;
-  /** Deprecated: sidebar removed; kept for API compatibility */
+  /** Whether the sidebar should be collapsed initially */
   initialSidebarCollapsed?: boolean;
   /** Whether focus mode should be enabled initially */
   initialFocusMode?: boolean;
@@ -180,7 +181,7 @@ const TextEditor = styled.textarea`
 export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   initialContent = '',
   initialTitle = '',
-  initialSidebarCollapsed = true,
+  initialSidebarCollapsed = false,
   initialFocusMode = false,
   onContentChange,
   onTitleChange,
@@ -194,8 +195,7 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
   // State management
   const [content, setContent] = useState(initialContent);
   const [title, setTitle] = useState(initialTitle || 'Untitled Document');
-  // Sidebar has been removed from the new Write experience; keep collapsed
-  const [sidebarCollapsed] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarCollapsed);
   const [focusMode, setFocusMode] = useState(initialFocusMode);
   const [activeTab, setActiveTab] = useState<'readability' | 'writing'>('readability');
   const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([]);
@@ -359,8 +359,9 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
     scheduleAutosave();
   }, [onScriptElementsChange, scheduleAutosave]);
 
-  // Sidebar removed: no-op toggle to preserve API shape if called
-  const toggleSidebar = useCallback(() => {}, []);
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => !prev);
+  }, []);
 
   const toggleFocusMode = useCallback(() => {
     setFocusMode(prev => !prev);
@@ -560,13 +561,20 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
             {focusMode ? <EyeIcon label="" size="small" /> : <EyeOffIcon label="" size="small" />}
           </Button>
           
-          {/* Sidebar removed in Write (new); hide collapse/expand control */}
+          <Button
+            variant="subtle"
+            size="small"
+            onClick={toggleSidebar}
+            aria-label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+          >
+            {sidebarCollapsed ? <ChevronLeftIcon label="" size="small" /> : <ChevronRightIcon label="" size="small" />}
+          </Button>
         </HeaderActions>
       </EditorHeader>
 
       {/* Main Editor Area */}
-      <EditorMain sidebarCollapsed={true}>
-        <EditorContent sidebarCollapsed={true}>
+      <EditorMain sidebarCollapsed={sidebarCollapsed}>
+        <EditorContent sidebarCollapsed={sidebarCollapsed}>
           {/* Title (mobile only) */}
           <div className="mobile-title">
             <EditableTitle
@@ -602,7 +610,16 @@ export const HemingwayEditor: React.FC<HemingwayEditorProps> = ({
           )}
         </EditorContent>
 
-        {/* Sidebar removed */}
+        {/* Sidebar */}
+        <EditorSidebar
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebar}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          readabilityMetrics={readabilityMetrics}
+          writingStats={writingStats}
+          className="editor-sidebar"
+        />
       </EditorMain>
 
       {/* Floating Toolbar */}

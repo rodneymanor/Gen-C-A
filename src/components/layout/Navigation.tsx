@@ -32,7 +32,6 @@ const navigationData: NavigationSection[] = [
     items: [
       { path: '/dashboard', label: 'Home', icon: <HomeIcon label="Home" /> },
       { path: '/write', label: 'Write', icon: <EditIcon label="Write" /> },
-      { path: '/write-redesign', label: 'Write (New)', icon: <EditIcon label="Write (New)" /> },
       { path: '/collections', label: 'Collections', icon: <FolderIcon label="Collections" /> },
       { path: '/viral-content', label: 'Viral Feed', icon: <VideoFilledIcon label="Viral Feed" /> },
       { path: '/library', label: 'Library', icon: <BookIcon label="Library" /> },
