@@ -4,9 +4,9 @@ import * as React from "react";
 import { memo, useMemo } from "react";
 
 import { Mic, Maximize2, ChevronDown, MicOff, Save, Download, Undo, Redo, Sparkles, Type, Volume2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/Badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -228,7 +228,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = memo(
           {/* Stats Section with improved visual hierarchy */}
           <div className="toolbar-stats mr-3 flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="px-2 py-1 text-xs font-medium">
+              <Badge variant="neutral" className="px-2 py-1 text-xs font-medium">
                 {stats.wordCount} words
               </Badge>
               <div className="toolbar-text text-muted-foreground flex items-center gap-1 text-xs">

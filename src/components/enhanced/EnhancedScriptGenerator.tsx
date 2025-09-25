@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { css } from '@emotion/react';
-import Form, { Field, FormFooter, HelperMessage, ErrorMessage } from '@atlaskit/form';
+import Form, { Field, HelperMessage, ErrorMessage } from '@atlaskit/form';
 import Select from '@atlaskit/select';
-import Textfield from '@atlaskit/textfield';
 import { Card, CardHeader, CardContent, CardFooter } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { TextArea } from '../ui/TextArea';
@@ -312,7 +311,7 @@ export const EnhancedScriptGenerator: React.FC<EnhancedScriptGeneratorProps> = (
   };
 
   // Validation
-  const validatePrompt = (value: string) => {
+  const validatePrompt = (value?: string) => {
     if (!value || value.trim().length === 0) {
       return 'Please enter a video idea';
     }
@@ -364,15 +363,12 @@ export const EnhancedScriptGenerator: React.FC<EnhancedScriptGeneratorProps> = (
                       <div className="atlassian-form-field">
                         <TextArea
                           {...fieldProps}
-                          placeholder="Tell me about your video idea...
-
-e.g., 'A fun TikTok about summer skincare routine for teens'"
+                          placeholder={"Tell me about your video idea...\n\n" + "e.g., 'A fun TikTok about summer skincare routine for teens'"}
                           value={promptValue}
                           onChange={(e) => {
                             setPromptValue(e.target.value);
-                            fieldProps.onChange(e);
+                            fieldProps.onChange(e.target.value);
                           }}
-                          resize="auto"
                           minimumRows={3}
                           maxLength={1000}
                         />
@@ -411,55 +407,71 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
                     </div>
                     
                     <Field name="aiModel" label="AI Model" defaultValue={aiModelOptions[0]}>
-                      {({ fieldProps }) => (
-                        <div className="atlassian-form-field">
-                          <Select
-                            {...fieldProps}
-                            options={aiModelOptions}
-                            placeholder="Select AI model"
-                            isSearchable={false}
-                          />
-                        </div>
-                      )}
+                      {({ fieldProps }) => {
+                        const selectProps = fieldProps as any;
+                        return (
+                          <div className="atlassian-form-field">
+                            <Select
+                              {...selectProps}
+                              options={aiModelOptions}
+                              placeholder="Select AI model"
+                              isSearchable={false}
+                              onChange={(option: any) => selectProps.onChange(option)}
+                            />
+                          </div>
+                        );
+                      }}
                     </Field>
 
                     <Field name="length" label="Length" defaultValue={lengthOptions[0]}>
-                      {({ fieldProps }) => (
-                        <div className="atlassian-form-field">
-                          <Select
-                            {...fieldProps}
-                            options={lengthOptions}
-                            placeholder="Select video length"
-                            isSearchable={false}
-                          />
-                        </div>
-                      )}
+                      {({ fieldProps }) => {
+                        const selectProps = fieldProps as any;
+                        return (
+                          <div className="atlassian-form-field">
+                            <Select
+                              {...selectProps}
+                              options={lengthOptions}
+                              placeholder="Select video length"
+                              isSearchable={false}
+                              onChange={(option: any) => selectProps.onChange(option)}
+                            />
+                          </div>
+                        );
+                      }}
                     </Field>
 
                     <Field name="style" label="Style" defaultValue={styleOptions[0]}>
-                      {({ fieldProps }) => (
-                        <div className="atlassian-form-field">
-                          <Select
-                            {...fieldProps}
-                            options={styleOptions}
-                            placeholder="Select content style"
-                            isSearchable={false}
-                          />
-                        </div>
-                      )}
+                      {({ fieldProps }) => {
+                        const selectProps = fieldProps as any;
+                        return (
+                          <div className="atlassian-form-field">
+                            <Select
+                              {...selectProps}
+                              options={styleOptions}
+                              placeholder="Select content style"
+                              isSearchable={false}
+                              onChange={(option: any) => selectProps.onChange(option)}
+                            />
+                          </div>
+                        );
+                      }}
                     </Field>
 
                     <Field name="platform" label="Platform" defaultValue={platformOptions[0]}>
-                      {({ fieldProps }) => (
-                        <div className="atlassian-form-field">
-                          <Select
-                            {...fieldProps}
-                            options={platformOptions}
-                            placeholder="Select target platform"
-                            isSearchable={false}
-                          />
-                        </div>
-                      )}
+                      {({ fieldProps }) => {
+                        const selectProps = fieldProps as any;
+                        return (
+                          <div className="atlassian-form-field">
+                            <Select
+                              {...selectProps}
+                              options={platformOptions}
+                              placeholder="Select target platform"
+                              isSearchable={false}
+                              onChange={(option: any) => selectProps.onChange(option)}
+                            />
+                          </div>
+                        );
+                      }}
                     </Field>
                   </Card>
 
@@ -471,17 +483,21 @@ e.g., 'A fun TikTok about summer skincare routine for teens'"
                     </div>
                     
                     <Field name="brandVoice" label="Brand Voice">
-                      {({ fieldProps }) => (
-                        <div className="atlassian-form-field">
-                          <Select
-                            {...fieldProps}
-                            options={brandVoiceOptions}
-                            placeholder="Select brand voice (optional)"
-                            isClearable
-                            isSearchable={false}
-                          />
-                        </div>
-                      )}
+                      {({ fieldProps }) => {
+                        const selectProps = fieldProps as any;
+                        return (
+                          <div className="atlassian-form-field">
+                            <Select
+                              {...selectProps}
+                              options={brandVoiceOptions}
+                              placeholder="Select brand voice (optional)"
+                              isClearable
+                              isSearchable={false}
+                              onChange={(option: any) => selectProps.onChange(option)}
+                            />
+                          </div>
+                        );
+                      }}
                     </Field>
 
                     <div className="brand-voice-preview">

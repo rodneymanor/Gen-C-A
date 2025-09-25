@@ -23,7 +23,7 @@ function matchesSearch(value: string, query: string): boolean {
 }
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
+  const searchParams = new URL(request.url).searchParams;
   const platform = (searchParams.get('platform') ?? 'all') as ViralPlatform | 'all';
   const page = Math.max(0, Number.parseInt(searchParams.get('page') ?? '0', 10) || 0);
   const pageSize = Math.min(60, Math.max(10, Number.parseInt(searchParams.get('pageSize') ?? '24', 10) || 24));
@@ -103,4 +103,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
-

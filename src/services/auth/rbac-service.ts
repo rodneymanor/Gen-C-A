@@ -108,10 +108,10 @@ export class RBACService {
     }
 
     // Role hierarchy: admin > team_member > creator
-    const roleHierarchy = {
-      'admin': ['team_member', 'creator'],
-      'team_member': ['creator'],
-      'creator': []
+    const roleHierarchy: Record<UserRole, UserRole[]> = {
+      admin: ['team_member', 'creator'],
+      team_member: ['creator'],
+      creator: [],
     };
 
     return roleHierarchy[context.role]?.includes(role) || false;

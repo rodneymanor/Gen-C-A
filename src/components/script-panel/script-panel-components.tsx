@@ -4,8 +4,8 @@ import React, { useState } from "react";
 
 import { FileText, Clock, Download } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { SlideoutHeader } from "@/components/ui/slideout-header";
 import { cn } from "@/lib/utils";
 import {

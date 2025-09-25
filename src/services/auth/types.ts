@@ -88,6 +88,7 @@ export type ResourceType = 'collection' | 'content' | 'user' | 'admin';
 export interface AuthError extends Error {
   code: string;
   type: 'auth' | 'permission' | 'session' | 'network';
+  cause?: unknown;
 }
 
 export interface AuthConfig {

@@ -2,15 +2,15 @@
 
 import { useState, useEffect, useRef } from "react";
 
-import { PartialBlock } from "@blocknote/core";
 import { BarChart3, Target, Lightbulb, ChevronDown, Check, X, Edit2 } from "lucide-react";
-import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/lib/toast";
+
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import {
   EnhancedReadabilityService,
   defaultReadabilitySettings,
@@ -39,7 +39,7 @@ interface HemingwayEditorProps {
   readOnly?: boolean;
   autoFocus?: boolean;
   elements?: ScriptElements; // New prop for structured elements
-  onBlocksChange?: (blocks: PartialBlock[]) => void; // New prop for JSON blocks
+  onBlocksChange?: (blocks: unknown[]) => void; // Placeholder signature for block updates
   title?: string;
   onTitleChange?: (title: string) => void;
   showTitleEditor?: boolean;
@@ -582,7 +582,7 @@ export function HemingwayEditor({
         />
         <Button
           variant="ghost"
-          size="sm"
+          size="small"
           className="absolute top-4 right-4 h-8 px-3 text-xs"
           onClick={() => setDistractionFreeMode(false)}
         >
@@ -601,7 +601,7 @@ export function HemingwayEditor({
       {sidebarCollapsed && (
         <Button
           variant="outline"
-          size="sm"
+          size="small"
           className="fixed top-4 right-4 z-50 h-8 px-3 text-xs shadow-md"
           onClick={() => setSidebarCollapsed(false)}
           title="Show sidebar"
@@ -643,7 +643,7 @@ export function HemingwayEditor({
                 />
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="small"
                   onClick={handleTitleSave}
                   className="h-8 w-8 p-0 text-green-600 hover:bg-green-50 hover:text-green-700"
                 >
@@ -651,7 +651,7 @@ export function HemingwayEditor({
                 </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="small"
                   onClick={handleTitleCancel}
                   className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
@@ -731,7 +731,7 @@ export function HemingwayEditor({
               <h3 className="flex items-center gap-2 text-sm font-semibold">Analysis</h3>
               <Button
                 variant="ghost"
-                size="sm"
+                size="small"
                 onClick={() => setSidebarCollapsed(true)}
                 className="h-8 w-8 p-0"
                 title="Collapse sidebar"
@@ -766,10 +766,10 @@ export function HemingwayEditor({
                 {readabilityAnalysis && (
                   <Card className="hemingway-card">
                     <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
                         <Target className="h-4 w-4" />
                         Readability Score
-                      </CardTitle>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <div className="bg-muted/10 mb-4 rounded-lg p-3 text-center">

@@ -45,7 +45,7 @@ declare module '@/services/video/video-scraper-service.js' {
   }
 
   export class VideoScraperService {
-    scrapeUrl(url: string): Promise<Record<string, unknown>>;
+    scrapeUrl(url: string, options?: Record<string, unknown>): Promise<Record<string, unknown>>;
   }
 
   export function getVideoScraperService(): VideoScraperService;
@@ -74,6 +74,7 @@ declare module '@/services/voice/voice-service.js' {
 
   export class VoiceService {
     analyzePatterns(payload: Record<string, unknown>): Promise<Record<string, unknown>>;
+    generate(payload: Record<string, unknown>): Promise<Record<string, unknown>>;
   }
 
   export function getVoiceService(): VoiceService;

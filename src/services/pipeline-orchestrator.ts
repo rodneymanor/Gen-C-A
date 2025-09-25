@@ -8,6 +8,7 @@ import { CDNService, type CDNUploadResult } from './cdn-service';
 import { TranscriptionService, type TranscriptionResult } from './transcription-service';
 import { AIAnalysisService, type ScriptComponents } from './ai-analysis-service';
 import { BackgroundJobService } from './background-job-service';
+import type { ServiceConfig } from './service-interfaces';
 
 export interface PipelineConfig {
   /**
@@ -47,6 +48,12 @@ export interface PipelineConfig {
     libraryId: string;
     apiKey: string;
     hostname: string;
+  };
+  services?: {
+    download: ServiceConfig;
+    transcription: ServiceConfig;
+    analysis: ServiceConfig;
+    background: ServiceConfig;
   };
 }
 

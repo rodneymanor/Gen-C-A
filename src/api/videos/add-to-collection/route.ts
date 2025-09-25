@@ -142,6 +142,20 @@ function createVideoObject(
   };
 }
 
+const asNumber = (value: unknown, fallback: number): number => {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+};
+
+const maybeNumber = (value: unknown): number | undefined => {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+};
+
+const maybeString = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 // Update collection video count
 async function updateCollectionCount(
   adminDb: FirebaseFirestore.Firestore,
@@ -255,18 +269,26 @@ export const POST = requireAuth(async (request, context) => {
       const scrapeResult = await scraper.scrapeUrl(videoData.originalUrl);
 
       if (scrapeResult?.success) {
-        const metricsEntries = Object.entries({
-          views: scrapeResult.viewCount,
-          likes: scrapeResult.likeCount,
-          comments: scrapeResult.commentCount,
-          shares: scrapeResult.shareCount,
-        }).filter(([, value]) => typeof value === "number" && Number.isFinite(value));
+        const metrics: Record<string, number> = {};
+        const metricsCandidates = [
+          ["views", scrapeResult.viewCount],
+          ["likes", scrapeResult.likeCount],
+          ["comments", scrapeResult.commentCount],
+          ["shares", scrapeResult.shareCount],
+        ] as const;
+
+        for (const [key, candidate] of metricsCandidates) {
+          const numeric = maybeNumber(candidate);
+          if (typeof numeric === "number") {
+            metrics[key] = numeric;
+          }
+        }
 
         const updatedInsights = {
           ...(enrichedVideo.insights ?? {}),
-          views: scrapeResult.viewCount ?? enrichedVideo.insights?.views ?? 0,
-          likes: scrapeResult.likeCount ?? enrichedVideo.insights?.likes ?? 0,
-          comments: scrapeResult.commentCount ?? enrichedVideo.insights?.comments ?? 0,
+          views: asNumber(scrapeResult.viewCount, enrichedVideo.insights?.views ?? 0),
+          likes: asNumber(scrapeResult.likeCount, enrichedVideo.insights?.likes ?? 0),
+          comments: asNumber(scrapeResult.commentCount, enrichedVideo.insights?.comments ?? 0),
           saves: enrichedVideo.insights?.saves ?? 0,
         };
 
@@ -281,24 +303,29 @@ export const POST = requireAuth(async (request, context) => {
           transcriptionQueuedAt,
         };
 
-        if (metricsEntries.length > 0) {
-          updatedMetadata.metrics = Object.fromEntries(metricsEntries);
+        if (Object.keys(metrics).length > 0) {
+          updatedMetadata.metrics = metrics;
         }
 
         const updatedContentMetadata = {
           ...(enrichedVideo.contentMetadata ?? {}),
           description:
-            scrapeResult.description ?? enrichedVideo.contentMetadata?.description ?? enrichedVideo.title ?? "",
+            maybeString(scrapeResult.description) ??
+            enrichedVideo.contentMetadata?.description ??
+            enrichedVideo.title ??
+            "",
         };
 
-        const thumbnailUrl = scrapeResult.thumbnailUrl ?? enrichedVideo.thumbnailUrl;
+        const thumbnailUrl = maybeString(scrapeResult.thumbnailUrl) ?? enrichedVideo.thumbnailUrl;
+
+        const duration = maybeNumber(scrapeResult.duration) ?? enrichedVideo.duration;
 
         const updates: Record<string, unknown> = {
-          title: scrapeResult.title ?? enrichedVideo.title,
+          title: maybeString(scrapeResult.title) ?? enrichedVideo.title,
           thumbnailUrl,
-          author: scrapeResult.author ?? enrichedVideo.author,
-          duration: scrapeResult.duration ?? enrichedVideo.duration,
-          url: scrapeResult.downloadUrl ?? enrichedVideo.url,
+          author: maybeString(scrapeResult.author) ?? enrichedVideo.author,
+          duration,
+          url: maybeString(scrapeResult.downloadUrl) ?? enrichedVideo.url,
           insights: updatedInsights,
           metadata: updatedMetadata,
           contentMetadata: updatedContentMetadata,
@@ -309,15 +336,15 @@ export const POST = requireAuth(async (request, context) => {
         await videoRef.update(updates);
 
         const transcriptionSourceUrl =
-          scrapeResult.downloadUrl ??
-          scrapeResult.videoUrl ??
+          maybeString(scrapeResult.downloadUrl) ??
+          maybeString(scrapeResult.videoUrl) ??
           enrichedVideo.url ??
           videoData.originalUrl;
 
         queueTranscriptionTask({
           videoId,
           sourceUrl: transcriptionSourceUrl,
-          platform: scrapeResult.platform ?? videoData.platform ?? enrichedVideo.platform ?? "other",
+          platform: maybeString(scrapeResult.platform)?.toLowerCase() ?? videoData.platform ?? enrichedVideo.platform ?? "other",
         });
         transcriptionQueued = true;
 

@@ -73,7 +73,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // If email verification is required and user is not verified
-  if (!bypassAuth && requireVerification && !firebaseUser.emailVerified) {
+  if (!bypassAuth && requireVerification && !firebaseUser?.emailVerified) {
     return (
       <Navigate 
         to="/verify-email" 

@@ -4,7 +4,7 @@ import clsx from 'clsx';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   children: React.ReactNode;
-  variant?: 'default' | 'primary' | 'neutral' | 'success' | 'warning' | 'error';
+  variant?: 'default' | 'primary' | 'neutral' | 'success' | 'warning' | 'error' | 'outline' | 'secondary' | 'destructive';
   size?: 'small' | 'medium' | 'large';
   icon?: React.ReactNode;
   shape?: 'rounded' | 'pill';
@@ -88,6 +88,24 @@ const getBadgeStyles = (
     background: var(--color-error-100);
     color: var(--color-error-700);
     border-color: var(--color-error-200);
+  `}
+
+  ${variant === 'outline' && css`
+    background: transparent;
+    color: var(--color-neutral-700);
+    border-color: var(--color-neutral-300);
+  `}
+
+  ${variant === 'secondary' && css`
+    background: var(--color-neutral-100);
+    color: var(--color-neutral-600);
+    border-color: var(--color-neutral-200);
+  `}
+
+  ${variant === 'destructive' && css`
+    background: var(--color-error-100);
+    color: var(--color-error-600);
+    border-color: var(--color-error-300);
   `}
 `;
 

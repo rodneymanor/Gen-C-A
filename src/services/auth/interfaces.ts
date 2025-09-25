@@ -303,14 +303,19 @@ export interface ServiceContainer {
 
 // ===== Express.js Integration Types =====
 
-export interface ExpressAuthRequest extends Express.Request {
+export interface ExpressAuthRequest {
+  headers: Record<string, string | string[] | undefined>;
   user?: FirebaseUser;
   userContext?: RBACContext;
+  [key: string]: any;
 }
 
-export interface ExpressAuthResponse extends Express.Response {
+export interface ExpressAuthResponse {
+  status(code: number): ExpressAuthResponse;
+  json(body: any): ExpressAuthResponse;
   sendAuthError(error: AuthError): void;
   sendAuthSuccess<T>(data: T): void;
+  [key: string]: any;
 }
 
 // ===== Next.js Integration Types =====

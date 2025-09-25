@@ -57,6 +57,8 @@ export interface StoredViralVideo extends NormalizedViralVideo {
   firestore?: {
     path: string;
   };
+  createdAt?: unknown;
+  updatedAt?: unknown;
 }
 
 export interface SyncSummary {
@@ -84,4 +86,3 @@ export interface ViralContentRepositoryRecord extends StoredViralVideo {
   lastSeenDate: string;
   lastSyncDate: string;
 }
-

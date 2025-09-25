@@ -56,10 +56,6 @@ function isTikTokUrl(value: string): boolean {
   return /tiktok\.com\//i.test(value);
 }
 
-function isTikTokUrl(value: string): boolean {
-  return /tiktok\.com\//i.test(value);
-}
-
 function formatMetric(value: unknown): string {
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return '0';
@@ -119,7 +115,7 @@ export async function POST(request: NextRequest) {
     }
 
     const syncService = new ViralContentSyncService();
-    ありてい    const { record, isNew } = await syncService.addVideoFromUrl({ platform, videoUrl });
+    const { record, isNew } = await syncService.addVideoFromUrl({ platform, videoUrl });
 
     const thumbnail = record.thumbnail?.bunny ?? record.thumbnail?.original ?? record.thumbnailUrl ?? '';
     const viewsValue = typeof record.metrics?.views === 'number' ? record.metrics.views : undefined;

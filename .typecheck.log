@@ -1,0 +1,296 @@
+
+> gen-c-alpha-dashboard@0.1.0 type-check
+> tsc --noEmit --pretty false
+
+src/components/enhanced/EnhancedScriptGenerator.tsx(372,27): error TS2322: Type '{ placeholder: string; value: string; onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void; minimumRows: number; maxLength: number; id: string; isRequired: boolean; ... 7 more ...; 'aria-describedby'?: string | undefined; }' is not assignable to type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & TextAreaProps & RefAttributes<HTMLTextAreaElement>'.
+  Property 'minimumRows' does not exist on type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & TextAreaProps & RefAttributes<HTMLTextAreaElement>'.
+src/components/enhanced/EnhancedVideoGrid.tsx(449,13): error TS2741: Property 'children' is missing in type '{}' but required in type 'Omit<GridProps, "columns" | "minItemWidth">'.
+src/components/enhanced/EnhancedVideoGrid.tsx(516,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: StatefulProps): DynamicTable', gave the following error.
+    Type '(sortKey: string, sortOrder: "ASC" | "DESC") => void' is not assignable to type '(data: any, UIAnalyticsEvent?: UIAnalyticsEvent | undefined) => void'.
+      Types of parameters 'sortOrder' and 'UIAnalyticsEvent' are incompatible.
+        Type 'UIAnalyticsEvent | undefined' is not assignable to type '"ASC" | "DESC"'.
+          Type 'undefined' is not assignable to type '"ASC" | "DESC"'.
+  Overload 2 of 2, '(props: StatefulProps, context: any): DynamicTable', gave the following error.
+    Type '(sortKey: string, sortOrder: "ASC" | "DESC") => void' is not assignable to type '(data: any, UIAnalyticsEvent?: UIAnalyticsEvent | undefined) => void'.
+      Types of parameters 'sortOrder' and 'UIAnalyticsEvent' are incompatible.
+        Type 'UIAnalyticsEvent | undefined' is not assignable to type '"ASC" | "DESC"'.
+          Type 'undefined' is not assignable to type '"ASC" | "DESC"'.
+src/components/gc-dash/GcDashDropdown.tsx(24,18): error TS2430: Interface 'GcDashDropdownProps' incorrectly extends interface 'HTMLAttributes<HTMLDivElement>'.
+  Types of property 'onSelect' are incompatible.
+    Type '((value: string, option: GcDashDropdownOption) => void) | undefined' is not assignable to type 'ReactEventHandler<HTMLDivElement> | undefined'.
+      Type '(value: string, option: GcDashDropdownOption) => void' is not assignable to type 'ReactEventHandler<HTMLDivElement>'.
+        Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/components/gc-dash/GcDashTabs.tsx(14,18): error TS2430: Interface 'GcDashTabsProps' incorrectly extends interface 'HTMLAttributes<HTMLDivElement>'.
+  Types of property 'onChange' are incompatible.
+    Type '((tabId: string) => void) | undefined' is not assignable to type 'FormEventHandler<HTMLDivElement> | undefined'.
+      Type '(tabId: string) => void' is not assignable to type 'FormEventHandler<HTMLDivElement>'.
+        Types of parameters 'tabId' and 'event' are incompatible.
+          Type 'FormEvent<HTMLDivElement>' is not assignable to type 'string'.
+src/components/library/index.ts(27,1): error TS2308: Module './tokens' has already exported a member named 'containerQuery'. Consider explicitly re-exporting to resolve the ambiguity.
+src/components/library/tokens/index.ts(7,1): error TS2308: Module './colors' has already exported a member named 'semantic'. Consider explicitly re-exporting to resolve the ambiguity.
+src/components/script-panel/script-panel-components.tsx(60,15): error TS2322: Type '"sm"' is not assignable to type '"small" | "medium" | "large" | undefined'.
+src/components/script-panel/script-panel-components.tsx(74,17): error TS2322: Type '"sm"' is not assignable to type '"small" | "medium" | "large" | undefined'.
+src/components/script-panel/script-panel-components.tsx(152,13): error TS2322: Type '"sm"' is not assignable to type '"small" | "medium" | "large" | undefined'.
+src/components/script-panel/script-panel-components.tsx(224,13): error TS2322: Type '"sm"' is not assignable to type '"small" | "medium" | "large" | undefined'.
+src/components/script-panel/script-panel-components.tsx(328,13): error TS2322: Type '"sm"' is not assignable to type '"small" | "medium" | "large" | undefined'.
+src/components/settings/AccountSettings.tsx(242,69): error TS2322: Type '(value: string) => "Full name must be at least 2 characters" | undefined' is not assignable to type '(value: string | undefined, formState: Object, fieldState: Meta) => string | void | Promise<string | void>'.
+  Types of parameters 'value' and 'value' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/settings/AccountSettings.tsx(251,70): error TS2322: Type '(value: string) => "Email is required" | "Please enter a valid email address" | undefined' is not assignable to type '(value: string | undefined, formState: Object, fieldState: Meta) => string | void | Promise<string | void>'.
+  Types of parameters 'value' and 'value' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/settings/AccountSettings.tsx(261,68): error TS2322: Type '(value: string) => "Username must be at least 3 characters" | "Username can only contain letters, numbers, and underscores" | undefined' is not assignable to type '(value: string | undefined, formState: Object, fieldState: Meta) => string | void | Promise<string | void>'.
+  Types of parameters 'value' and 'value' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/settings/AccountSettings.tsx(274,24): error TS2322: Type '{ options: { label: string; value: string; }[]; placeholder: string; isSearchable: true; id: string; isRequired: boolean; isDisabled: boolean; isInvalid: boolean; onChange: (value: string | FormEvent<HTMLInputElement>) => void; ... 6 more ...; 'aria-describedby'?: string | undefined; }' is not assignable to type 'IntrinsicAttributes & (({ css?: Interpolation<Theme>; } & SelectProps<{ label: string; value: string; }, false> & { ref?: Ref<...> | undefined; }) | ({ ...; } & ... 1 more ... & { ...; }) | ({ ...; } & ... 1 more ... & { ...; }))'.
+  Type '{ options: { label: string; value: string; }[]; placeholder: string; isSearchable: true; id: string; isRequired: boolean; isDisabled: boolean; isInvalid: boolean; onChange: (value: string | FormEvent<HTMLInputElement>) => void; ... 6 more ...; 'aria-describedby'?: string | undefined; }' is not assignable to type 'CreatableSelectProps<{ label: string; value: string; }, false>'.
+    Types of property 'onChange' are incompatible.
+      Type '(value: string | FormEvent<HTMLInputElement>) => void' is not assignable to type '(newValue: SingleValue<{ label: string; value: string; }>, actionMeta: ActionMeta<{ label: string; value: string; }>) => void'.
+        Types of parameters 'value' and 'newValue' are incompatible.
+          Type 'SingleValue<{ label: string; value: string; }>' is not assignable to type 'string | FormEvent<HTMLInputElement>'.
+            Type 'null' is not assignable to type 'string | FormEvent<HTMLInputElement>'.
+src/components/settings/AccountSettings.tsx(288,62): error TS2322: Type '{ children: string; type: "submit"; appearance: "primary"; isLoading: boolean; }' is not assignable to type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+  Property 'isLoading' does not exist on type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+src/components/settings/AccountSettings.tsx(303,25): error TS2322: Type '"info"' is not assignable to type 'Appearance | undefined'.
+src/components/settings/ApiKeySettings.tsx(214,25): error TS2322: Type '"info"' is not assignable to type 'Appearance | undefined'.
+src/components/settings/ApiKeySettings.tsx(264,67): error TS2322: Type '{ children: string; appearance: "warning"; onClick: () => Promise<void>; isLoading: boolean; }' is not assignable to type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+  Property 'isLoading' does not exist on type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+src/components/settings/ApiKeySettings.tsx(332,62): error TS2322: Type '{ children: string; type: "submit"; appearance: "primary"; isLoading: boolean; }' is not assignable to type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+  Property 'isLoading' does not exist on type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+src/components/settings/ApiKeySettings.tsx(345,30): error TS2322: Type '{ children: Element; heading: string; onClose: () => void; }' is not assignable to type 'IntrinsicAttributes & ModalDialogProps'.
+  Property 'heading' does not exist on type 'IntrinsicAttributes & ModalDialogProps'.
+src/components/settings/BillingSettings.tsx(333,91): error TS2322: Type '{ children: string; appearance: "primary"; onClick: () => Promise<void>; isLoading: boolean; }' is not assignable to type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+  Property 'isLoading' does not exist on type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+src/components/settings/BillingSettings.tsx(338,86): error TS2322: Type '{ children: string; appearance: "subtle"; onClick: () => Promise<void>; isLoading: boolean; }' is not assignable to type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+  Property 'isLoading' does not exist on type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+src/components/settings/BillingSettings.tsx(342,98): error TS2322: Type '{ children: string; appearance: "primary"; onClick: () => Promise<void>; isLoading: boolean; }' is not assignable to type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+  Property 'isLoading' does not exist on type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+src/components/settings/BillingSettings.tsx(352,21): error TS2322: Type '{ children: string; appearance: "default" | "primary"; onClick: () => Promise<void>; isLoading: boolean; }' is not assignable to type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+  Property 'isLoading' does not exist on type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+src/components/settings/BillingSettings.tsx(389,25): error TS2322: Type '"info"' is not assignable to type 'Appearance | undefined'.
+src/components/settings/NotificationSettings.tsx(366,25): error TS2322: Type '"info"' is not assignable to type 'Appearance | undefined'.
+src/components/settings/NotificationSettings.tsx(377,77): error TS2322: Type '{ children: string; type: "button"; appearance: "primary"; onClick: () => Promise<void>; isLoading: boolean; }' is not assignable to type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+  Property 'isLoading' does not exist on type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & Omit<ButtonProps & RefAttributes<HTMLElement>, "ref"> & { ...; }'.
+src/components/ui/EditorSidebar.tsx(219,31): error TS2339: Property 'count' does not exist on type '{ theme?: Theme | undefined; as?: ElementType<any, keyof IntrinsicElements> | undefined; } & ClassAttributes<HTMLDivElement> & HTMLAttributes<...> & { ...; }'.
+src/components/ui/EditorSidebar.tsx(220,36): error TS2339: Property 'count' does not exist on type '{ theme?: Theme | undefined; as?: ElementType<any, keyof IntrinsicElements> | undefined; } & ClassAttributes<HTMLDivElement> & HTMLAttributes<...> & { ...; }'.
+src/components/ui/EditorSidebar.tsx(475,19): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: GlyphProps): default', gave the following error.
+    Type '{ label: string; size: "small"; className: string; style: { transform: string; }; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+  Overload 2 of 2, '(props: GlyphProps, context: any): default', gave the following error.
+    Type '{ label: string; size: "small"; className: string; style: { transform: string; }; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+src/components/ui/EditorSidebar.tsx(504,49): error TS2322: Type '{ children: number; className: string; count: number; }' is not assignable to type 'ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & { css?: Interpolation<Theme>; }'.
+  Property 'count' does not exist on type 'ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & { css?: Interpolation<Theme>; }'.
+src/components/ui/EditorSidebar.tsx(514,49): error TS2322: Type '{ children: number; className: string; count: number; }' is not assignable to type 'ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & { css?: Interpolation<Theme>; }'.
+  Property 'count' does not exist on type 'ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & { css?: Interpolation<Theme>; }'.
+src/components/ui/EditorSidebar.tsx(524,49): error TS2322: Type '{ children: number; className: string; count: number; }' is not assignable to type 'ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & { css?: Interpolation<Theme>; }'.
+  Property 'count' does not exist on type 'ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & { css?: Interpolation<Theme>; }'.
+src/components/ui/EditorSidebar.tsx(534,49): error TS2322: Type '{ children: number; className: string; count: number; }' is not assignable to type 'ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & { css?: Interpolation<Theme>; }'.
+  Property 'count' does not exist on type 'ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & { css?: Interpolation<Theme>; }'.
+src/components/ui/EditorSidebar.tsx(544,49): error TS2322: Type '{ children: number; className: string; count: number; }' is not assignable to type 'ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & { css?: Interpolation<Theme>; }'.
+  Property 'count' does not exist on type 'ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & { css?: Interpolation<Theme>; }'.
+src/components/ui/FloatingToolbar.tsx(366,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: GlyphProps): default', gave the following error.
+    Type 'number' is not assignable to type 'Size | undefined'.
+  Overload 2 of 2, '(props: GlyphProps, context: any): default', gave the following error.
+    Type 'number' is not assignable to type 'Size | undefined'.
+src/features/brandhub/components/VoiceLibrary.tsx(245,17): error TS2322: Type '{ children: Element[]; className: string; style: { display: string; justifyContent: string; gap: string; }; }' is not assignable to type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & { children: ReactNode; className?: string | undefined; }'.
+  Property 'style' does not exist on type 'IntrinsicAttributes & { css?: Interpolation<Theme>; } & { children: ReactNode; className?: string | undefined; }'.
+src/features/brandhub/components/WorkflowSpotlightModal.tsx(77,78): error TS2322: Type '"medium"' is not assignable to type 'BasicModalSize | undefined'.
+src/features/brandhub/hooks/useVoiceCreationWorkflow.ts(61,9): error TS2322: Type 'WorkflowStepState<unknown>' is not assignable to type 'WorkflowStepState<{ transcripts: number; videosProcessed: number; }>'.
+  Type 'unknown' is not assignable to type '{ transcripts: number; videosProcessed: number; }'.
+src/features/brandhub/hooks/useVoiceCreationWorkflow.ts(62,9): error TS2322: Type 'WorkflowStepState<unknown>' is not assignable to type 'WorkflowStepState<{ transcripts: number; hooks: number; bridges: number; ctas: number; nuggets: number; }>'.
+  Type 'unknown' is not assignable to type '{ transcripts: number; hooks: number; bridges: number; ctas: number; nuggets: number; }'.
+src/features/brandhub/hooks/useVoiceCreationWorkflow.ts(86,11): error TS2322: Type 'WorkflowStepState<unknown>' is not assignable to type 'WorkflowStepState<{ transcripts: number; videosProcessed: number; }>'.
+  Type 'unknown' is not assignable to type '{ transcripts: number; videosProcessed: number; }'.
+src/features/brandhub/hooks/useVoiceCreationWorkflow.ts(87,11): error TS2322: Type 'WorkflowStepState<unknown>' is not assignable to type 'WorkflowStepState<{ transcripts: number; hooks: number; bridges: number; ctas: number; nuggets: number; }>'.
+  Type 'unknown' is not assignable to type '{ transcripts: number; hooks: number; bridges: number; ctas: number; nuggets: number; }'.
+src/features/brandhub/hooks/useVoiceCreationWorkflow.ts(94,11): error TS2322: Type 'WorkflowStepState<unknown>' is not assignable to type 'WorkflowStepState<{ transcripts: number; videosProcessed: number; }>'.
+  Type 'unknown' is not assignable to type '{ transcripts: number; videosProcessed: number; }'.
+src/features/brandhub/hooks/useVoiceCreationWorkflow.ts(95,11): error TS2322: Type 'WorkflowStepState<unknown>' is not assignable to type 'WorkflowStepState<{ transcripts: number; hooks: number; bridges: number; ctas: number; nuggets: number; }>'.
+  Type 'unknown' is not assignable to type '{ transcripts: number; hooks: number; bridges: number; ctas: number; nuggets: number; }'.
+src/features/brandhub/hooks/useVoiceCreationWorkflow.ts(110,17): error TS2345: Argument of type '(prev: VoiceWorkflowState) => { step2: { status: "running"; }; step3: WorkflowStepState<unknown>; step5: WorkflowStepState<unknown>; step1: WorkflowStepState<...>; }' is not assignable to parameter of type 'SetStateAction<VoiceWorkflowState>'.
+  Type '(prev: VoiceWorkflowState) => { step2: { status: "running"; }; step3: WorkflowStepState<unknown>; step5: WorkflowStepState<unknown>; step1: WorkflowStepState<...>; }' is not assignable to type '(prevState: VoiceWorkflowState) => VoiceWorkflowState'.
+    Call signature return types '{ step2: { status: "running"; }; step3: WorkflowStepState<unknown>; step5: WorkflowStepState<unknown>; step1: WorkflowStepState<{ videoCount: number; displayHandle: string; platform: PlatformType; }>; }' and 'VoiceWorkflowState' are incompatible.
+      The types of 'step3' are incompatible between these types.
+        Type 'WorkflowStepState<unknown>' is not assignable to type 'WorkflowStepState<{ transcripts: number; hooks: number; bridges: number; ctas: number; nuggets: number; }>'.
+          Type 'unknown' is not assignable to type '{ transcripts: number; hooks: number; bridges: number; ctas: number; nuggets: number; }'.
+src/features/brandhub/services/voiceCreationService.ts(24,3): error TS2322: Type 'WorkflowStepState<unknown>' is not assignable to type 'WorkflowStepState<{ videoCount: number; displayHandle: string; platform: PlatformType; }>'.
+  Type 'unknown' is not assignable to type '{ videoCount: number; displayHandle: string; platform: PlatformType; }'.
+src/features/brandhub/services/voiceCreationService.ts(25,3): error TS2322: Type 'WorkflowStepState<unknown>' is not assignable to type 'WorkflowStepState<{ transcripts: number; videosProcessed: number; }>'.
+  Type 'unknown' is not assignable to type '{ transcripts: number; videosProcessed: number; }'.
+src/features/brandhub/services/voiceCreationService.ts(26,3): error TS2322: Type 'WorkflowStepState<unknown>' is not assignable to type 'WorkflowStepState<{ transcripts: number; hooks: number; bridges: number; ctas: number; nuggets: number; }>'.
+  Type 'unknown' is not assignable to type '{ transcripts: number; hooks: number; bridges: number; ctas: number; nuggets: number; }'.
+src/features/collections/components/CollectionsRoot.tsx(279,53): error TS2304: Cannot find name 'Platform'.
+src/features/collections/components/CollectionsRoot.tsx(287,42): error TS2304: Cannot find name 'Platform'.
+src/features/collections/components/CollectionsRoot.tsx(494,5): error TS2322: Type 'string' is not assignable to type 'Platform | undefined'.
+src/features/viral-content/components/ViralClipCard.tsx(245,3): error TS2322: Type 'typeof default' is not assignable to type 'ComponentType<{ label: string; size?: "small" | "medium" | "large" | undefined; primaryColor?: string | undefined; }>'.
+  Type 'typeof default' is not assignable to type 'ComponentClass<{ label: string; size?: "small" | "medium" | "large" | undefined; primaryColor?: string | undefined; }, any>'.
+    Construct signature return types 'default' and 'Component<{ label: string; size?: "small" | "medium" | "large" | undefined; primaryColor?: string | undefined; }, any, any>' are incompatible.
+      The types of 'props.size' are incompatible between these types.
+        Type 'Size | undefined' is not assignable to type '"small" | "medium" | "large" | undefined'.
+          Type '"xlarge"' is not assignable to type '"small" | "medium" | "large" | undefined'. Did you mean '"large"'?
+src/features/viral-content/components/ViralClipCard.tsx(246,3): error TS2322: Type 'typeof default' is not assignable to type 'ComponentType<{ label: string; size?: "small" | "medium" | "large" | undefined; primaryColor?: string | undefined; }>'.
+  Type 'typeof default' is not assignable to type 'ComponentClass<{ label: string; size?: "small" | "medium" | "large" | undefined; primaryColor?: string | undefined; }, any>'.
+    Construct signature return types 'default' and 'Component<{ label: string; size?: "small" | "medium" | "large" | undefined; primaryColor?: string | undefined; }, any, any>' are incompatible.
+      The types of 'props.size' are incompatible between these types.
+        Type 'Size | undefined' is not assignable to type '"small" | "medium" | "large" | undefined'.
+          Type '"xlarge"' is not assignable to type '"small" | "medium" | "large" | undefined'. Did you mean '"large"'?
+src/features/viral-content/components/ViralClipCard.tsx(247,3): error TS2322: Type 'typeof default' is not assignable to type 'ComponentType<{ label: string; size?: "small" | "medium" | "large" | undefined; primaryColor?: string | undefined; }>'.
+  Type 'typeof default' is not assignable to type 'ComponentClass<{ label: string; size?: "small" | "medium" | "large" | undefined; primaryColor?: string | undefined; }, any>'.
+    Construct signature return types 'default' and 'Component<{ label: string; size?: "small" | "medium" | "large" | undefined; primaryColor?: string | undefined; }, any, any>' are incompatible.
+      The types of 'props.size' are incompatible between these types.
+        Type 'Size | undefined' is not assignable to type '"small" | "medium" | "large" | undefined'.
+          Type '"xlarge"' is not assignable to type '"small" | "medium" | "large" | undefined'. Did you mean '"large"'?
+src/hooks/use-script-analytics.ts(5,77): error TS2307: Cannot find module '@/lib/component-readability-service' or its corresponding type declarations.
+src/hooks/use-scripts-api.ts(22,11): error TS2339: Property 'user' does not exist on type 'AuthContextType'.
+src/hooks/useGridKeyboardNavigation.ts(180,5): error TS2322: Type 'number' is not assignable to type 'Timeout'.
+src/lib/bunny-stream.ts(122,5): error TS2353: Object literal may only specify known properties, and 'directUrl' does not exist in type '{ cdnUrl: string; filename: string; }'.
+src/lib/bunny-stream.ts(185,20): error TS18046: 'error' is of type 'unknown'.
+src/lib/bunny-stream.ts(186,23): error TS18046: 'error' is of type 'unknown'.
+src/lib/bunny-stream.ts(220,56): error TS2345: Argument of type 'ArrayBuffer | SharedArrayBuffer' is not assignable to parameter of type 'ArrayBuffer'.
+  Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+    Types of property '[Symbol.toStringTag]' are incompatible.
+      Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+src/lib/bunny-stream.ts(498,22): error TS18046: 'error' is of type 'unknown'.
+src/lib/bunny-stream.ts(499,25): error TS18046: 'error' is of type 'unknown'.
+src/lib/collections-service.ts(419,41): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string | Record<string, unknown>'.
+src/lib/collections-service.ts(420,41): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string | Record<string, unknown>'.
+src/lib/collections-service.ts(483,11): error TS2367: This comparison appears to be unintentional because the types '"admin" | "user" | "moderator" | undefined' and '"super_admin"' have no overlap.
+src/lib/collections-service.ts(500,61): error TS2339: Property 'getUserAccessibleCoaches' does not exist on type 'typeof UserManagementService'.
+src/lib/collections-service.ts(538,11): error TS2367: This comparison appears to be unintentional because the types '"admin" | "user" | "moderator" | undefined' and '"super_admin"' have no overlap.
+src/lib/collections-service.ts(629,59): error TS2339: Property 'getUserAccessibleCoaches' does not exist on type 'typeof UserManagementService'.
+src/lib/collections-service.ts(744,39): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string | Record<string, unknown>'.
+src/lib/collections-service.ts(834,25): error TS2352: Conversion of type 'Record<string, unknown>' to type 'Video' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Record<string, unknown>' is missing the following properties from type 'Video': originalUrl, platform, thumbnailUrl, title, addedAt
+src/lib/content-analysis-service.ts(7,56): error TS2307: Cannot find module './types/voice-analysis' or its corresponding type declarations.
+src/lib/content-analysis-service.ts(256,52): error TS2345: Argument of type 'ScriptComponents | null | undefined' is not assignable to parameter of type 'ScriptComponents | undefined'.
+  Type 'null' is not assignable to type 'ScriptComponents | undefined'.
+src/lib/content-analysis-service.ts(259,51): error TS2345: Argument of type 'ScriptComponents | null | undefined' is not assignable to parameter of type 'ScriptComponents | undefined'.
+  Type 'null' is not assignable to type 'ScriptComponents | undefined'.
+src/lib/content-analysis-service.ts(525,87): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/lib/content-analysis-service.ts(550,31): error TS2322: Type 'ScriptComponents | undefined' is not assignable to type 'ScriptComponents | null'.
+  Type 'undefined' is not assignable to type 'ScriptComponents | null'.
+src/lib/content-analysis-service.ts(588,31): error TS2322: Type 'ContentMetrics | undefined' is not assignable to type 'ContentMetrics | null'.
+  Type 'undefined' is not assignable to type 'ContentMetrics | null'.
+src/lib/platform-data-transformer.ts(605,9): error TS2783: 'likes' is specified more than once, so this usage will be overwritten.
+src/lib/platform-data-transformer.ts(606,9): error TS2783: 'views' is specified more than once, so this usage will be overwritten.
+src/lib/platform-data-transformer.ts(607,9): error TS2783: 'comments' is specified more than once, so this usage will be overwritten.
+src/lib/platform-data-transformer.ts(608,9): error TS2783: 'shares' is specified more than once, so this usage will be overwritten.
+src/lib/services-interface.ts(21,61): error TS2307: Cannot find module './types/voice-analysis' or its corresponding type declarations.
+src/lib/services-interface.ts(367,7): error TS2322: Type '{ name: string; configured: boolean; available: boolean; model: string; lastUsed: number; usage: { requests: number; errors: number; totalTime: number; } | { requests: number; errors: number; avgResponseTime: number; }; }' is not assignable to type 'ServiceStatus'.
+  Types of property 'usage' are incompatible.
+    Type '{ requests: number; errors: number; totalTime: number; } | { requests: number; errors: number; avgResponseTime: number; }' is not assignable to type '{ requests: number; errors: number; avgResponseTime: number; } | undefined'.
+      Property 'avgResponseTime' is missing in type '{ requests: number; errors: number; totalTime: number; }' but required in type '{ requests: number; errors: number; avgResponseTime: number; }'.
+src/lib/services-interface.ts(380,9): error TS2322: Type '{ requests: number; errors: number; totalTime: number; } | { requests: number; errors: number; avgResponseTime: number; }' is not assignable to type '{ requests: number; errors: number; avgResponseTime: number; } | undefined'.
+  Property 'avgResponseTime' is missing in type '{ requests: number; errors: number; totalTime: number; }' but required in type '{ requests: number; errors: number; avgResponseTime: number; }'.
+src/lib/services-interface.ts(461,47): error TS2339: Property 'wordCount' does not exist on type '{ wordCount: number; duration?: number | undefined; source?: string | undefined; } | { model: string; tokensUsed?: number | undefined; quality?: number | undefined; }'.
+  Property 'wordCount' does not exist on type '{ model: string; tokensUsed?: number | undefined; quality?: number | undefined; }'.
+src/lib/services-interface.ts(550,3): error TS2484: Export declaration conflicts with exported declaration of 'UIAnalysisResult'.
+src/lib/services-interface.ts(551,3): error TS2484: Export declaration conflicts with exported declaration of 'UIGenerationRequest'.
+src/lib/services-interface.ts(552,3): error TS2484: Export declaration conflicts with exported declaration of 'UIGenerationResult'.
+src/lib/services-interface.ts(553,3): error TS2484: Export declaration conflicts with exported declaration of 'ServiceStatus'.
+src/lib/services-interface.ts(554,3): error TS2484: Export declaration conflicts with exported declaration of 'ServiceEvent'.
+src/lib/services-interface.ts(555,3): error TS2484: Export declaration conflicts with exported declaration of 'ServiceEventHandler'.
+src/lib/services/gemini-service.ts(61,7): error TS2741: Property 'jsonSchema' is missing in type '{ model: "gemini-1.5-flash"; maxTokens: number; temperature: number; topP: number; topK: number; responseType: "text"; timeout: number; retries: number; }' but required in type 'Required<Omit<GeminiRequestConfig, "systemInstruction">>'.
+src/lib/services/gemini-service.ts(137,9): error TS2322: Type '{ category: string; threshold: string; }[]' is not assignable to type 'SafetySetting[]'.
+  Type '{ category: string; threshold: string; }' is not assignable to type 'SafetySetting'.
+    Types of property 'category' are incompatible.
+      Type 'string' is not assignable to type 'HarmCategory'.
+src/lib/social-platform-services.ts(147,14): error TS2654: Non-abstract class 'TikTokClient' is missing implementations for the following members of 'BasePlatformClient': 'getTranscript', 'searchContent'.
+src/lib/social-platform-services.ts(328,14): error TS2654: Non-abstract class 'InstagramClient' is missing implementations for the following members of 'BasePlatformClient': 'getTranscript', 'searchContent'.
+src/lib/social-platform-services.ts(457,14): error TS2654: Non-abstract class 'YouTubeClient' is missing implementations for the following members of 'BasePlatformClient': 'downloadVideo', 'searchContent'.
+src/lib/unified-video-scraper.ts(16,52): error TS2307: Cannot find module '@/lib/types/video-scraper' or its corresponding type declarations.
+src/lib/utils/json-parser.ts(30,81): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/lib/voice-persona/orchestrators/voice-analysis-orchestrator.ts(6,61): error TS2307: Cannot find module '../analyzers/pattern-extractor' or its corresponding type declarations.
+src/lib/voice-persona/orchestrators/voice-analysis-orchestrator.ts(7,57): error TS2307: Cannot find module '../analyzers/voice-profiler' or its corresponding type declarations.
+src/lib/voice-persona/orchestrators/voice-analysis-orchestrator.ts(8,39): error TS2307: Cannot find module '../generators/script-generator' or its corresponding type declarations.
+src/lib/voice-persona/orchestrators/voice-analysis-orchestrator.ts(17,8): error TS2307: Cannot find module '../types' or its corresponding type declarations.
+src/lib/voice-persona/orchestrators/voice-analysis-orchestrator.ts(19,33): error TS2307: Cannot find module './user-feed-orchestrator' or its corresponding type declarations.
+src/lib/voice-persona/orchestrators/voice-analysis-orchestrator.ts(108,62): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/lib/voice-persona/orchestrators/voice-analysis-orchestrator.ts(108,67): error TS7006: Parameter 'v' implicitly has an 'any' type.
+src/pages/Enhanced.tsx(309,13): error TS2322: Type '{ onGenerate: (request: AIGenerationRequest) => void; onVoiceInput: () => void; isLoading: false; personas: never[]; }' is not assignable to type 'IntrinsicAttributes & EnhancedScriptGeneratorProps'.
+  Property 'personas' does not exist on type 'IntrinsicAttributes & EnhancedScriptGeneratorProps'.
+src/pages/InstagramApiTest.tsx(277,29): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: GlyphProps): default', gave the following error.
+    Type '{ className: string; label: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+  Overload 2 of 2, '(props: GlyphProps, context: any): default', gave the following error.
+    Type '{ className: string; label: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+src/pages/TranscriptionService.tsx(357,29): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: GlyphProps): default', gave the following error.
+    Type '{ className: string; label: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+  Overload 2 of 2, '(props: GlyphProps, context: any): default', gave the following error.
+    Type '{ className: string; label: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<default> & Readonly<GlyphProps>'.
+src/services/ai-analysis-service.ts(206,9): error TS2322: Type 'ScriptComponents | null | undefined' is not assignable to type 'ScriptComponents | undefined'.
+  Type 'null' is not assignable to type 'ScriptComponents | undefined'.
+src/services/ai-analysis-service.ts(207,9): error TS2322: Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/services/ai-analysis-service.ts(208,9): error TS2322: Type 'ContentAnalysis | null | undefined' is not assignable to type 'ContentAnalysis | undefined'.
+  Type 'null' is not assignable to type 'ContentAnalysis | undefined'.
+src/services/api-middleware.ts(87,33): error TS2339: Property 'cookies' does not exist on type 'NextRequest'.
+src/services/auth/examples.ts(141,29): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: ExpressAuthRequest, res: ExpressAuthResponse, next: any) => Promise<ExpressAuthResponse | undefined>' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: ExpressAuthRequest, res: ExpressAuthResponse, next: any) => Promise<ExpressAuthResponse | undefined>' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'res' and 'res' are incompatible.
+          Type 'Response<any, Record<string, any>, number>' is missing the following properties from type 'ExpressAuthResponse': sendAuthError, sendAuthSuccess
+src/services/auth/examples.ts(147,33): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: ExpressAuthRequest, res: ExpressAuthResponse, next: any) => Promise<ExpressAuthResponse | undefined>' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: ExpressAuthRequest, res: ExpressAuthResponse, next: any) => Promise<ExpressAuthResponse | undefined>' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'res' and 'res' are incompatible.
+          Type 'Response<any, Record<string, any>, number>' is missing the following properties from type 'ExpressAuthResponse': sendAuthError, sendAuthSuccess
+src/services/auth/examples.ts(153,33): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: ExpressAuthRequest, res: ExpressAuthResponse, next: any) => Promise<ExpressAuthResponse | undefined>' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: ExpressAuthRequest, res: ExpressAuthResponse, next: any) => Promise<ExpressAuthResponse | undefined>' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'res' and 'res' are incompatible.
+          Type 'Response<any, Record<string, any>, number>' is missing the following properties from type 'ExpressAuthResponse': sendAuthError, sendAuthSuccess
+src/services/auth/examples.ts(162,40): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: ExpressAuthRequest, res: ExpressAuthResponse, next: any) => Promise<ExpressAuthResponse | undefined>' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: ExpressAuthRequest, res: ExpressAuthResponse, next: any) => Promise<ExpressAuthResponse | undefined>' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'res' and 'res' are incompatible.
+          Type 'Response<any, Record<string, any>, number>' is missing the following properties from type 'ExpressAuthResponse': sendAuthError, sendAuthSuccess
+src/services/auth/examples.ts(221,20): error TS2339: Property 'url' does not exist on type 'NextAuthRequest'.
+src/services/auth/interfaces.ts(347,10): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+src/services/auth/middleware.ts(37,67): error TS2345: Argument of type 'string | string[] | undefined' is not assignable to parameter of type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+src/services/auth/middleware.ts(170,69): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string | null'.
+  Type 'string[]' is not assignable to type 'string'.
+src/services/auth/RBACService.ts(455,9): error TS2740: Type 'Query<DocumentData, DocumentData>' is missing the following properties from type 'CollectionReference<DocumentData, DocumentData>': id, parent, path, listDocuments, and 2 more.
+src/services/background-job-service.ts(412,19): error TS2339: Property 'updateJob' does not exist on type '{}'.
+src/services/background-job-service.ts(422,19): error TS2339: Property 'updateJob' does not exist on type '{}'.
+src/services/background-job-service.ts(427,19): error TS2339: Property 'updateJob' does not exist on type '{}'.
+src/services/background-job-service.ts(438,21): error TS2339: Property 'updateJob' does not exist on type '{}'.
+src/services/background-job-service.ts(442,21): error TS2339: Property 'updateJob' does not exist on type '{}'.
+src/services/background-job-service.ts(456,19): error TS2339: Property 'updateJob' does not exist on type '{}'.
+src/services/background-job-service.ts(467,19): error TS2339: Property 'updateJob' does not exist on type '{}'.
+src/services/cdn-service.ts(533,9): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(input: string | URL | Request, init?: RequestInit | undefined): Promise<Response>', gave the following error.
+    Type 'Uint8Array<ArrayBuffer> | Buffer<ArrayBufferLike>' is not assignable to type 'BodyInit | null | undefined'.
+      Type 'Buffer<ArrayBufferLike>' is not assignable to type 'BodyInit | null | undefined'.
+        Type 'Buffer<ArrayBufferLike>' is missing the following properties from type 'URLSearchParams': size, append, delete, get, and 2 more.
+  Overload 2 of 2, '(input: URL | RequestInfo, init?: RequestInit | undefined): Promise<Response>', gave the following error.
+    Type 'Uint8Array<ArrayBuffer> | Buffer<ArrayBufferLike>' is not assignable to type 'BodyInit | null | undefined'.
+      Type 'Buffer<ArrayBufferLike>' is not assignable to type 'BodyInit | null | undefined'.
+        Type 'Buffer<ArrayBufferLike>' is missing the following properties from type 'URLSearchParams': size, append, delete, get, and 2 more.
+src/services/media/bunny-storage.ts(37,5): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(input: string | URL | Request, init?: RequestInit | undefined): Promise<Response>', gave the following error.
+    Type 'Uint8Array<ArrayBuffer> | Buffer<ArrayBufferLike>' is not assignable to type 'BodyInit | null | undefined'.
+      Type 'Buffer<ArrayBufferLike>' is not assignable to type 'BodyInit | null | undefined'.
+        Type 'Buffer<ArrayBufferLike>' is missing the following properties from type 'URLSearchParams': size, append, delete, get, and 2 more.
+  Overload 2 of 2, '(input: URL | RequestInfo, init?: RequestInit | undefined): Promise<Response>', gave the following error.
+    Type 'Uint8Array<ArrayBuffer> | Buffer<ArrayBufferLike>' is not assignable to type 'BodyInit | null | undefined'.
+      Type 'Buffer<ArrayBufferLike>' is not assignable to type 'BodyInit | null | undefined'.
+        Type 'Buffer<ArrayBufferLike>' is missing the following properties from type 'URLSearchParams': size, append, delete, get, and 2 more.
+src/stories/design-system/ButtonVariants.stories.tsx(33,7): error TS2739: Type '{ primary: string; secondary: string; tertiary: string; destructive: string; 'ai-powered': string; creative: string; subtle: string; warning: string; danger: string; 'ppx-primary': string; soft: string; }' is missing the following properties from type 'Record<NonNullable<"warning" | "primary" | "subtle" | "danger" | "secondary" | "tertiary" | "destructive" | "ai-powered" | "creative" | "ppx-primary" | "soft" | "ghost" | "outline" | undefined>, string>': ghost, outline

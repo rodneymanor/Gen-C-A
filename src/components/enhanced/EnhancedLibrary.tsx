@@ -462,9 +462,11 @@ export const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({
     ]
   };
 
-  const handleSort = (sortKey: string, sortOrder: 'ASC' | 'DESC') => {
-    setSortKey(sortKey);
-    setSortOrder(sortOrder);
+  const handleSort = (sortInfo: { key?: string; sortOrder?: 'ASC' | 'DESC' }) => {
+    const nextKey = sortInfo.key ?? sortKey;
+    const nextOrder = sortInfo.sortOrder ?? (sortOrder === 'ASC' ? 'DESC' : 'ASC');
+    setSortKey(nextKey);
+    setSortOrder(nextOrder);
   };
 
   // If fallback is requested, render minimal component
@@ -545,7 +547,6 @@ export const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({
         <div css={tableContainerStyles}>
           <Card appearance="elevated" spacing="compact">
             <DynamicTable
-              className="enhanced-dynamic-table"
               head={tableHead}
               rows={tableRows}
               rowsPerPage={10}

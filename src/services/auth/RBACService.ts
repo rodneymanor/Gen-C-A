@@ -427,7 +427,7 @@ export class RBACService {
   /**
    * Create a query builder for collections with RBAC applied
    */
-  async createCollectionsQuery(userId: string) {
+  async createCollectionsQuery(userId: string): Promise<any> {
     const context = await this.getRBACContext(userId);
     
     if (context.isSuperAdmin) {
@@ -445,7 +445,7 @@ export class RBACService {
   /**
    * Create a query builder for videos with RBAC applied
    */
-  async createVideosQuery(userId: string, collectionId?: string) {
+  async createVideosQuery(userId: string, collectionId?: string): Promise<any> {
     const context = await this.getRBACContext(userId);
     
     let baseQuery = this.db.collection(RBACService.VIDEOS_PATH);

@@ -13,14 +13,7 @@ export interface BackgroundJob {
   startedAt?: string;
   completedAt?: string;
   error?: string;
-  metadata?: {
-    platform?: string;
-    filename?: string;
-    fileSize?: number;
-    userId?: string;
-    retryCount?: number;
-    maxRetries?: number;
-  };
+  metadata?: Record<string, unknown>;
 }
 
 export interface JobQueue {

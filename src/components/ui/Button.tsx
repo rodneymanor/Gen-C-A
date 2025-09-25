@@ -5,7 +5,20 @@ import clsx from 'clsx';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children?: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'tertiary' | 'destructive' | 'ai-powered' | 'creative' | 'subtle' | 'warning' | 'danger' | 'ppx-primary' | 'soft';
+  variant?:
+    | 'primary'
+    | 'secondary'
+    | 'tertiary'
+    | 'destructive'
+    | 'ai-powered'
+    | 'creative'
+    | 'subtle'
+    | 'warning'
+    | 'danger'
+    | 'ppx-primary'
+    | 'soft'
+    | 'ghost'
+    | 'outline';
   size?: 'small' | 'medium' | 'large';
   isLoading?: boolean;
   isDisabled?: boolean;
@@ -159,6 +172,31 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
     &:focus-visible {
       outline: 2px solid #DC2626;
       outline-offset: 2px;
+    }
+  `}
+
+  ${variant === 'ghost' && css`
+    background: transparent;
+    color: var(--color-text-primary, #1F2937);
+    border: none;
+    font-weight: var(--font-weight-medium);
+
+    &:hover:not(:disabled) {
+      background: var(--color-surface-hover, rgba(15, 23, 42, 0.04));
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+  `}
+
+  ${variant === 'outline' && css`
+    background: transparent;
+    color: var(--color-text-primary, #1F2937);
+    border: 1px solid var(--color-border, #E5E7EB);
+
+    &:hover:not(:disabled) {
+      background: var(--color-surface-hover, rgba(15, 23, 42, 0.04));
     }
   `}
   

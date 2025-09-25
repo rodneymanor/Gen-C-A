@@ -34,7 +34,7 @@ export async function uploadThumbnailToBunny(
       'Content-Length': String(buffer.length),
       'Cache-Control': 'public, max-age=31536000',
     },
-    body: buffer,
+    body: buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer),
   });
 
   if (!response.ok) {

@@ -100,12 +100,12 @@ async function fetchInstagramVideos(creator: TrackedCreator): Promise<Normalized
   const service = getInstagramService();
   const limit = creator.limit ?? 50;
 
-  const response = await service.getUserReels({
+  const response = (await service.getUserReels({
     userId: creator.platformId,
     username: creator.secondaryId ?? creator.displayName,
     includeFeedVideo: true,
     count: limit,
-  });
+  })) as { processed?: { videos?: unknown } };
 
   const processedVideos: any[] = Array.isArray(response?.processed?.videos)
     ? response.processed.videos
@@ -174,4 +174,3 @@ export async function fetchVideosForCreator(creator: TrackedCreator): Promise<No
       throw new Error(`Unsupported platform ${creator.platform}`);
   }
 }
-

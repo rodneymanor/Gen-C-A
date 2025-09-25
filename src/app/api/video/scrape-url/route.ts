@@ -6,7 +6,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as { url?: string; options?: Record<string, unknown> };
     const service = getVideoScraperService();
-    const result = await service.scrapeUrl(body?.url, body?.options);
+    const url = typeof body?.url === "string" ? body.url.trim() : "";
+    if (!url) {
+      return NextResponse.json({ success: false, error: "A video URL is required" }, { status: 400 });
+    }
+
+    const result = await service.scrapeUrl(url, body?.options);
     return NextResponse.json({ success: true, result });
   } catch (error) {
     if (error instanceof VideoScraperServiceError) {

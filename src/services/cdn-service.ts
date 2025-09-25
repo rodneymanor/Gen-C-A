@@ -208,8 +208,8 @@ export class CDNService {
   /**
    * Generate thumbnail URL for video
    */
-  generateThumbnailUrl(videoId: string): string | null {
-    if (!videoId) return null;
+  generateThumbnailUrl(videoId: string): string | undefined {
+    if (!videoId) return undefined;
     
     const cleanedHost = this.config.hostname.startsWith('vz-') ? 
                        this.config.hostname : 
@@ -221,8 +221,8 @@ export class CDNService {
   /**
    * Generate preview URL for video
    */
-  generatePreviewUrl(videoId: string): string | null {
-    if (!videoId) return null;
+  generatePreviewUrl(videoId: string): string | undefined {
+    if (!videoId) return undefined;
     
     const cleanedHost = this.config.hostname.startsWith('vz-') ? 
                        this.config.hostname : 
@@ -522,6 +522,7 @@ export class CDNService {
   }
 
   private async uploadBufferWithTimeout(videoGuid: string, buffer: Buffer, timeout: number): Promise<boolean> {
+    const payload = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     const uploadResponse = await Promise.race([
       fetch(`https://video.bunnycdn.com/library/${this.config.libraryId}/videos/${videoGuid}`, {
         method: 'PUT',
@@ -529,7 +530,7 @@ export class CDNService {
           'AccessKey': this.config.apiKey,
           'Content-Type': 'application/octet-stream'
         },
-        body: buffer
+        body: payload
       }),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`Upload timeout after ${timeout}ms`)), timeout)
