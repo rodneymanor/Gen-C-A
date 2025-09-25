@@ -20,6 +20,15 @@ import {
   getChromeExtensionCollectionsService,
 } from '../../../../../src/services/chrome-extension/chrome-extension-collections-service.js';
 
+function guessPlatformFromUrl(url: string) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.includes('tiktok')) return 'tiktok';
+    if (host.includes('instagram')) return 'instagram';
+  } catch {}
+  return 'unknown';
+}
+
 function sendCollectionsError(res: Response, error: unknown, fallback: string) {
   if (error instanceof CollectionsServiceError || error instanceof ChromeExtensionCollectionsServiceError) {
     const statusCode = (error as CollectionsServiceError | ChromeExtensionCollectionsServiceError).statusCode;
@@ -254,25 +263,130 @@ collectionsRouter.post('/add-video', async (req: Request, res: Response) => {
     });
 
     const service = getChromeExtensionCollectionsService({ firestore: db, dataDir: DATA_DIR });
-    const result = await service.addVideo({
+    const normalizedUrl = String(videoUrl).trim();
+    const normalizedTitle = String(collectionTitle).trim();
+
+    if (!normalizedUrl) {
+      res.status(400).json({ success: false, error: 'videoUrl is required' });
+      return;
+    }
+
+    if (!normalizedTitle) {
+      res.status(400).json({ success: false, error: 'collectionTitle is required' });
+      return;
+    }
+
+    if (!db) {
+      const fallback = service.addVideoToFallbackStore({
+        userId: String(user.uid),
+        videoUrl: normalizedUrl,
+        collectionTitle: normalizedTitle,
+        title: title ? String(title) : undefined,
+      });
+
+      console.log('[chrome-extension][backend] add-video fallback store', fallback);
+
+      res.status(201).json({
+        success: true,
+        message: 'Video added to processing queue',
+        ...fallback,
+      });
+      return;
+    }
+
+    const collectionId = await service.ensureCollection(db, String(user.uid), normalizedTitle);
+
+    const nextAppUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.APP_URL ||
+      process.env.INTERNAL_APP_URL ||
+      'http://localhost:3000';
+
+    const targetUrl = new URL('/api/videos/add-to-collection', nextAppUrl);
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-user-id': String(user.uid),
+    };
+
+    if (user.apiKey) {
+      headers['x-api-key'] = user.apiKey;
+    }
+
+    const authHeader = req.headers['authorization'];
+    if (authHeader && typeof authHeader === 'string') {
+      headers['authorization'] = authHeader;
+    }
+
+    const payload = {
       userId: String(user.uid),
-      videoUrl: String(videoUrl),
-      collectionTitle: String(collectionTitle),
-      title: title ? String(title) : undefined,
-    });
+      collectionId,
+      videoData: {
+        originalUrl: normalizedUrl,
+        platform: guessPlatformFromUrl(normalizedUrl),
+        addedAt: new Date().toISOString(),
+        processing: {
+          components: {
+            hook: title ? String(title) : 'Auto-generated hook',
+            bridge: '',
+            nugget: '',
+            wta: '',
+          },
+        },
+      },
+    };
 
-    console.log('[chrome-extension][backend] add-video success', {
+    console.log('[chrome-extension][backend] forwarding add-video to Next route', {
       userId: user.uid,
-      collectionTitle,
-      videoId: result?.videoId,
-      jobId: result?.jobId,
-      collectionId: result?.collectionId,
+      collectionId,
+      target: targetUrl.toString(),
     });
 
-    res.status(201).json({
+    const response = await fetch(targetUrl.toString(), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      let errorBody: any = null;
+      try {
+        errorBody = await response.json();
+      } catch (parseError) {
+        errorBody = { error: 'Failed to add video to collection' };
+      }
+
+      console.error('[chrome-extension][backend] add-video forward failed', {
+        status: response.status,
+        error: errorBody,
+      });
+
+      res.status(response.status).json({
+        success: false,
+        error: errorBody?.error || errorBody?.message || 'Failed to add video to collection',
+      });
+      return;
+    }
+
+    const data = await response.json();
+    const jobId = `job_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
+    console.log('[chrome-extension][backend] add-video forward success', {
+      userId: user.uid,
+      collectionId,
+      videoId: data?.videoId,
+    });
+
+    res.status(response.status).json({
       success: true,
-      message: 'Video added to processing queue',
-      ...result,
+      message: data?.message || 'Video added successfully to collection',
+      jobId,
+      collectionTitle: normalizedTitle,
+      collectionId,
+      videoUrl: normalizedUrl,
+      videoId: data?.videoId,
+      video: data?.video,
+      timestamp: data?.timestamp,
     });
   } catch (error) {
     console.error('[chrome-extension][backend] add-video error', error);

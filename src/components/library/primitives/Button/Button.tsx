@@ -20,7 +20,7 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: var(--radius-medium);
+  border-radius: var(--radius-large);
   font-family: var(--font-family-primary);
   font-weight: var(--font-weight-medium);
   cursor: pointer;

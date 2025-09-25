@@ -22,7 +22,7 @@ export const GcDashAddContentButton: React.FC<GcDashAddContentButtonProps> = ({
         align-items: center;
         gap: 8px;
         padding: 8px 16px;
-        border-radius: 999px;
+        border-radius: 12px;
         border: 1px solid rgba(9, 30, 66, 0.18);
         background: rgba(9, 30, 66, 0.05);
         color: ${gcDashColor.textPrimary};
@@ -56,7 +56,7 @@ export const GcDashAddContentButton: React.FC<GcDashAddContentButtonProps> = ({
           justify-content: center;
           width: 20px;
           height: 20px;
-          border-radius: 8px;
+          border-radius: 12px;
           background: ${gcDashColor.primary};
           color: white;
           font-size: 14px;

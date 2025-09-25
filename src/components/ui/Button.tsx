@@ -33,7 +33,7 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: var(--radius-medium);
+  border-radius: var(--radius-large);
   font-family: var(--font-family-primary);
   font-weight: var(--font-weight-semimedium, var(--font-weight-medium));
   cursor: pointer;
@@ -72,7 +72,7 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
     color: var(--bloom-primary-contrast, #ffffff);
     border: 1px solid var(--color-primary-500);
     box-shadow: none;
-    border-radius: 8px; /* rounded-lg */
+    border-radius: 12px;
     font-weight: var(--font-weight-semimedium, 550);
     line-height: var(--line-height-loose, 1.75);
 
@@ -97,7 +97,7 @@ const getButtonStyles = (variant: ButtonProps['variant'], size: ButtonProps['siz
     background: var(--color-super);
     color: var(--color-inverse);
     border: none;
-    border-radius: 8px; /* rounded-lg */
+    border-radius: 12px;
     font-family: var(--font-family-sans, var(--font-family-primary));
     font-weight: var(--font-weight-semimedium, 550);
     font-size: var(--font-size-sm, 14px);

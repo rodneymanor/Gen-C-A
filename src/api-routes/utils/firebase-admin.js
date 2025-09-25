@@ -8,11 +8,21 @@ function initAdmin() {
   if (getApps().length) return;
 
   // Prefer explicit service account from env vars
+  // 1) FULL JSON via FIREBASE_SERVICE_ACCOUNT (parity with src/lib/firebase-admin.ts)
+  // 2) Triplet env vars (PROJECT_ID/CLIENT_EMAIL/PRIVATE_KEY)
+  const saJson = process.env.FIREBASE_SERVICE_ACCOUNT;
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
   try {
+    // Prefer full JSON blob if provided (common in Vercel)
+    if (saJson) {
+      const serviceAccount = JSON.parse(saJson);
+      initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.project_id });
+      return;
+    }
+
     if (projectId && clientEmail && privateKey) {
       initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
       return;

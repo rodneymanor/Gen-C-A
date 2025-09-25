@@ -60,7 +60,7 @@ export const GcDashNavButtons: React.FC<GcDashNavButtonsProps> = ({
     height: ${height}px;
     min-width: ${height}px;
     padding: 0 ${horizontalPadding}px;
-    border-radius: 8px;
+    border-radius: 12px;
     border: 1px solid rgba(9, 30, 66, 0.2);
     background: transparent;
     color: ${gcDashColor.textPrimary};

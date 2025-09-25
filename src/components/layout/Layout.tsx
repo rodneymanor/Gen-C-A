@@ -114,12 +114,14 @@ const skipLinkStyles = css`
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { currentUser, loading: authLoading } = useAuth();
-  const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
-  const { isMobile } = useResponsive();
+  const responsive = useResponsive();
+  const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(() => responsive.windowWidth < 640);
+  const { isMobile } = responsive;
   const { announce } = useLiveAnnouncer();
   const location = useLocation();
   const lastPathRef = useRef<string>(location.pathname + location.search);
   const [pageLoading, setPageLoading] = useState<boolean>(false);
+  const lastDesktopCollapsedRef = useRef(false);
   const MIN_OVERLAY_MS = 1200; // longer mask to avoid flicker while data loads
   const overlayTimer = useRef<number | null>(null);
   const bypassAuth = (import.meta as any).env?.VITE_BYPASS_AUTH === '1' 
@@ -142,16 +144,58 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navUser = currentUser ?? (bypassAuth ? stubUser : currentUser);
 
   const handleToggleNavigation = () => {
-    const newCollapsed = !isNavigationCollapsed;
-    setIsNavigationCollapsed(newCollapsed);
-    
-    // Announce navigation state change for screen readers
-    announce(
-      newCollapsed 
-        ? 'Navigation collapsed' 
-        : 'Navigation expanded'
-    );
+    setIsNavigationCollapsed(prev => {
+      const next = !prev;
+      if (!isMobile) {
+        lastDesktopCollapsedRef.current = next;
+      }
+
+      // Announce navigation state change for screen readers
+      announce(next ? 'Navigation collapsed' : 'Navigation expanded');
+
+      return next;
+    });
   };
+
+  useEffect(() => {
+    if (isMobile) {
+      setIsNavigationCollapsed(true);
+    } else {
+      setIsNavigationCollapsed(lastDesktopCollapsedRef.current);
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile || !isNavigationCollapsed) {
+      return;
+    }
+
+    const nav = document.getElementById('main-navigation');
+    if (nav && document.activeElement instanceof HTMLElement && nav.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
+  }, [isMobile, isNavigationCollapsed]);
+
+  useEffect(() => {
+    if (!isMobile || isNavigationCollapsed) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsNavigationCollapsed(prev => {
+          if (prev) {
+            return prev;
+          }
+          announce('Navigation collapsed');
+          return true;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [announce, isMobile, isNavigationCollapsed]);
 
   // Show a subtle loader on route changes to avoid flashing incomplete states
   useEffect(() => {
@@ -182,7 +226,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       
       {/* Main Navigation */}
       <Navigation
-        isCollapsed={isMobile ? false : isNavigationCollapsed}
+        isCollapsed={isNavigationCollapsed}
         onToggleCollapse={handleToggleNavigation}
         user={navUser!}
       />
@@ -202,7 +246,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <button
                   onClick={handleToggleNavigation}
                   className="mobile-menu-toggle"
-                  aria-label="Open navigation menu"
+                  aria-label={isNavigationCollapsed ? 'Open navigation menu' : 'Close navigation menu'}
+                  aria-controls="main-navigation"
+                  aria-expanded={!isNavigationCollapsed}
                   style={{
                     background: 'none',
                     border: 'none',

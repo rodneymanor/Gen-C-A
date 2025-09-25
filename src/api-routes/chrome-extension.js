@@ -474,17 +474,107 @@ export async function handleCECollectionsAddVideo(req, res) {
     }
 
     const service = getChromeExtensionCollectionsService({ firestore: db, dataDir: DATA_DIR });
-    const result = await service.addVideo({
+    const normalizedUrl = String(videoUrl).trim();
+    const normalizedTitle = String(collectionTitle).trim();
+
+    if (!normalizedUrl) {
+      return res.status(400).json({ success: false, error: 'videoUrl is required' });
+    }
+
+    if (!normalizedTitle) {
+      return res.status(400).json({ success: false, error: 'collectionTitle is required' });
+    }
+
+    if (!db) {
+      const fallback = service.addVideoToFallbackStore({
+        userId: String(user.uid),
+        videoUrl: normalizedUrl,
+        collectionTitle: normalizedTitle,
+        title: title ? String(title) : undefined,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Video added to processing queue',
+        ...fallback,
+      });
+    }
+
+    const collectionId = await service.ensureCollection(db, String(user.uid), normalizedTitle);
+
+    const nextAppUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.APP_URL ||
+      process.env.INTERNAL_APP_URL ||
+      'http://localhost:3000';
+
+    const targetUrl = new URL('/api/videos/add-to-collection', nextAppUrl);
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-user-id': String(user.uid),
+    };
+
+    if (user.apiKey) {
+      headers['x-api-key'] = user.apiKey;
+    }
+
+    const authHeader = req.headers?.authorization;
+    if (authHeader && typeof authHeader === 'string') {
+      headers['authorization'] = authHeader;
+    }
+
+    const payload = {
       userId: String(user.uid),
-      videoUrl: String(videoUrl),
-      collectionTitle: String(collectionTitle),
-      title: title ? String(title) : undefined,
+      collectionId,
+      videoData: {
+        originalUrl: normalizedUrl,
+        platform: guessPlatformFromUrl(normalizedUrl),
+        addedAt: new Date().toISOString(),
+        processing: {
+          components: {
+            hook: title ? String(title) : 'Auto-generated hook',
+            bridge: '',
+            nugget: '',
+            wta: '',
+          },
+        },
+      },
+    };
+
+    const response = await fetch(targetUrl.toString(), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
     });
 
-    return res.status(201).json({
+    if (!response.ok) {
+      let errorBody = null;
+      try {
+        errorBody = await response.json();
+      } catch (err) {
+        errorBody = { error: 'Failed to add video to collection' };
+      }
+
+      return res.status(response.status).json({
+        success: false,
+        error: errorBody?.error || errorBody?.message || 'Failed to add video to collection',
+      });
+    }
+
+    const data = await response.json();
+    const jobId = `job_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
+    return res.status(response.status).json({
       success: true,
-      message: 'Video added to processing queue',
-      ...result,
+      message: data?.message || 'Video added successfully to collection',
+      jobId,
+      collectionTitle: normalizedTitle,
+      collectionId,
+      videoUrl: normalizedUrl,
+      videoId: data?.videoId,
+      video: data?.video,
+      timestamp: data?.timestamp,
     });
   } catch (e) {
     sendChromeExtensionCollectionsError(

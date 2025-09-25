@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { css } from '@emotion/react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -95,6 +95,7 @@ const sidebarStyles = (isCollapsed: boolean, isMobile: boolean) => css`
     top: 0;
     width: ${isCollapsed ? '0' : 'var(--sidebar-width)'};
     overflow: hidden;
+    pointer-events: ${isCollapsed ? 'none' : 'auto'};
     /* REMOVED: Shadow for Perplexity flat design */
   ` : css`
     /* Desktop: relative positioned sidebar */
@@ -355,11 +356,13 @@ const NavItem: React.FC<{
   item: NavigationItem;
   isActive: boolean;
   isCollapsed: boolean;
-}> = ({ item, isActive, isCollapsed }) => (
+  onSelect?: () => void;
+}> = ({ item, isActive, isCollapsed, onSelect }) => (
   <Link
     to={item.path}
     css={navItemStyles(isActive, isCollapsed)}
     className={clsx('nav-item', { active: isActive })}
+    onClick={onSelect}
   >
     <span className="nav-icon">{item.icon}</span>
     <span className="nav-label">{item.label}</span>
@@ -531,6 +534,12 @@ export const Navigation: React.FC<NavigationProps> = ({
   const location = useLocation();
   const { isMobile } = useResponsive();
 
+  const handleNavItemSelect = useCallback(() => {
+    if (isMobile && !isCollapsed) {
+      onToggleCollapse?.();
+    }
+  }, [isCollapsed, isMobile, onToggleCollapse]);
+
   return (
     <>
       {isMobile && !isCollapsed && (
@@ -538,6 +547,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       )}
 
       <motion.nav
+        id="main-navigation"
         css={sidebarStyles(isCollapsed, isMobile)}
         initial={false}
         animate={{
@@ -547,6 +557,8 @@ export const Navigation: React.FC<NavigationProps> = ({
         className="main-navigation"
         role="navigation"
         aria-label="Main navigation"
+        aria-hidden={isMobile && isCollapsed}
+        tabIndex={isMobile && isCollapsed ? -1 : undefined}
       >
         <div css={headerStyles}>
           {!isCollapsed && (
@@ -606,6 +618,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   item={item}
                   isActive={location.pathname === item.path}
                   isCollapsed={isCollapsed}
+                  onSelect={handleNavItemSelect}
                 />
               ))}
             </div>

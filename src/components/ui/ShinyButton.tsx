@@ -30,7 +30,7 @@ export const ShinyButton = forwardRef<HTMLButtonElement, ShinyButtonProps>(
           gap: 6,
           height: 32,
           padding: '0 10px',
-          borderRadius: 'var(--border-radius-200, 8px)',
+          borderRadius: 'var(--radius-large, 12px)',
           border,
           color,
           background,

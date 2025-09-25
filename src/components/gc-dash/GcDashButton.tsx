@@ -30,7 +30,7 @@ const baseStyle = css`
   gap: ${gcDashSpacing.sm};
   font-family: inherit;
   font-weight: 600;
-  border-radius: ${gcDashShape.radiusLg};
+  border-radius: ${gcDashShape.radiusMd};
   border: 1px solid transparent;
   cursor: pointer;
   transition: ${gcDashMotion.transition};

@@ -24,7 +24,7 @@ export const GcDashIconButton: React.FC<GcDashIconButtonProps> = ({
       css={css`
         width: ${dimension}px;
         height: ${dimension}px;
-        border-radius: 8px;
+        border-radius: 12px;
         border: 1px solid rgba(9, 30, 66, 0.18);
         display: inline-flex;
         align-items: center;

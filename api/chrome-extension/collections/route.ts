@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
     // Authenticate first (dual auth: API key, then Firebase token)
     const authResult = await authenticateApiKey(request);
     if (authResult instanceof NextResponse) return authResult;
+    const {
+      user: { uid: userId },
+    } = authResult;
 
     // For test/dev mode with test API key, return mock data
     if (process.env.NODE_ENV === "development" && request.headers.get("x-api-key") === "test-internal-secret-123") {
@@ -90,7 +93,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Forward original auth headers to internal service
-    const forwardedHeaders: HeadersInit = {};
+    const forwardedHeaders: HeadersInit = { "x-user-id": userId };
     const apiKey = request.headers.get("x-api-key");
     const authHeader = request.headers.get("authorization");
     if (apiKey) forwardedHeaders["x-api-key"] = apiKey;
@@ -119,6 +122,9 @@ export async function POST(request: NextRequest) {
     // Authenticate first (dual auth: API key, then Firebase token)
     const authResult = await authenticateApiKey(request);
     if (authResult instanceof NextResponse) return authResult;
+    const {
+      user: { uid: userId },
+    } = authResult;
 
     const body = await request.json().catch(() => ({}));
 
@@ -170,7 +176,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const forwardedHeaders: HeadersInit = { "content-type": "application/json" };
+    const forwardedHeaders: HeadersInit = { "content-type": "application/json", "x-user-id": userId };
     const apiKey = request.headers.get("x-api-key");
     const authHeader = request.headers.get("authorization");
     if (apiKey) forwardedHeaders["x-api-key"] = apiKey;

@@ -72,7 +72,7 @@ export const GcDashModelButton: React.FC<GcDashModelButtonProps> = ({
               justify-content: center;
               width: 28px;
               height: 28px;
-              border-radius: 8px;
+              border-radius: 12px;
               background: rgba(9, 30, 66, 0.08);
               color: ${gcDashColor.textPrimary};
             `}
