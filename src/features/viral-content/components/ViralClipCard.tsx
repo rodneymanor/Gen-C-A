@@ -1,41 +1,74 @@
-import React from 'react';
-import { css } from '@emotion/react';
-import { GcDashButton, GcDashCard, GcDashCardBody } from '@/components/gc-dash';
-import MediaServicesPresentationIcon from '@atlaskit/icon/glyph/media-services/presentation';
-import AddIcon from '@atlaskit/icon/glyph/add';
-import PlayIcon from '@atlaskit/icon/glyph/vid-play';
-import DetailViewIcon from '@atlaskit/icon/glyph/detail-view';
-import LikeIcon from '@atlaskit/icon/glyph/like';
-import CommentIcon from '@atlaskit/icon/glyph/comment';
-import type { ViralVideo } from '../types';
-import { PLATFORM_EMOJI, PLATFORM_LABELS } from '../constants/feed';
+import React from 'react'
+import { css } from '@emotion/react'
+import { GcDashButton, GcDashCard, GcDashCardBody } from '@/components/gc-dash'
+import MediaServicesPresentationIcon from '@atlaskit/icon/glyph/media-services/presentation'
+import AddIcon from '@atlaskit/icon/glyph/add'
+import PlayIcon from '@atlaskit/icon/glyph/vid-play'
+import DetailViewIcon from '@atlaskit/icon/glyph/detail-view'
+import LikeIcon from '@atlaskit/icon/glyph/like'
+import CommentIcon from '@atlaskit/icon/glyph/comment'
+import type { ViralVideo } from '../types'
+import { PLATFORM_EMOJI, PLATFORM_LABELS } from '../constants/feed'
+
+export interface ViralClipCardAction {
+  id: string
+  label: string
+  icon?: React.ReactNode
+  variant?: 'primary' | 'secondary' | 'ghost'
+  disabled?: boolean
+  isLoading?: boolean
+  onClick?: (video: ViralVideo, event: React.MouseEvent<HTMLButtonElement>) => void
+}
 
 export interface ViralClipCardProps {
-  video: ViralVideo;
-  onOpen?: (video: ViralVideo) => void;
-  onFindSimilar?: (video: ViralVideo) => void;
-  onAddToProject?: (video: ViralVideo) => void;
-  onPlay?: (video: ViralVideo) => void;
+  video: ViralVideo
+  onOpen?: (video: ViralVideo) => void
+  onViewInsights?: (video: ViralVideo) => void
+  onAddToProject?: (video: ViralVideo) => void
+  onPlay?: (video: ViralVideo) => void
+  overlayActions?: ViralClipCardAction[]
 }
 
 const cardStyles = css`
   position: relative;
   overflow: hidden;
   border-radius: 20px;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   border: 1px solid rgba(9, 30, 66, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+  transition:
+    border-color 0.24s ease,
+    background 0.24s ease,
+    filter 0.24s ease;
 
-  &:hover {
-    transform: translateY(-4px);
-    border-color: rgba(11, 92, 255, 0.35);
-    box-shadow: 0 24px 48px rgba(9, 30, 66, 0.18);
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(120% 120% at 50% 0%, rgba(250, 252, 255, 0.9), rgba(255, 255, 255, 0));
+    opacity: 0;
+    transition: opacity 0.28s ease;
+    pointer-events: none;
   }
 
-  &:hover .viral-clip-actions {
+  &:hover,
+  &:focus-visible {
+    border-color: rgba(11, 92, 255, 0.38);
+    background: rgba(250, 253, 255, 0.98);
+    filter: saturate(1.04);
+  }
+
+  &:hover::before,
+  &:focus-visible::before {
+    opacity: 1;
+  }
+
+  &:hover .viral-clip-actions,
+  &:focus-visible .viral-clip-actions {
     opacity: 1;
     pointer-events: auto;
   }
-`;
+`
 
 const verticalThumbnailStyles = css`
   position: relative;
@@ -50,13 +83,8 @@ const verticalThumbnailStyles = css`
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.24s ease;
   }
-
-  &:hover img {
-    transform: scale(1.04);
-  }
-`;
+`
 
 const horizontalThumbnailStyles = css`
   position: relative;
@@ -71,13 +99,8 @@ const horizontalThumbnailStyles = css`
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.24s ease;
   }
-
-  &:hover img {
-    transform: scale(1.04);
-  }
-`;
+`
 
 const platformBadgeStyles = css`
   position: absolute;
@@ -94,7 +117,24 @@ const platformBadgeStyles = css`
   align-items: center;
   gap: 6px;
   backdrop-filter: blur(6px);
-`;
+`
+
+const transcriptionBadgeStyles = css`
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(11, 92, 255, 0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  box-shadow: 0 12px 24px rgba(11, 92, 255, 0.28);
+`
 
 const newBadgeStyles = css`
   position: absolute;
@@ -109,7 +149,7 @@ const newBadgeStyles = css`
   border-radius: 999px;
   text-transform: uppercase;
   box-shadow: 0 10px 16px rgba(11, 92, 255, 0.28);
-`;
+`
 
 const overlayStyles = css`
   position: absolute;
@@ -119,17 +159,17 @@ const overlayStyles = css`
   gap: 10px;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, rgba(9, 30, 66, 0) 32%, rgba(9, 30, 66, 0.66));
+  background: linear-gradient(180deg, rgba(9, 30, 66, 0.05) 20%, rgba(9, 30, 66, 0.28) 90%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.18s ease;
-`;
+  transition: opacity 0.24s ease;
+`
 
 const bodyStyles = css`
   display: grid;
   gap: 12px;
   padding: 16px 18px 20px;
-`;
+`
 
 const titleStyles = css`
   margin: 0;
@@ -141,13 +181,13 @@ const titleStyles = css`
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-`;
+`
 
 const creatorStyles = css`
   font-size: 13px;
   color: rgba(9, 30, 66, 0.55);
   font-weight: 500;
-`;
+`
 
 const youtubeDescriptionStyles = css`
   margin: 0;
@@ -158,13 +198,13 @@ const youtubeDescriptionStyles = css`
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-`;
+`
 
 const metricRowStyles = css`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-`;
+`
 
 const metricPalette = (tone: string | undefined) => {
   const palette: Record<string, { bg: string; color: string }> = {
@@ -172,13 +212,13 @@ const metricPalette = (tone: string | undefined) => {
     success: { bg: 'rgba(0, 158, 115, 0.12)', color: 'rgba(0, 134, 83, 1)' },
     warning: { bg: 'rgba(255, 139, 0, 0.12)', color: 'rgba(191, 87, 0, 1)' },
     danger: { bg: 'rgba(225, 60, 60, 0.12)', color: 'rgba(191, 38, 0, 1)' },
-    neutral: { bg: 'rgba(9, 30, 66, 0.08)', color: 'rgba(9, 30, 66, 0.7)' },
-  };
-  return palette[tone ?? 'neutral'];
-};
+    neutral: { bg: 'rgba(9, 30, 66, 0.08)', color: 'rgba(9, 30, 66, 0.7)' }
+  }
+  return palette[tone ?? 'neutral']
+}
 
 const metricChipStyles = (tone: string | undefined) => {
-  const { bg, color } = metricPalette(tone);
+  const { bg, color } = metricPalette(tone)
   return css`
     display: inline-flex;
     align-items: center;
@@ -190,54 +230,94 @@ const metricChipStyles = (tone: string | undefined) => {
     line-height: 1.4;
     border-radius: 10px;
     padding: 4px 10px;
-  `;
-};
+  `
+}
 
 const actionsButtonStyles = css`
   pointer-events: auto;
   min-width: 180px;
-`;
+`
 
-const metricIconComponents: Record<string, React.ComponentType<{ label: string; size?: 'small' | 'medium' | 'large'; primaryColor?: string }>> = {
+const metricIconComponents: Record<
+  string,
+  React.ComponentType<{ label: string; size?: 'small' | 'medium' | 'large'; primaryColor?: string }>
+> = {
   views: DetailViewIcon,
   likes: LikeIcon,
-  comments: CommentIcon,
-};
+  comments: CommentIcon
+}
 
 export const ViralClipCard: React.FC<ViralClipCardProps> = ({
   video,
   onOpen,
-  onFindSimilar,
+  onViewInsights,
   onAddToProject,
   onPlay,
+  overlayActions
 }) => {
-  const isYoutube = video.platform === 'youtube';
-  const thumbnailWrapperStyles = isYoutube ? horizontalThumbnailStyles : verticalThumbnailStyles;
+  const isYoutube = video.platform === 'youtube'
+  const thumbnailWrapperStyles = isYoutube ? horizontalThumbnailStyles : verticalThumbnailStyles
+  const isTranscribing = video.transcriptionStatus === 'processing' || video.transcriptionStatus === 'pending'
 
   const handleOpen = () => {
+    if (onViewInsights) {
+      onViewInsights(video)
+      return
+    }
     if (onOpen) {
-      onOpen(video);
+      onOpen(video)
     }
-  };
+  }
 
-  const handleFindSimilar = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    onFindSimilar?.(video);
-  };
+  const handleViewInsights = () => {
+    onViewInsights?.(video)
+  }
 
-  const handleAdd = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    onAddToProject?.(video);
-  };
+  const handleAdd = () => {
+    onAddToProject?.(video)
+  }
 
-  const handlePlay = (event: React.MouseEvent) => {
-    event.stopPropagation();
+  const handlePlay = () => {
     if (onPlay) {
-      onPlay(video);
+      onPlay(video)
     } else if (onOpen) {
-      onOpen(video);
+      onOpen(video)
     }
-  };
+  }
+
+  const defaultActions: ViralClipCardAction[] = []
+
+  if (onViewInsights) {
+    defaultActions.push({
+      id: 'view-insights',
+      label: 'View insights',
+      icon: <MediaServicesPresentationIcon label="" />,
+      variant: 'primary',
+      onClick: () => handleViewInsights()
+    })
+  }
+
+  if (onAddToProject) {
+    defaultActions.push({
+      id: 'add-to-project',
+      label: 'Add to project',
+      icon: <AddIcon label="" />,
+      variant: 'secondary',
+      onClick: () => handleAdd()
+    })
+  }
+
+  if (onPlay || onOpen) {
+    defaultActions.push({
+      id: 'play-video',
+      label: 'Play video',
+      icon: <PlayIcon label="" />,
+      variant: 'ghost',
+      onClick: () => handlePlay()
+    })
+  }
+
+  const actionsToRender = overlayActions && overlayActions.length > 0 ? overlayActions : defaultActions
 
   return (
     <GcDashCard interactive css={cardStyles} onClick={handleOpen}>
@@ -247,35 +327,28 @@ export const ViralClipCard: React.FC<ViralClipCardProps> = ({
         <span css={platformBadgeStyles}>
           {PLATFORM_EMOJI[video.platform]} {PLATFORM_LABELS[video.platform]}
         </span>
-        <div css={overlayStyles} className="viral-clip-actions">
-          <GcDashButton
-            variant="primary"
-            size="sm"
-            leadingIcon={<MediaServicesPresentationIcon label="" />}
-            css={actionsButtonStyles}
-            onClick={handleFindSimilar}
-          >
-            More like this
-          </GcDashButton>
-          <GcDashButton
-            variant="secondary"
-            size="sm"
-            leadingIcon={<AddIcon label="" />}
-            css={actionsButtonStyles}
-            onClick={handleAdd}
-          >
-            Add to project
-          </GcDashButton>
-          <GcDashButton
-            variant="ghost"
-            size="sm"
-            leadingIcon={<PlayIcon label="" />}
-            css={actionsButtonStyles}
-            onClick={handlePlay}
-          >
-            Play video
-          </GcDashButton>
-        </div>
+        {isTranscribing ? <span css={transcriptionBadgeStyles}>⏳ Transcribing…</span> : null}
+        {actionsToRender.length > 0 && (
+          <div css={overlayStyles} className="viral-clip-actions">
+            {actionsToRender.map((action) => (
+              <GcDashButton
+                key={action.id}
+                variant={action.variant ?? 'primary'}
+                size="sm"
+                leadingIcon={action.icon}
+                css={actionsButtonStyles}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  action.onClick?.(video, event)
+                }}
+                disabled={action.disabled ?? !action.onClick}
+                isLoading={action.isLoading}
+              >
+                {action.label}
+              </GcDashButton>
+            ))}
+          </div>
+        )}
       </div>
       <GcDashCardBody css={bodyStyles}>
         <h3 css={titleStyles}>{video.title}</h3>
@@ -285,8 +358,8 @@ export const ViralClipCard: React.FC<ViralClipCardProps> = ({
         ) : null}
         <div css={metricRowStyles}>
           {video.metrics.map((metricItem) => {
-            const IconComponent = metricIconComponents[metricItem.id.toLowerCase()];
-            const { color } = metricPalette(metricItem.tone);
+            const IconComponent = metricIconComponents[metricItem.id.toLowerCase()]
+            const { color } = metricPalette(metricItem.tone)
             return (
               <span key={metricItem.id} css={metricChipStyles(metricItem.tone)}>
                 {IconComponent ? (
@@ -296,12 +369,12 @@ export const ViralClipCard: React.FC<ViralClipCardProps> = ({
                 )}
                 <span>{metricItem.value}</span>
               </span>
-            );
+            )
           })}
         </div>
       </GcDashCardBody>
     </GcDashCard>
-  );
-};
+  )
+}
 
-export default ViralClipCard;
+export default ViralClipCard

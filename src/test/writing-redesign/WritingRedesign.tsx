@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { css } from '@emotion/react';
 import {
   GcDashButton,
@@ -11,6 +11,7 @@ import {
   type GcDashDropdownOption,
   GcDashFeatureCard,
   GcDashInput,
+  GcDashLoadingSpinner,
   GcDashNavButtons,
   GcDashPlanChip,
   GcDashHeader,
@@ -48,6 +49,8 @@ const ideaCapsules = [
     summary: 'Tell the story of a pilot customer unlocking speed.'
   },
 ];
+
+type SuggestedIdea = typeof ideaCapsules[number];
 
 const lengthOptions: GcDashDropdownOption[] = [
   { value: '20', label: '20 seconds' },
@@ -354,6 +357,8 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
   const [localError, setLocalError] = useState<string | null>(null);
   const [isPersistingScript, setIsPersistingScript] = useState(false);
   const [currentNotesDraft, setCurrentNotesDraft] = useState<string>('');
+  const [isSuggestionFlowActive, setIsSuggestionFlowActive] = useState(false);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
   const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResult | null>(null);
   const [analyzeIdeas, setAnalyzeIdeas] = useState<IdeaSeed[]>([]);
   const [analyzeMeta, setAnalyzeMeta] = useState<GenerationMeta | null>(null);
@@ -368,6 +373,7 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
   const [isLoadingRecentNotes, setIsLoadingRecentNotes] = useState(false);
   const [recentNotesError, setRecentNotesError] = useState<string | null>(null);
   const [recentNoteSelection, setRecentNoteSelection] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
 
   const resolveAuthToken = useCallback(async (): Promise<string | null> => {
     if (!auth) return null;
@@ -473,6 +479,13 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
 
     return () => {
       isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
     };
   }, []);
 
@@ -602,6 +615,10 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
       setCurrentNotesDraft('');
       setRecentNoteSelection(null);
     }
+    if (entryMode !== 'suggestions') {
+      setSuggestionError(null);
+      setIsSuggestionFlowActive(false);
+    }
     if (entryMode !== 'inspiration') {
       setAnalyzeResult(null);
       setAnalyzeIdeas([]);
@@ -689,10 +706,6 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
     });
   }, [isLoadingRecentNotes, recentNotes]);
 
-  const handleGenerate = () => {
-    setPhase('generating');
-  };
-
   const persistGeneratedScript = useCallback(async (
     params: {
       request: AIGenerationRequest;
@@ -775,6 +788,140 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
       return null;
     }
   }, [brandVoices, resolveAuthToken]);
+
+  const handleLaunchSuggestedIdea = useCallback(
+    async (ideaParam?: SuggestedIdea) => {
+      if (isSuggestionFlowActive) {
+        return;
+      }
+
+      const idea = ideaParam ?? selectedIdea;
+      if (!idea) {
+        setSuggestionError('Pick an idea to continue.');
+        return;
+      }
+
+      const prompt = [idea.title, idea.summary].filter(Boolean).join(' — ').trim();
+      if (!prompt) {
+        setSuggestionError('This idea needs more detail before we can draft it.');
+        return;
+      }
+
+      setSuggestionError(null);
+      setSelectedIdea(idea);
+      setGeneratedComponents(null);
+      setLastRequest(null);
+      setLastScriptContent('');
+      setPhase('generating');
+      setProgress(12);
+      setIsSuggestionFlowActive(true);
+
+      const mappedLength = uiLengthToDuration(length);
+      const requestLength = uiLengthToRequestLength(length);
+
+      try {
+        const response = await generateScript({
+          idea: prompt,
+          length: mappedLength,
+          brandVoiceId: selectedBrandVoice?.id,
+          brandVoiceCreatorId: selectedBrandVoice?.creatorId,
+        });
+
+        if (!response.success || !response.script) {
+          throw new Error(response.error || 'We could not generate this script. Please try again.');
+        }
+
+        const components: ScriptComponents = {
+          hook: response.script.hook,
+          bridge: response.script.bridge,
+          goldenNugget: response.script.goldenNugget,
+          wta: response.script.wta,
+        };
+
+        const scriptContent = formatScriptForEditor(components);
+        const title = deriveScriptTitle(prompt || idea.summary || idea.title);
+        const request: AIGenerationRequest = {
+          prompt,
+          aiModel: 'creative',
+          length: requestLength,
+          style: 'engaging',
+          platform: 'tiktok',
+          brandVoiceId: selectedBrandVoice?.id,
+          brandVoiceCreatorId: selectedBrandVoice?.creatorId,
+          additionalSettings: {
+            entryMode: 'suggestions',
+            suggestionId: idea.id,
+            suggestionTitle: idea.title,
+          },
+        };
+
+        setGeneratedComponents(components);
+        setLastScriptContent(scriptContent);
+        setLastRequest(request);
+        setLastMappedLength(mappedLength);
+        setPhase('result');
+        setProgress(100);
+
+        if (onLaunchScriptFlow) {
+          await onLaunchScriptFlow({
+            request,
+            scriptContent,
+            mappedLength,
+            components,
+            title,
+            brandVoice: selectedBrandVoice,
+          });
+        } else {
+          const savedScript = await persistGeneratedScript({
+            request,
+            scriptContent,
+            mappedLength,
+            components,
+            title,
+          });
+
+          const params = new URLSearchParams({
+            content: scriptContent,
+            title,
+            platform: request.platform,
+            length: request.length,
+            style: request.style,
+          });
+
+          if (savedScript?.id) {
+            params.set('scriptId', savedScript.id);
+          }
+          if (request.brandVoiceId) {
+            params.set('brandVoiceId', request.brandVoiceId);
+          }
+          if (request.brandVoiceCreatorId) {
+            params.set('brandVoiceCreatorId', request.brandVoiceCreatorId);
+          }
+          params.set('suggestionId', idea.id);
+
+          window.location.assign(`/editor?${params.toString()}`);
+        }
+      } catch (error) {
+        console.error('❌ [WritingRedesign] Failed to generate script from suggestion', error);
+        setSuggestionError(error instanceof Error ? error.message : 'We could not generate this script. Please try again.');
+        setPhase('input');
+        setProgress(0);
+      } finally {
+        if (isMountedRef.current) {
+          setIsSuggestionFlowActive(false);
+        }
+      }
+    },
+    [
+      generateScript,
+      isSuggestionFlowActive,
+      length,
+      onLaunchScriptFlow,
+      persistGeneratedScript,
+      selectedBrandVoice,
+      selectedIdea,
+    ],
+  );
 
   const handleOpenEditor = useCallback(async () => {
     if (!lastRequest || !generatedComponents || !lastScriptContent) {
@@ -1304,6 +1451,36 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
     gap: 16px;
   `;
 
+  const loadingOverlayStyles = css`
+    position: fixed;
+    inset: 0;
+    background: rgba(9, 30, 66, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 24px;
+  `;
+
+  const loadingDialogStyles = css`
+    background: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    max-width: 420px;
+    width: min(100%, 420px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
+  `;
+
+  const loadingTextStyles = css`
+    font-size: 14px;
+    color: rgba(9, 30, 66, 0.7);
+  `;
+
   const generatingSection = (
     <section css={cardStyles}>
       <h3 css={css`margin: 0; font-size: 18px; letter-spacing: -0.2px;`}>
@@ -1484,7 +1661,8 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
                 <button
                   key={capsule.id}
                   type="button"
-                  onClick={() => setSelectedIdea(capsule)}
+                  disabled={isSuggestionFlowActive}
+                  onClick={() => handleLaunchSuggestedIdea(capsule)}
                   css={css`
                     display: flex;
                     flex-direction: column;
@@ -1501,6 +1679,12 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
                     &:hover {
                       border-color: var(--color-primary-500, #0b5cff);
                       transform: translateY(-1px);
+                    }
+
+                    &:disabled {
+                      cursor: not-allowed;
+                      opacity: 0.7;
+                      transform: none;
                     }
 
                     span:nth-of-type(1) {
@@ -1534,8 +1718,19 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
             <span css={css`font-size: 13px; color: rgba(9, 30, 66, 0.65);`}>
               Selected idea: <strong>{selectedIdea.title}</strong>
             </span>
-            <GcDashButton onClick={handleGenerate}>Generate script</GcDashButton>
+            <GcDashButton
+              onClick={() => handleLaunchSuggestedIdea()}
+              isLoading={isSuggestionFlowActive}
+              disabled={isSuggestionFlowActive}
+            >
+              Generate script
+            </GcDashButton>
           </div>
+          {suggestionError && (
+            <span css={css`color: #b42318; font-size: 13px;`}>
+              {suggestionError}
+            </span>
+          )}
         </GcDashCardBody>
       </GcDashCard>
 
@@ -1883,120 +2078,136 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
   };
 
   return (
-    <div css={containerStyles}>
-      <div css={shellStyles}>
-        <GcDashHeader
-          leading={
-            <>
-              <GcDashPlanChip
-                planName="Writing workspace"
-                info={
-                  entryMode === 'suggestions'
-                    ? phase === 'result'
-                      ? 'Draft ready'
-                      : 'Script builder'
-                    : 'Quick start'
-                }
-                highlighted
-              />
-              <GcDashNavButtons
-                disablePrevious
-                onNext={() => {
-                  if (onNavigateNext) {
-                    onNavigateNext();
-                  } else {
-                    alert('Smooth transition to Viral Video Library view.');
+    <>
+      <div css={containerStyles}>
+        <div css={shellStyles}>
+          <GcDashHeader
+            leading={
+              <>
+                <GcDashPlanChip
+                  planName="Writing workspace"
+                  info={
+                    entryMode === 'suggestions'
+                      ? phase === 'result'
+                        ? 'Draft ready'
+                        : 'Script builder'
+                      : 'Quick start'
                   }
-                }}
+                  highlighted
+                />
+                <GcDashNavButtons
+                  disablePrevious
+                  onNext={() => {
+                    if (onNavigateNext) {
+                      onNavigateNext();
+                    } else {
+                      alert('Smooth transition to Viral Video Library view.');
+                    }
+                  }}
+                />
+              </>
+            }
+            search={
+              <GcDashHeaderSearchInput
+                placeholder="Search ideas, drafts, @mentions"
+                ariaLabel="Search the writing workspace"
+                onSearch={() => undefined}
+                size="medium"
               />
-            </>
-          }
-          search={
-            <GcDashHeaderSearchInput
-              placeholder="Search ideas, drafts, @mentions"
-              ariaLabel="Search the writing workspace"
-              onSearch={() => undefined}
-              size="medium"
-            />
-          }
-        />
+            }
+          />
 
-        <main css={mainColumnStyles}>
-          <section
-            css={css`
-              display: flex;
-              flex-direction: column;
-              gap: 12px;
-            `}
-          >
-            <div
+          <main css={mainColumnStyles}>
+            <section
               css={css`
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
+                gap: 12px;
               `}
             >
-              <h1
+              <div
                 css={css`
-                  margin: 0;
-                  font-size: 26px;
-                  letter-spacing: -0.4px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 4px;
                 `}
               >
-                What would you like to do?
-              </h1>
-              <span css={css`font-size: 14px; color: rgba(9, 30, 66, 0.7);`}>
-                Pick a starting point for today’s session. You can switch flows any time.
-              </span>
-            </div>
+                <h1
+                  css={css`
+                    margin: 0;
+                    font-size: 26px;
+                    letter-spacing: -0.4px;
+                  `}
+                >
+                  What would you like to do?
+                </h1>
+                <span css={css`font-size: 14px; color: rgba(9, 30, 66, 0.7);`}>
+                  Pick a starting point for today’s session. You can switch flows any time.
+                </span>
+              </div>
 
-            <div css={entryGridStyles}>
-              {entryOptions.map((option) => {
-                const isActive = entryMode === option.id;
-                return (
-                  <GcDashCard
-                    key={option.id}
-                    interactive
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setEntryMode(option.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        setEntryMode(option.id);
-                      }
-                    }}
-                    css={css`
-                      border-color: ${isActive ? 'var(--color-primary-500)' : 'rgba(9, 30, 66, 0.12)'};
-                      background: ${isActive ? 'rgba(11, 92, 255, 0.08)' : 'rgba(9, 30, 66, 0.02)'};
-                      transform: ${isActive ? 'translateY(-2px)' : 'none'};
-                    `}
-                  >
-                    <GcDashCardBody>
-                      <GcDashCardTitle>{option.title}</GcDashCardTitle>
-                      <GcDashCardSubtitle>{option.description}</GcDashCardSubtitle>
-                      {option.meta && (
-                        <span css={css`font-size: 12px; color: rgba(9, 30, 66, 0.6);`}>
-                          {option.meta}
-                        </span>
-                      )}
-                    </GcDashCardBody>
-                  </GcDashCard>
-                );
-              })}
-            </div>
-          </section>
+              <div css={entryGridStyles}>
+                {entryOptions.map((option) => {
+                  const isActive = entryMode === option.id;
+                  return (
+                    <GcDashCard
+                      key={option.id}
+                      interactive
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setEntryMode(option.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setEntryMode(option.id);
+                        }
+                      }}
+                      css={css`
+                        border-color: ${isActive ? 'var(--color-primary-500)' : 'rgba(9, 30, 66, 0.12)'};
+                        background: ${isActive ? 'rgba(11, 92, 255, 0.08)' : 'rgba(9, 30, 66, 0.02)'};
+                        transform: ${isActive ? 'translateY(-2px)' : 'none'};
+                      `}
+                    >
+                      <GcDashCardBody>
+                        <GcDashCardTitle>{option.title}</GcDashCardTitle>
+                        <GcDashCardSubtitle>{option.description}</GcDashCardSubtitle>
+                        {option.meta && (
+                          <span css={css`font-size: 12px; color: rgba(9, 30, 66, 0.6);`}>
+                            {option.meta}
+                          </span>
+                        )}
+                      </GcDashCardBody>
+                    </GcDashCard>
+                  );
+                })}
+              </div>
+            </section>
 
-          {entryMode
-            ? renderEntryModeContent()
-            : (
-              <GcDashBlankSlate
-                description="Start by clicking a starting point for today’s session."
-              />
-            )}
-        </main>
+            {entryMode
+              ? renderEntryModeContent()
+              : (
+                <GcDashBlankSlate
+                  description="Start by clicking a starting point for today’s session."
+                />
+              )}
+          </main>
+        </div>
       </div>
-    </div>
+
+      {isSuggestionFlowActive && (
+        <div css={loadingOverlayStyles} role="alert" aria-live="assertive">
+          <div css={loadingDialogStyles}>
+            <GcDashLoadingSpinner size={32} />
+            <h2 css={css`margin: 0; font-size: 20px; letter-spacing: -0.2px;`}>
+              Generating your script
+            </h2>
+            <p css={loadingTextStyles}>
+              Drafting "{selectedIdea.title}" in the {voiceLabelLower} voice. We’ll jump to the Hemingway editor once it’s ready.
+            </p>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

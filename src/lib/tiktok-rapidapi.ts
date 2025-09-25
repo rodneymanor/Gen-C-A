@@ -72,11 +72,7 @@ export function mapTikTokToUnified(data: any): UnifiedVideoResult {
     throw new Error("TikTok RapidAPI did not include a usable download URL");
   }
 
-  const thumbnailUrl =
-    video.cover?.url_list?.[0] ??
-    video.dynamic_cover?.url_list?.[0] ??
-    video.origin_cover?.url_list?.[0] ??
-    undefined;
+  const thumbnailUrl = selectThumbnailUrl(aweme);
 
   return {
     success: true,
@@ -94,4 +90,59 @@ export function mapTikTokToUnified(data: any): UnifiedVideoResult {
     commentCount: aweme.statistics?.comment_count ?? undefined,
     raw: aweme,
   };
+}
+
+function selectThumbnailUrl(aweme: any): string | undefined {
+  const prioritizedGroups: unknown[] = [
+    aweme?.video?.dynamic_cover?.url_list,
+    aweme?.video?.cover?.url_list,
+    aweme?.video?.origin_cover?.url_list,
+    aweme?.video?.cover_thumb?.url_list,
+    aweme?.video?.cover_hd?.url_list,
+    aweme?.dynamic_cover?.url_list,
+    aweme?.ai_dynamic_cover?.url_list ?? aweme?.ai_dynamic_cover,
+    aweme?.cover?.url_list ?? aweme?.cover,
+    aweme?.preview_video?.cover_url_list,
+  ];
+
+  const groups: string[][] = prioritizedGroups
+    .map(normalizeThumbnailGroup)
+    .filter((group): group is string[] => group.length > 0);
+
+  const webpCandidate = findInGroups(groups, (url) => url.toLowerCase().includes('.webp'));
+  if (webpCandidate) {
+    return webpCandidate;
+  }
+
+  const firstCandidate = findInGroups(groups, () => true);
+  if (firstCandidate) {
+    return firstCandidate;
+  }
+
+  return undefined;
+}
+
+function normalizeThumbnailGroup(group: unknown): string[] {
+  if (!group) return [];
+  if (Array.isArray(group)) {
+    return group.filter(isPresentString);
+  }
+  if (typeof group === 'string') {
+    return isPresentString(group) ? [group] : [];
+  }
+  return [];
+}
+
+function findInGroups(groups: string[][], predicate: (url: string) => boolean): string | undefined {
+  for (const group of groups) {
+    const match = group.find((url) => predicate(url));
+    if (match) {
+      return match;
+    }
+  }
+  return undefined;
+}
+
+function isPresentString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
 }

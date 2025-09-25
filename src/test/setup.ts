@@ -2,6 +2,17 @@ import '@testing-library/jest-dom';
 import React from 'react';
 import { vi } from 'vitest';
 
+// Provide a writable reference to the global scope for browser-based test envs
+const globalAny = globalThis as unknown as Record<string, any>;
+if (typeof globalAny.global === 'undefined') {
+  globalAny.global = globalAny;
+}
+if (typeof globalAny.process === 'undefined') {
+  globalAny.process = { env: {} };
+} else if (typeof globalAny.process.env === 'undefined') {
+  globalAny.process.env = {};
+}
+
 // Mock framer-motion to avoid animation-related issues in tests
 vi.mock('framer-motion', () => ({
   motion: {
@@ -45,10 +56,10 @@ class MockIntersectionObserver implements IntersectionObserver {
   unobserve(): void {}
 }
 
-global.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
+globalAny.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
 
 // Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
+globalAny.ResizeObserver = class ResizeObserver {
   constructor() {}
   disconnect() {}
   observe() {}
@@ -253,7 +264,7 @@ vi.mock('firebase/auth', () => ({
 }))
 
 // Global test utilities for service testing
-global.testUtils = {
+globalAny.testUtils = {
   createMockUser: (overrides = {}) => ({
     uid: 'test-user-123',
     email: 'test@example.com',
@@ -300,7 +311,7 @@ global.testUtils = {
 }
 
 // Performance testing utilities
-global.performanceUtils = {
+globalAny.performanceUtils = {
   measureTime: async <T>(fn: () => Promise<T>): Promise<{ result: T; duration: number }> => {
     const start = performance.now()
     const result = await fn()

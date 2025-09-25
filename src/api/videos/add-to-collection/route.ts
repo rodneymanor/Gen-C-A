@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, createSuccessResponse, createErrorResponse } from '@/services/api-middleware';
 import { getServices } from '@/services/service-container';
+import { getVideoScraperService } from '@/services/video/video-scraper-service.js';
+import { queueTranscriptionTask } from '@/services/transcription-runner';
 import { getAdminDb } from "@/lib/firebase-admin";
 import type { Video } from "@/lib/collections";
 
@@ -103,6 +105,7 @@ function createVideoObject(
 
   return {
     url: videoData.originalUrl,
+    originalUrl: videoData.originalUrl,
     title,
     platform: videoData.platform,
     thumbnailUrl: getDefaultThumbnail(videoData.platform),
@@ -131,6 +134,10 @@ function createVideoObject(
       keyTopics: [],
       sentiment: "neutral" as const,
       difficulty: "beginner" as const,
+    },
+    metadata: {
+      source: "import",
+      originalUrl: videoData.originalUrl,
     },
   };
 }
@@ -239,6 +246,102 @@ export const POST = requireAuth(async (request, context) => {
     await videoRef.set(video);
     const videoId = videoRef.id;
 
+    let enrichedVideo = { id: videoId, ...video };
+
+    let transcriptionQueued = false;
+
+    try {
+      const scraper = getVideoScraperService();
+      const scrapeResult = await scraper.scrapeUrl(videoData.originalUrl);
+
+      if (scrapeResult?.success) {
+        const metricsEntries = Object.entries({
+          views: scrapeResult.viewCount,
+          likes: scrapeResult.likeCount,
+          comments: scrapeResult.commentCount,
+          shares: scrapeResult.shareCount,
+        }).filter(([, value]) => typeof value === "number" && Number.isFinite(value));
+
+        const updatedInsights = {
+          ...(enrichedVideo.insights ?? {}),
+          views: scrapeResult.viewCount ?? enrichedVideo.insights?.views ?? 0,
+          likes: scrapeResult.likeCount ?? enrichedVideo.insights?.likes ?? 0,
+          comments: scrapeResult.commentCount ?? enrichedVideo.insights?.comments ?? 0,
+          saves: enrichedVideo.insights?.saves ?? 0,
+        };
+
+        const transcriptionQueuedAt = new Date().toISOString();
+        const updatedMetadata: Record<string, unknown> = {
+          ...(enrichedVideo.metadata ?? {}),
+          originalUrl: videoData.originalUrl,
+          source: "import",
+          scrape: scrapeResult.raw ?? scrapeResult,
+          scrapedAt: transcriptionQueuedAt,
+          transcriptionStatus: "processing",
+          transcriptionQueuedAt,
+        };
+
+        if (metricsEntries.length > 0) {
+          updatedMetadata.metrics = Object.fromEntries(metricsEntries);
+        }
+
+        const updatedContentMetadata = {
+          ...(enrichedVideo.contentMetadata ?? {}),
+          description:
+            scrapeResult.description ?? enrichedVideo.contentMetadata?.description ?? enrichedVideo.title ?? "",
+        };
+
+        const thumbnailUrl = scrapeResult.thumbnailUrl ?? enrichedVideo.thumbnailUrl;
+
+        const updates: Record<string, unknown> = {
+          title: scrapeResult.title ?? enrichedVideo.title,
+          thumbnailUrl,
+          author: scrapeResult.author ?? enrichedVideo.author,
+          duration: scrapeResult.duration ?? enrichedVideo.duration,
+          url: scrapeResult.downloadUrl ?? enrichedVideo.url,
+          insights: updatedInsights,
+          metadata: updatedMetadata,
+          contentMetadata: updatedContentMetadata,
+          transcriptionStatus: "processing",
+          updatedAt: transcriptionQueuedAt,
+        };
+
+        await videoRef.update(updates);
+
+        const transcriptionSourceUrl =
+          scrapeResult.downloadUrl ??
+          scrapeResult.videoUrl ??
+          enrichedVideo.url ??
+          videoData.originalUrl;
+
+        queueTranscriptionTask({
+          videoId,
+          sourceUrl: transcriptionSourceUrl,
+          platform: scrapeResult.platform ?? videoData.platform ?? enrichedVideo.platform ?? "other",
+        });
+        transcriptionQueued = true;
+
+        enrichedVideo = {
+          ...enrichedVideo,
+          ...updates,
+          insights: updatedInsights,
+          metadata: updatedMetadata,
+          contentMetadata: updatedContentMetadata,
+        };
+      }
+    } catch (scrapeError) {
+      const message = scrapeError instanceof Error ? scrapeError.message : "Unknown enrichment failure";
+      console.warn("⚠️ [Add Video] Unable to enrich video:", message);
+    }
+
+    if (!transcriptionQueued) {
+      queueTranscriptionTask({
+        videoId,
+        sourceUrl: enrichedVideo.url ?? videoData.originalUrl,
+        platform: videoData.platform ?? enrichedVideo.platform ?? "other",
+      });
+    }
+
     // Update collection video count
     await updateCollectionCount(adminDb, collectionId, targetUserId, 1);
 
@@ -247,10 +350,7 @@ export const POST = requireAuth(async (request, context) => {
     return createSuccessResponse({
       videoId,
       message: "Video added successfully to collection",
-      video: {
-        id: videoId,
-        ...video
-      }
+      video: enrichedVideo
     }, 201);
     
   } catch (error: any) {

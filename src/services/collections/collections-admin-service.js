@@ -311,23 +311,32 @@ export class CollectionsAdminService {
       }
     }
 
+    const now = nowIso();
+
     const video = {
       url: videoData.originalUrl,
+      originalUrl: videoData.originalUrl,
       title: generateTitleFromUrl(videoData.originalUrl),
       platform,
       thumbnailUrl: getDefaultThumbnail(platform),
       author: 'Unknown Creator',
-      transcript: 'Transcript not available',
+      transcript: '',
       visualContext: 'Imported via Import Video',
       fileSize: 0,
       duration: 0,
       userId: collectionOwnerId,
       collectionId,
-      addedAt: videoData.addedAt || nowIso(),
+      addedAt: videoData.addedAt || now,
       components: videoData.processing?.components || { hook: '', bridge: '', nugget: '', wta: '' },
       contentMetadata: { hashtags: [], mentions: [], description: '' },
       insights: { views: 0, likes: 0, comments: 0, saves: 0 },
-      metadata: { source: 'import' },
+      transcriptionStatus: 'processing',
+      metadata: {
+        source: 'import',
+        originalUrl: videoData.originalUrl,
+        transcriptionStatus: 'processing',
+        transcriptionQueuedAt: now,
+      },
     };
 
     const docRef = await this.db.collection('videos').add(video);
@@ -405,6 +414,54 @@ export class CollectionsAdminService {
 
     await videoRef.delete();
     await this.updateCollectionCounts({ previousCollectionId: video.collectionId, targetCollectionId: null });
+  }
+
+  async toggleVideoFavorite(userId, { videoId, favorite }) {
+    if (!videoId) {
+      throw new CollectionsServiceError('videoId is required', 400);
+    }
+
+    if (typeof favorite !== 'boolean') {
+      throw new CollectionsServiceError('favorite must be a boolean', 400);
+    }
+
+    const profile = await this.ensureUserProfile(userId);
+    const videoRef = this.db.collection('videos').doc(String(videoId));
+    const videoSnapshot = await videoRef.get();
+
+    if (!videoSnapshot.exists) {
+      throw new CollectionsServiceError('Video not found', 404);
+    }
+
+    const video = videoSnapshot.data() || {};
+
+    if (profile.role !== 'super_admin') {
+      const accessibleCoaches = await this.getAccessibleCoaches(profile);
+      const ownerId = video.userId;
+      const isOwner = ownerId === userId;
+      const hasCoachAccess = ownerId ? accessibleCoaches.includes(ownerId) : false;
+      if (!isOwner && !hasCoachAccess) {
+        throw new CollectionsServiceError('Insufficient permissions to update this video', 403);
+      }
+    }
+
+    const updatePayload = {
+      favorite,
+      updatedAt: nowIso(),
+    };
+
+    if (favorite) {
+      updatePayload.tags = FieldValue.arrayUnion('favorites');
+      updatePayload['metadata.tags'] = FieldValue.arrayUnion('favorites');
+    } else {
+      updatePayload.tags = FieldValue.arrayRemove('favorites');
+      updatePayload['metadata.tags'] = FieldValue.arrayRemove('favorites');
+    }
+
+    await videoRef.update(updatePayload);
+
+    const refreshedSnapshot = await videoRef.get();
+    return this.mapVideoDoc(refreshedSnapshot);
   }
 
   async copyVideo(userId, { videoId, targetCollectionId }) {

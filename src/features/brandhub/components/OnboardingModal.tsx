@@ -24,6 +24,16 @@ const onboardingModalStyles = css`
   gap: var(--space-4);
   min-height: 560px;
 
+  @keyframes recordingFlash {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+
   .modal-layout {
     display: flex;
     justify-content: center;
@@ -98,9 +108,32 @@ const onboardingModalStyles = css`
     padding: 6px 12px;
     border-radius: var(--radius-pill, 999px);
     background: var(--color-neutral-900);
-    color: white;
+    color: var(--color-neutral-0);
     font-size: var(--font-size-body-small);
     white-space: nowrap;
+  }
+
+  .timer-pill.recording {
+    background: var(--color-success-600);
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+    color: var(--color-neutral-0);
+  }
+
+  .timer-pill.paused {
+    background: var(--color-neutral-800);
+  }
+
+  .timer-pill.ready {
+    background: var(--color-neutral-700);
+  }
+
+  .timer-pill .status-dot {
+    font-size: 1.2em;
+    line-height: 1;
+  }
+
+  .timer-pill .timer-state-text {
+    font-weight: var(--font-weight-medium);
   }
 
   .transcript-stream {
@@ -111,6 +144,22 @@ const onboardingModalStyles = css`
     border-radius: var(--radius-medium);
     padding: var(--space-3);
     min-height: 96px;
+  }
+
+  .recording-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    padding: 6px 12px;
+    border-radius: var(--radius-pill, 999px);
+    background: var(--color-primary-50);
+    color: var(--color-primary-600);
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    animation: recordingFlash 1s ease-in-out infinite;
   }
 
   .stream-label {
@@ -453,9 +502,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               <Badge variant="primary" size="small">
                 Question {activeQuestionIndex + 1} of {totalQuestions}
               </Badge>
-              <div className="timer-pill">
+              <div className={`timer-pill ${isRecording ? 'recording' : hasRecordingStarted ? 'paused' : 'ready'}`}>
                 <StopwatchIcon label="Timer" /> {formatTime(elapsedSeconds)}
-                {isRecording ? ' · Recording' : hasRecordingStarted ? ' · Paused' : ' · Ready'}
+                <span className="status-dot" aria-hidden>·</span>
+                <span className="timer-state-text">
+                  {isRecording ? 'Recording' : hasRecordingStarted ? 'Paused' : 'Ready'}
+                </span>
               </div>
             </div>
             <div className="question-copy">
@@ -493,6 +545,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             </div>
             <div className="transcript-stream">
               <span className="stream-label">Live transcript</span>
+              {isRecording && (
+                <span className="recording-indicator" aria-live="polite">
+                  Keep going, recording is in process
+                </span>
+              )}
               <TextArea
                 value={liveTranscript}
                 onChange={(event) => updateTranscript(event.target.value)}

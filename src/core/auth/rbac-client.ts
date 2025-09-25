@@ -130,6 +130,16 @@ export const RbacClient = {
     if (!res.ok) throw new Error(`Failed to delete video (${res.status})`);
     return res.json();
   },
+
+  async toggleVideoFavorite(userId: string, videoId: string, favorite: boolean): Promise<any> {
+    const res = await fetch(`/api/videos/favorite`, {
+      method: 'POST',
+      headers: jsonHeaders(userId),
+      body: JSON.stringify({ videoId, favorite }),
+    });
+    if (!res.ok) throw new Error(`Failed to update video favorite (${res.status})`);
+    return res.json();
+  },
 };
 
 export default RbacClient;

@@ -149,7 +149,8 @@ export const BrandHub: React.FC = () => {
     registerBoundary,
     finalizeSession,
     updateSessionTranscript,
-    flushPendingSaves
+    flushPendingSaves,
+    restartOnboarding
   } = useBrandHubOnboarding({ userId: firebaseUser?.uid })
 
   const {
@@ -266,6 +267,14 @@ export const BrandHub: React.FC = () => {
     anchor.remove()
     URL.revokeObjectURL(url)
   }, [flushPendingSaves, isQuestionnaireComplete, responses, selectedIntents, sessionMeta])
+
+  const handleRestartOnboarding = useCallback(async () => {
+    await restartOnboarding()
+    setBrandProfile(null)
+    setBrandProfileMeta(null)
+    setBrandProfileError(null)
+    setActiveTab('onboarding')
+  }, [restartOnboarding])
 
   const handleIntentToggle = (intent: string) => {
     setSelectedIntents((prev) =>
@@ -403,6 +412,7 @@ export const BrandHub: React.FC = () => {
           onToggleIntent={handleIntentToggle}
           intentOptions={intentOptions}
           onDownloadResponses={handleDownloadOnboardingResponses}
+          onRestartOnboarding={handleRestartOnboarding}
         />
       )}
 

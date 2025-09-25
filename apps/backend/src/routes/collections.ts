@@ -6,6 +6,8 @@ import {
   CollectionsServiceError,
   getCollectionsAdminService,
 } from '../../../../src/services/collections/collections-admin-service.js';
+import { getVideoScraperService } from '../../../../src/services/video/video-scraper-service.js';
+import { queueTranscriptionTask } from '../../../../src/services/transcription-runner.ts';
 
 function extractUserId(req: Request, res: Response): string | null {
   const candidate =
@@ -48,6 +50,10 @@ function getCollectionsService(res: Response) {
     res.status(500).json({ success: false, error: 'Failed to initialise collections service.' });
     return null;
   }
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
 }
 
 function handleCollectionsError(res: Response, error: unknown, fallback: string) {
@@ -217,6 +223,39 @@ async function deleteVideo(req: Request, res: Response) {
   }
 }
 
+async function toggleVideoFavorite(req: Request, res: Response) {
+  const userId = extractUserId(req, res);
+  if (!userId) return;
+
+  const { videoId, favorite } = (req.body ?? {}) as Record<string, unknown>;
+  if (!videoId) {
+    res.status(400).json({ success: false, error: 'videoId required' });
+    return;
+  }
+
+  if (favorite === undefined) {
+    res.status(400).json({ success: false, error: 'favorite flag required' });
+    return;
+  }
+
+  const normalizedFavorite =
+    typeof favorite === 'boolean'
+      ? favorite
+      : typeof favorite === 'string'
+      ? ['true', '1', 'yes', 'on'].includes(favorite.toLowerCase())
+      : Boolean(favorite);
+
+  const service = getCollectionsService(res);
+  if (!service) return;
+
+  try {
+    const video = await service.toggleVideoFavorite(userId, { videoId, favorite: normalizedFavorite });
+    res.json({ success: true, video });
+  } catch (error) {
+    handleCollectionsError(res, error, 'Failed to update video favorite.');
+  }
+}
+
 async function addVideoToCollection(req: Request, res: Response) {
   const userId = extractUserId(req, res);
   if (!userId) return;
@@ -232,7 +271,105 @@ async function addVideoToCollection(req: Request, res: Response) {
 
   try {
     const result = await service.addVideoToCollection(userId, { collectionId, videoData });
-    res.status(201).json({ success: true, videoId: result.videoId, video: result.video });
+    let enrichedVideo = result.video ?? { id: result.videoId };
+
+    let transcriptionQueued = false;
+
+    try {
+      const scraper = getVideoScraperService();
+      const scrapeResult = await scraper.scrapeUrl((videoData as any).originalUrl);
+
+      if (scrapeResult?.success) {
+        const db = getDb();
+        const transcriptionQueuedAt = nowIso();
+        const metricsEntries = Object.entries({
+          views: scrapeResult.viewCount,
+          likes: scrapeResult.likeCount,
+          comments: scrapeResult.commentCount,
+          shares: scrapeResult.shareCount,
+        }).filter(([, value]) => typeof value === 'number' && Number.isFinite(value as number));
+
+        const updatedInsights = {
+          ...(enrichedVideo.insights ?? {}),
+          views: scrapeResult.viewCount ?? enrichedVideo.insights?.views ?? 0,
+          likes: scrapeResult.likeCount ?? enrichedVideo.insights?.likes ?? 0,
+          comments: scrapeResult.commentCount ?? enrichedVideo.insights?.comments ?? 0,
+          saves: enrichedVideo.insights?.saves ?? 0,
+        };
+
+        const updatedMetadata: Record<string, unknown> = {
+          ...(enrichedVideo.metadata ?? {}),
+          originalUrl: (videoData as any).originalUrl,
+          source: 'import',
+          scrape: scrapeResult.raw ?? scrapeResult,
+          scrapedAt: transcriptionQueuedAt,
+          transcriptionStatus: 'processing',
+          transcriptionQueuedAt,
+        };
+
+        if (metricsEntries.length > 0) {
+          updatedMetadata.metrics = Object.fromEntries(metricsEntries);
+        }
+
+        const updatedContentMetadata = {
+          ...(enrichedVideo.contentMetadata ?? {}),
+          description:
+            scrapeResult.description ?? enrichedVideo.contentMetadata?.description ?? enrichedVideo.title ?? '',
+        };
+
+        const thumbnailUrl = scrapeResult.thumbnailUrl ?? enrichedVideo.thumbnailUrl;
+
+        const updates: Record<string, unknown> = {
+          title: scrapeResult.title ?? enrichedVideo.title,
+          thumbnailUrl,
+          author: scrapeResult.author ?? enrichedVideo.author,
+          duration: scrapeResult.duration ?? enrichedVideo.duration,
+          url: scrapeResult.downloadUrl ?? enrichedVideo.url,
+          insights: updatedInsights,
+          metadata: updatedMetadata,
+          contentMetadata: updatedContentMetadata,
+          transcriptionStatus: 'processing',
+          updatedAt: transcriptionQueuedAt,
+        };
+
+        if (db) {
+          await db.collection('videos').doc(String(result.videoId)).update(updates);
+        }
+
+        queueTranscriptionTask({
+          videoId: String(result.videoId),
+          sourceUrl:
+            scrapeResult.downloadUrl ??
+            scrapeResult.videoUrl ??
+            enrichedVideo.url ??
+            (videoData as any).originalUrl,
+          platform: scrapeResult.platform ?? (videoData as any).platform ?? enrichedVideo.platform ?? 'other',
+        });
+        transcriptionQueued = true;
+
+        enrichedVideo = {
+          ...enrichedVideo,
+          ...updates,
+          insights: updatedInsights,
+          metadata: updatedMetadata,
+          contentMetadata: updatedContentMetadata,
+        } as typeof enrichedVideo;
+      }
+    } catch (enrichmentError) {
+      const message =
+        enrichmentError instanceof Error ? enrichmentError.message : 'Unknown enrichment failure';
+      console.warn('[backend][collections] Video enrichment skipped:', message);
+    }
+
+    if (!transcriptionQueued) {
+      queueTranscriptionTask({
+        videoId: String(result.videoId),
+        sourceUrl: enrichedVideo.url ?? (videoData as any).originalUrl,
+        platform: (videoData as any).platform ?? enrichedVideo.platform ?? 'other',
+      });
+    }
+
+    res.status(201).json({ success: true, videoId: result.videoId, video: enrichedVideo });
   } catch (error) {
     handleCollectionsError(res, error, 'Failed to add video to collection.');
   }
@@ -273,3 +410,4 @@ collectionsRouter.post('/copy-video', copyVideo);
 collectionVideosRouter.post('/add-to-collection', addVideoToCollection);
 collectionVideosRouter.post('/collection', listCollectionVideos);
 collectionVideosRouter.post('/delete', deleteVideo);
+collectionVideosRouter.post('/favorite', toggleVideoFavorite);

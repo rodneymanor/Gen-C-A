@@ -8,6 +8,7 @@ export const COLLECTION_LIMITS = {
 export interface Video {
   id?: string;
   url: string;
+  originalUrl?: string;
   title: string;
   platform: string;
   thumbnailUrl?: string;

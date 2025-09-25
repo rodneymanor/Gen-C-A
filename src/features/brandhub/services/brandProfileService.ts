@@ -1,3 +1,5 @@
+import { buildAuthHeaders } from '@/lib/http/auth-headers'
+
 import { BrandProfileResult, BrandProfileRequestPayload } from '../types/brandHub'
 
 interface BrandProfileApiResponse {
@@ -14,18 +16,16 @@ interface BrandProfileApiResponse {
   }
 }
 
-const HEADERS: HeadersInit = {
-  'Content-Type': 'application/json'
-}
-
 const DEFAULT_ERROR_MESSAGE = 'Failed to generate brand profile. Please try again.'
 
 export const generateBrandProfile = async (
   payload: BrandProfileRequestPayload
 ): Promise<BrandProfileResult> => {
+  const headers = await buildAuthHeaders()
+
   const response = await fetch('/api/brand', {
     method: 'POST',
-    headers: HEADERS,
+    headers,
     credentials: 'include',
     body: JSON.stringify(payload)
   })

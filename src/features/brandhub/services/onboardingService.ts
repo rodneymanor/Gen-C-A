@@ -12,14 +12,46 @@ export const fetchOnboardingDocument = async (userId: string): Promise<Onboardin
   return snapshot.data() as OnboardingRecord
 }
 
+const sanitizeResponses = (input: OnboardingFormState): OnboardingFormState => {
+  return Object.entries(input).reduce<OnboardingFormState>((acc, [key, value]) => {
+    acc[key as keyof OnboardingFormState] = typeof value === 'string' ? value : ''
+    return acc
+  }, {} as OnboardingFormState)
+}
+
+const sanitizeSessionMeta = (meta: OnboardingSessionMeta | undefined) => {
+  if (!meta) return undefined
+
+  const boundaries = Array.isArray(meta.boundaries)
+    ? meta.boundaries.map((boundary) => ({
+        questionId: boundary.questionId,
+        questionIndex: boundary.questionIndex ?? 0,
+        elapsedSeconds: boundary.elapsedSeconds ?? 0,
+        timestamp: boundary.timestamp ?? Date.now(),
+        type: boundary.type
+      }))
+    : []
+
+  return {
+    startedAt: meta.startedAt ?? null,
+    stoppedAt: meta.stoppedAt ?? null,
+    status: meta.status ?? 'idle',
+    boundaries,
+    transcript: meta.transcript ?? ''
+  }
+}
+
 export const persistOnboardingResponses = async (
   userId: string,
   responses: OnboardingFormState,
   completed: boolean,
   sessionMeta?: OnboardingSessionMeta
 ): Promise<void> => {
+  const normalizedResponses = sanitizeResponses(responses)
+  const normalizedSessionMeta = sanitizeSessionMeta(sessionMeta)
+
   const basePayload = {
-    responses,
+    responses: normalizedResponses,
     status: completed ? 'completed' : 'in-progress',
     updatedAt: serverTimestamp()
   }
@@ -28,14 +60,10 @@ export const persistOnboardingResponses = async (
     ? { ...basePayload, completedAt: serverTimestamp() }
     : basePayload
 
-  const payloadWithMeta = sessionMeta
+  const payloadWithMeta = normalizedSessionMeta
     ? {
         ...onboardingPayload,
-        sessionMeta: {
-          ...sessionMeta,
-          boundaries: sessionMeta.boundaries ?? [],
-          transcript: sessionMeta.transcript ?? ''
-        }
+        sessionMeta: normalizedSessionMeta
       }
     : onboardingPayload
 

@@ -11,6 +11,7 @@ import { instagramRouter } from './routes/instagram';
 import { voiceRouter } from './routes/voice';
 import { creatorRouter } from './routes/creator';
 import { creatorLookupRouter } from './routes/creator-lookup';
+import { brandRouter } from './routes/brand';
 import { brandVoicesRouter } from './routes/brand-voices';
 import { extensionRouter } from './routes/extension/index.js';
 import { keysRouter } from './routes/keys.js';
@@ -54,6 +55,7 @@ export function createApp() {
   app.use('/api/voice', voiceRouter);
   app.use('/api/creator', creatorRouter);
   app.use('/api/creator', creatorLookupRouter);
+  app.use('/api/brand', brandRouter);
   app.use('/api/brand-voices', brandVoicesRouter);
   app.use('/api/chrome-extension', extensionRouter);
   app.use('/api/viral-content', viralContentRouter);

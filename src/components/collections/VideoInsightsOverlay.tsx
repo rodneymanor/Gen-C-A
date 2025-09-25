@@ -106,32 +106,37 @@ const layoutStyles = css`
   position: relative;
   display: flex;
   align-items: center;
-  gap: ${spacing.sm};
+  justify-content: center;
   pointer-events: none;
 
   > * {
     pointer-events: auto;
   }
-
-  @media (max-width: 900px) {
-    flex-direction: column;
-    gap: ${spacing.xs};
-  }
 `;
 
 const dialogWrapperStyles = css`
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const navRailStyles = css`
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(calc(-100% - ${spacing.sm}), -50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: ${spacing.xs};
 
   @media (max-width: 900px) {
     flex-direction: row;
+    top: auto;
+    bottom: calc(-1 * ${spacing.sm});
+    left: 50%;
+    transform: translate(-50%, 100%);
   }
 `;
 
@@ -238,6 +243,10 @@ const titleStyles = css`
   font-weight: 600;
   line-height: 1.2;
   color: ${palette.textPrimary};
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 `;
 
 const metaRowStyles = css`
@@ -514,6 +523,8 @@ const CopyableSection: React.FC<CopyableSectionProps> = ({ ariaLabel, copyText, 
 
 export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClose, onNavigate, video }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const navRailRef = useRef<HTMLDivElement>(null);
+  const closeButtonWrapRef = useRef<HTMLDivElement>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [transcriptExpanded, setTranscriptExpanded] = useState(false);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
@@ -815,42 +826,45 @@ export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClos
   const descriptionPreview = video.description ?? 'No description provided yet.';
   const transcriptText = video.transcript ?? 'Transcript will appear here once processing completes.';
 
-  const handleOverlayClick: React.MouseEventHandler<HTMLDivElement> = (event) => {
-    if (event.target === event.currentTarget) {
-      onClose();
-    }
+  const handleOverlayPointerDown: React.MouseEventHandler<HTMLDivElement> = (event) => {
+    if (event.button !== 0) return;
+    const target = event.target as Node;
+    if (dialogRef.current?.contains(target)) return;
+    if (navRailRef.current?.contains(target)) return;
+    if (closeButtonWrapRef.current?.contains(target)) return;
+    onClose();
   };
 
   return createPortal(
-    <div css={overlayStyles} onClick={handleOverlayClick} role="presentation">
+    <div css={overlayStyles} onMouseDown={handleOverlayPointerDown} role="presentation">
       <div css={layoutStyles}>
-        <div css={navRailStyles}>
-          <GcDashIconButton
-            aria-label="View previous video"
-            onClick={(event) => {
-              event.stopPropagation();
-              onNavigate?.('prev');
-            }}
-            disabled={!onNavigate}
-            css={navButtonStyles}
-          >
-            <ArrowUp size={18} strokeWidth={1.6} />
-          </GcDashIconButton>
-          <GcDashIconButton
-            aria-label="View next video"
-            onClick={(event) => {
-              event.stopPropagation();
-              onNavigate?.('next');
-            }}
-            disabled={!onNavigate}
-            css={navButtonStyles}
-          >
-            <ArrowDown size={18} strokeWidth={1.6} />
-          </GcDashIconButton>
-        </div>
-
         <div css={dialogWrapperStyles}>
-          <div css={closeButtonWrapStyles}>
+          <div css={navRailStyles} ref={navRailRef}>
+            <GcDashIconButton
+              aria-label="View previous video"
+              onClick={(event) => {
+                event.stopPropagation();
+                onNavigate?.('prev');
+              }}
+              disabled={!onNavigate}
+              css={navButtonStyles}
+            >
+              <ArrowUp size={18} strokeWidth={1.6} />
+            </GcDashIconButton>
+            <GcDashIconButton
+              aria-label="View next video"
+              onClick={(event) => {
+                event.stopPropagation();
+                onNavigate?.('next');
+              }}
+              disabled={!onNavigate}
+              css={navButtonStyles}
+            >
+              <ArrowDown size={18} strokeWidth={1.6} />
+            </GcDashIconButton>
+          </div>
+
+          <div css={closeButtonWrapStyles} ref={closeButtonWrapRef}>
             <GcDashIconButton
               aria-label="Close video overlay"
               onClick={(event) => {

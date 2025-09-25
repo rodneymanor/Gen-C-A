@@ -25,4 +25,5 @@ export interface ViralVideo {
   metrics: ViralMetric[];
   isNew?: boolean;
   firstSeenAt?: string;
+  transcriptionStatus?: 'pending' | 'processing' | 'completed' | 'failed';
 }

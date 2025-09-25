@@ -38,6 +38,7 @@ interface UseBrandHubOnboardingResult {
   finalizeSession: (status: OnboardingSessionStatus) => void
   updateSessionTranscript: (transcript: string) => void
   flushPendingSaves: () => void
+  restartOnboarding: () => Promise<void>
 }
 
 export const useBrandHubOnboarding = (
@@ -333,6 +334,23 @@ export const useBrandHubOnboarding = (
     [updateSessionMetaState]
   )
 
+  const restartOnboarding = useCallback(async () => {
+    const resetMeta = createInitialSessionMeta()
+    const emptyResponses = createEmptyOnboardingResponses()
+
+    resetInterview()
+
+    if (!userId) {
+      return
+    }
+
+    try {
+      await persistOnboardingResponses(userId, emptyResponses, false, resetMeta)
+    } catch (error) {
+      console.error('Failed to reset onboarding responses:', error)
+    }
+  }, [resetInterview, userId])
+
   const completedCount = useMemo(
     () =>
       onboardingPrompts.filter((prompt) => (responses[prompt.id] ?? '').trim().length > 0).length,
@@ -360,6 +378,7 @@ export const useBrandHubOnboarding = (
     registerBoundary,
     finalizeSession,
     updateSessionTranscript,
-    flushPendingSaves
+    flushPendingSaves,
+    restartOnboarding
   }
 }

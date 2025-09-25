@@ -132,6 +132,7 @@ type OnboardingSectionProps = {
   onToggleIntent: (intent: string) => void
   intentOptions: readonly string[]
   onDownloadResponses: () => void
+  onRestartOnboarding: () => void
 }
 
 export const OnboardingSection: React.FC<OnboardingSectionProps> = ({
@@ -143,8 +144,21 @@ export const OnboardingSection: React.FC<OnboardingSectionProps> = ({
   selectedIntents,
   onToggleIntent,
   intentOptions,
-  onDownloadResponses
+  onDownloadResponses,
+  onRestartOnboarding
 }) => {
+  const handleRestart = () => {
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(
+        'This will clear your saved onboarding answers so you can record them again. Continue?'
+      )
+      if (!confirmed) {
+        return
+      }
+    }
+    onRestartOnboarding()
+  }
+
   if (!hasCompleted) {
     return (
       <Card css={onboardingIntroCardStyles} appearance="raised" spacing="comfortable">
@@ -158,6 +172,11 @@ export const OnboardingSection: React.FC<OnboardingSectionProps> = ({
           <Button variant="primary" onClick={onStartInterview}>
             Start interactive onboarding
           </Button>
+          {completedCount > 0 && (
+            <Button variant="tertiary" onClick={handleRestart}>
+              Start over
+            </Button>
+          )}
         </div>
         <p className="progress-hint">
           {completedCount}/{totalQuestions} questions answered so far
@@ -189,6 +208,9 @@ export const OnboardingSection: React.FC<OnboardingSectionProps> = ({
         </Button>
         <Button variant="tertiary" onClick={onDownloadResponses} iconBefore={<DownloadIcon label="" />}>
           Download answers
+        </Button>
+        <Button variant="tertiary" onClick={handleRestart}>
+          Start over
         </Button>
       </div>
       <div className="intent-picker">

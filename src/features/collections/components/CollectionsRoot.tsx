@@ -7,11 +7,25 @@ import RefreshIcon from '@atlaskit/icon/glyph/refresh';
 import SettingsIcon from '@atlaskit/icon/glyph/settings';
 import TrashIcon from '@atlaskit/icon/glyph/trash';
 import StarFilledIcon from '@atlaskit/icon/glyph/star-filled';
+import DetailViewIcon from '@atlaskit/icon/glyph/detail-view';
+import MediaServicesPresentationIcon from '@atlaskit/icon/glyph/media-services/presentation';
+import { Sparkles, Star, Wand2 } from 'lucide-react';
+import { ViralClipCard } from '@/features/viral-content/components/ViralClipCard';
+import type { ViralClipCardAction } from '@/features/viral-content/components/ViralClipCard';
+import { VideoInsightsOverlay } from '@/components/collections';
+import type { VideoOverlayAction } from '@/components/collections';
 import BasicModal from '../../../components/ui/BasicModal';
 import { VideoModal } from '../../../components/collections/VideoModal';
 import type { Collection, ContentItem } from '../../../types';
+import type { ViralVideo, ViralMetric } from '@/features/viral-content/types';
+import type { VideoOverlayAnalysis, VideoOverlayMetric } from '@/components/collections';
 import RbacClient from '../../../core/auth/rbac-client';
 import { auth } from '../../../config/firebase';
+import {
+  pageContainerStyles as sharedPageContainerStyles,
+  shellStyles as sharedShellStyles,
+  gridStyles as sharedMasonryGridStyles,
+} from '@/features/viral-content/components/styles';
 import {
   GcDashBlankSlate,
   GcDashButton,
@@ -30,51 +44,33 @@ import {
 import { useDebugger, DEBUG_LEVELS } from '../../../utils/debugger';
 import { usePageLoad } from '../../../contexts/PageLoadContext';
 
-const pageContainerStyles = css`
-  min-height: 100vh;
-  background: rgba(9, 30, 66, 0.02);
-  padding: 48px 64px;
-
-  @media (max-width: 1024px) {
-    padding: 32px 32px 64px;
-  }
-
-  @media (max-width: 640px) {
-    padding: 24px 20px 48px;
-  }
-`;
-
-const shellStyles = css`
-  width: 100%;
-  max-width: 1440px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-`;
-
-
-const collectionsGridStyles = css`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
-`;
-
 const pinnedCollectionsRowStyles = css`
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
 `;
 
+const collectionSkeletonStyles = css`
+  border-radius: 20px;
+  opacity: 0.45;
+  background: rgba(9, 30, 66, 0.04);
+  min-height: 280px;
+  animation: pulse 1.6s ease-in-out infinite;
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+`;
+
 const detailLayoutStyles = css`
   display: grid;
   gap: 24px;
-`;
-
-const videoGridStyles = css`
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
 `;
 
 const detailHeaderStyles = css`
@@ -105,171 +101,6 @@ const detailHeaderActionsStyles = css`
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
-`;
-
-const videoCardThumbnailStyles = css`
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(9, 30, 66, 0.08);
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-`;
-
-const videoCardOverlayStyles = css`
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(to bottom, rgba(9, 30, 66, 0.15), rgba(9, 30, 66, 0.55));
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-
-  .play-indicator {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.92);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    color: rgba(9, 30, 66, 0.8);
-    box-shadow: 0 8px 16px rgba(9, 30, 66, 0.18);
-  }
-`;
-
-const videoCardShellStyles = css`
-  box-shadow: none;
-  background: transparent;
-  border: none;
-`;
-
-const videoCardBodyStyles = css`
-  padding: 0;
-  display: grid;
-  gap: 8px;
-`;
-
-const videoCardInteractiveStyles = css`
-  position: relative;
-  width: 100%;
-  border-radius: 16px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 18px 36px rgba(9, 30, 66, 0.18);
-  }
-
-  &:hover .video-overlay,
-  &:focus-visible .video-overlay {
-    opacity: 1;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-primary-500);
-    outline-offset: 3px;
-  }
-`;
-
-const videoCardMetaStyles = css`
-  display: grid;
-  gap: 6px;
-`;
-
-const videoCardFooterStyles = css`
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-`;
-
-const videoDurationBadgeStyles = css`
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  background: rgba(9, 30, 66, 0.72);
-`;
-
-const videoThumbnailPlaceholderStyles = css`
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(9, 30, 66, 0.4);
-  font-size: 13px;
-  font-weight: 500;
-`;
-
-const videoTitleStyles = css`
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-  color: rgba(9, 30, 66, 0.85);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-`;
-
-const videoMetaRowStyles = css`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 12px;
-  color: rgba(9, 30, 66, 0.6);
-`;
-
-const videoTagRowStyles = css`
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const videoPlatformBadgeStyles = css`
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-transform: capitalize;
-  background: rgba(255, 255, 255, 0.88);
-  color: rgba(9, 30, 66, 0.72);
-`;
-
-const videoCardInfoStyles = css`
-  display: grid;
-  gap: 6px;
-`;
-
-const videoMetricRowStyles = css`
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 12px;
-  color: rgba(9, 30, 66, 0.65);
 `;
 
 const sectionTitleStyles = css`
@@ -306,6 +137,12 @@ const intlCompactFormatter = new Intl.NumberFormat('en-US', {
   notation: 'compact',
   maximumFractionDigits: 1,
 });
+
+type OverlayVideo = ContentItem & {
+  metrics?: VideoOverlayMetric[];
+  transcript?: string;
+  analysis: VideoOverlayAnalysis;
+};
 
 type CollectionCardVariant = 'default' | 'pinnedBorder' | 'pinnedBorderless';
 
@@ -437,6 +274,20 @@ const normalizePlatform = (platform?: string) => {
   if (value.includes('instagram')) return 'instagram';
   if (value.includes('youtube')) return 'youtube';
   return value;
+};
+
+const coercePlatform = (platform?: string): Exclude<Platform, 'all'> => {
+  const normalized = normalizePlatform(platform);
+  if (normalized === 'instagram' || normalized === 'youtube') {
+    return normalized;
+  }
+  return 'tiktok';
+};
+
+const platformBestForMap: Record<Exclude<Platform, 'all'>, string[]> = {
+  instagram: ['Storytelling reels', 'Brand highlights', 'Community building'],
+  tiktok: ['Trend remixes', 'Hook experiments', 'Fast inspiration'],
+  youtube: ['Educational breakdowns', 'Narrative explainers', 'Channel teasers'],
 };
 
 const pickFirstString = (...values: any[]) => {
@@ -585,6 +436,9 @@ const ensureMetadata = (video: any) => {
     'saves',
   ].forEach((field) => propagate(field));
 
+  propagate('transcriptionStatus');
+  propagate('transcription_status', 'transcriptionStatus');
+
   if (video.embed && metadata.embed === undefined) metadata.embed = video.embed;
   if (video.iframe && metadata.iframe === undefined) metadata.iframe = video.iframe;
 
@@ -625,6 +479,12 @@ const mapServerVideoToContentItem = (v: any): ContentItem => {
     .forEach((tag: any) => {
       if (typeof tag === 'string') tagSet.add(tag);
     });
+
+  const isFavorite = Boolean((v as any).favorite ?? metadata.favorite ?? contentMetadata.favorite);
+  metadata.favorite = isFavorite;
+  if (isFavorite) {
+    tagSet.add('favorites');
+  }
 
   return {
     id: String(resolvedId),
@@ -671,12 +531,6 @@ const extractViewCount = (video: ContentItem) => {
   return undefined;
 };
 
-const formatCompactViews = (video: ContentItem) => {
-  const views = extractViewCount(video);
-  if (!views) return null;
-  return intlCompactFormatter.format(views);
-};
-
 const extractMetricNumber = (source: Record<string, any>, keys: string[]): number | undefined => {
   for (const key of keys) {
     const value = source?.[key];
@@ -716,6 +570,132 @@ const deriveVideoMetrics = (video: ContentItem) => {
   return metrics;
 };
 
+const buildViralMetricsFromContent = (video: ContentItem): ViralMetric[] => {
+  return deriveVideoMetrics(video).map((metric) => {
+    const id = metric.label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    let tone: ViralMetric['tone'];
+    const label = metric.label.toLowerCase();
+    if (label.includes('view')) tone = 'primary';
+    else if (label.includes('like') || label.includes('save')) tone = 'success';
+    else if (label.includes('comment')) tone = 'warning';
+    else if (label.includes('share')) tone = 'neutral';
+    return { id, label: metric.label, value: metric.value, tone };
+  });
+};
+
+const mapContentItemToViralVideo = (video: ContentItem): ViralVideo => {
+  const platform = coercePlatform(video.platform);
+  const metrics = buildViralMetricsFromContent(video);
+  const viewsMetric = metrics.find((metric) => metric.label.toLowerCase().includes('view'));
+  const descriptionFallback =
+    video.description ||
+    video.metadata?.summary ||
+    video.metadata?.caption ||
+    video.metadata?.contentMetadata?.description ||
+    '';
+
+  const transcriptionStatus =
+    (video as any).transcriptionStatus ??
+    video.metadata?.transcriptionStatus ??
+    video.metadata?.transcription_status ??
+    video.metadata?.contentMetadata?.transcriptionStatus ??
+    video.metadata?.processing?.transcriptionStatus ??
+    undefined;
+
+  const duration = typeof video.duration === 'number' ? video.duration : undefined;
+  const type: ViralVideo['type'] = duration && duration > 90 ? 'long' : 'short';
+  const creator = resolveCreator(video.metadata?.rawSource ?? {}, video.metadata ?? {}) || video.creator || 'Unknown creator';
+  const thumbnail = video.thumbnail || resolveThumbnail(video.metadata?.rawSource ?? {}, video.metadata ?? {}) || '';
+  const url = video.url || resolveVideoUrl(video.metadata?.rawSource ?? {}, video.metadata ?? {}) || '';
+  const publishedAt = video.created instanceof Date ? video.created.toISOString() : new Date().toISOString();
+  const firstSeenAt = video.metadata?.addedAt || video.metadata?.firstSeenAt || video.metadata?.recordedAt;
+  const isNew = video.updated instanceof Date ? Date.now() - video.updated.getTime() < 1000 * 60 * 60 * 24 * 2 : false;
+
+  return {
+    id: video.id,
+    platform,
+    creator,
+    title: video.title || 'Untitled clip',
+    description: descriptionFallback,
+    thumbnail,
+    url,
+    views: viewsMetric?.value ?? '—',
+    publishedAt,
+    type,
+    metrics,
+    isNew,
+    firstSeenAt: firstSeenAt ? String(firstSeenAt) : undefined,
+    transcriptionStatus,
+  };
+};
+
+const createOverlayAnalysisFromViral = (video: ViralVideo): VideoOverlayAnalysis => {
+  const bestFor = platformBestForMap[video.platform] ?? ['Audience engagement'];
+  const pacingLabel = video.type === 'short' ? 'Rapid-fire, swipe-friendly pacing.' : 'Measured, narrative pacing for depth.';
+  const frameworks =
+    video.platform === 'youtube' ? ['Question opener', 'Value promise'] : ['Pattern interrupt', 'Creator POV'];
+
+  const metricSummary = video.metrics.map((metric) => `${metric.label}: ${metric.value}`).join(', ');
+
+  return {
+    hook: {
+      openerPattern:
+        video.platform === 'tiktok'
+          ? 'Pattern interrupt hook tailored for TikTok pacing.'
+          : video.platform === 'instagram'
+          ? 'Opens with polished visuals to stop the Instagram scroll.'
+          : 'Leads with an insight-driven teaser for YouTube viewers.',
+      frameworks,
+      justification: metricSummary
+        ? `Performance signals (${metricSummary}) show the opening lands.`
+        : `Hook strategy aligns with ${video.platform} best practices.`,
+    },
+    structure: {
+      type: video.type === 'short' ? 'Short-form social clip' : 'Long-form social story',
+      description: `A ${video.platform} clip optimised for ${video.type === 'short' ? 'quick inspiration' : 'deeper storytelling'}.`,
+      bestFor,
+      justification:
+        video.type === 'short'
+          ? 'Short format reinforces quick knowledge transfer and repeatable hooks.'
+          : 'Longer runtime supports narrative arcs and layered insights.',
+    },
+    style: {
+      tone: video.type === 'short' ? 'High-energy and concise.' : 'Conversational and instructive.',
+      voice: `${video.creator} speaking directly to the ${video.platform} community.`,
+      wordChoice: 'Platform-native phrasing with plain-language explanations.',
+      pacing: pacingLabel,
+    },
+  };
+};
+
+const mapContentItemToOverlayVideo = (contentItem: ContentItem): OverlayVideo => {
+  const viral = mapContentItemToViralVideo(contentItem);
+  const overlayMetrics: VideoOverlayMetric[] = viral.metrics.map((metric) => ({
+    id: metric.id,
+    label: metric.label,
+    value: metric.value,
+    trend:
+      metric.tone === 'success'
+        ? 'up'
+        : metric.tone === 'danger'
+        ? 'down'
+        : metric.tone === 'warning'
+        ? 'flat'
+        : undefined,
+  }));
+
+  return {
+    ...contentItem,
+    metrics: overlayMetrics,
+    transcript:
+      contentItem.metadata?.transcript ||
+      contentItem.description ||
+      contentItem.metadata?.summary ||
+      '',
+    analysis: createOverlayAnalysisFromViral(viral),
+  };
+};
+
 export const CollectionsRoot: React.FC = () => {
   const navigate = useNavigate();
   const debug = useDebugger('Collections', { level: DEBUG_LEVELS.DEBUG });
@@ -725,15 +705,19 @@ export const CollectionsRoot: React.FC = () => {
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'size'>('recent');
-  const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [isCollectionsLoading, setIsCollectionsLoading] = useState(false);
   const [videos, setVideos] = useState<ContentItem[]>([]);
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
   const [isDedupeBusy, setIsDedupeBusy] = useState(false);
   const [platformFilter, setPlatformFilter] = useState<'all' | 'tiktok' | 'instagram'>('all');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<ContentItem | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [isOverlayOpen, setIsOverlayOpen] = useState(false);
   const [userId, setUserId] = useState<string>(() => (import.meta as any).env?.VITE_DEBUG_USER_ID || localStorage.getItem('userId') || '');
+  const [favoriteVideoId, setFavoriteVideoId] = useState<string | null>(null);
 
   const [activeModal, setActiveModal] = useState<null | 'add' | 'create'>(null);
   const [addCollectionId, setAddCollectionId] = useState<string>('');
@@ -910,16 +894,6 @@ export const CollectionsRoot: React.FC = () => {
     setSelectedVideo(null);
   };
 
-  const handleVideoSelect = (video: ContentItem) => {
-    setSelectedVideos(prev =>
-      prev.includes(video.id)
-        ? prev.filter(id => id !== video.id)
-        : [...prev, video.id]
-    );
-    setSelectedVideo(video);
-    setIsVideoModalOpen(true);
-  };
-
   const handleVideoPlay = (video: ContentItem) => {
     setSelectedVideo(video);
     setIsVideoModalOpen(true);
@@ -936,7 +910,6 @@ export const CollectionsRoot: React.FC = () => {
       setDeletingVideoId(video.id);
       await RbacClient.deleteVideo(String(userId), video.id);
       setVideos(prev => prev.filter(v => v.id !== video.id));
-      setSelectedVideos(prev => prev.filter(id => id !== video.id));
       adjustCollectionVideoCount(selectedCollection?.id, -1);
       if (selectedVideo?.id === video.id) {
         setSelectedVideo(null);
@@ -949,6 +922,45 @@ export const CollectionsRoot: React.FC = () => {
       setDeletingVideoId(null);
     }
   };
+
+  const handleToggleFavorite = useCallback(async (video: ContentItem, shouldFavorite: boolean) => {
+    if (!userId) {
+      alert('Please sign in to manage favorites.');
+      return;
+    }
+
+    const favoriteTag = 'favorites';
+    setFavoriteVideoId(video.id);
+
+    try {
+      const resp = await RbacClient.toggleVideoFavorite(String(userId), video.id, shouldFavorite);
+      if (resp?.success && resp.video) {
+        const updatedContent = mapServerVideoToContentItem(resp.video);
+        setVideos((prev) => prev.map((item) => (item.id === video.id ? updatedContent : item)));
+        setSelectedVideo((prev) => (prev && prev.id === video.id ? updatedContent : prev));
+      } else {
+        const nextTags = shouldFavorite
+          ? Array.from(new Set([...video.tags, favoriteTag]))
+          : video.tags.filter((tag) => tag.toLowerCase() !== favoriteTag);
+        const updatedFallback: ContentItem = {
+          ...video,
+          tags: nextTags,
+          metadata: {
+            ...video.metadata,
+            tags: nextTags,
+            favorite: shouldFavorite,
+          },
+        };
+        setVideos((prev) => prev.map((item) => (item.id === video.id ? updatedFallback : item)));
+        setSelectedVideo((prev) => (prev && prev.id === video.id ? updatedFallback : prev));
+      }
+    } catch (error) {
+      console.error('[Collections] Failed to toggle favorite', error);
+      alert('Failed to update favorites. Please try again.');
+    } finally {
+      setFavoriteVideoId(null);
+    }
+  }, [userId]);
 
   const handleRemoveDuplicates = async () => {
     if (!userId) {
@@ -1004,7 +1016,6 @@ export const CollectionsRoot: React.FC = () => {
 
     if (deletedIds.size > 0) {
       setVideos(prev => prev.filter(video => !deletedIds.has(video.id)));
-      setSelectedVideos(prev => prev.filter(id => !deletedIds.has(id)));
       adjustCollectionVideoCount(selectedCollection?.id, -deletedIds.size);
 
       if (selectedVideo && deletedIds.has(selectedVideo.id)) {
@@ -1025,7 +1036,16 @@ export const CollectionsRoot: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     async function loadCollections() {
-      if (!userId) return;
+      if (!userId) {
+        if (!cancelled) {
+          setCollections([]);
+          setIsCollectionsLoading(false);
+        }
+        return;
+      }
+
+      if (!cancelled) setIsCollectionsLoading(true);
+
       try {
         beginPageLoad();
         const resp = await RbacClient.getCollections(String(userId));
@@ -1036,6 +1056,7 @@ export const CollectionsRoot: React.FC = () => {
         console.warn('Failed to fetch collections', e);
       } finally {
         endPageLoad();
+        if (!cancelled) setIsCollectionsLoading(false);
       }
     }
     loadCollections();
@@ -1065,6 +1086,7 @@ export const CollectionsRoot: React.FC = () => {
   }, [userId, view, selectedCollection, beginPageLoad, endPageLoad]);
   useEffect(() => {
     setPlatformFilter('all');
+    setFavoritesOnly(false);
   }, [view, selectedCollection?.id]);
 
   const filteredCollections = useMemo(() => {
@@ -1094,6 +1116,11 @@ export const CollectionsRoot: React.FC = () => {
     if (platformFilter !== 'all') {
       result = result.filter(video => (video.platform || '').toLowerCase() === platformFilter);
     }
+    if (favoritesOnly) {
+      result = result.filter((video) =>
+        video.tags.some((tag) => tag.toLowerCase() === 'favorites')
+      );
+    }
     const query = searchQuery.trim().toLowerCase();
     if (query) {
       result = result.filter(video => {
@@ -1105,7 +1132,57 @@ export const CollectionsRoot: React.FC = () => {
       });
     }
     return result;
-  }, [videos, platformFilter, searchQuery]);
+  }, [videos, platformFilter, favoritesOnly, searchQuery]);
+
+  const collectionViralVideos = useMemo(() => filteredVideos.map(mapContentItemToViralVideo), [filteredVideos]);
+
+  const overlayVideos = useMemo(() => filteredVideos.map(mapContentItemToOverlayVideo), [filteredVideos]);
+
+  const openOverlayAtIndex = useCallback((index: number) => {
+    if (index < 0 || index >= overlayVideos.length) return;
+    setActiveIndex(index);
+    setIsOverlayOpen(true);
+  }, [overlayVideos]);
+
+  const handleCloseOverlay = useCallback(() => {
+    setIsOverlayOpen(false);
+    setActiveIndex(null);
+  }, []);
+
+  const handleNavigateOverlay = useCallback((direction: 'prev' | 'next') => {
+    setActiveIndex((current) => {
+      if (current == null) return current;
+      const nextIndex = direction === 'next' ? current + 1 : current - 1;
+      if (nextIndex < 0 || nextIndex >= overlayVideos.length) {
+        return current;
+      }
+      return nextIndex;
+    });
+  }, [overlayVideos]);
+
+  const contentById = useMemo(() => {
+    const map = new Map<string, ContentItem>();
+    filteredVideos.forEach((video) => map.set(video.id, video));
+    return map;
+  }, [filteredVideos]);
+
+  const activeOverlayVideo = activeIndex != null ? overlayVideos[activeIndex] ?? null : null;
+  const activeOverlayContent = activeOverlayVideo ? contentById.get(activeOverlayVideo.id) ?? null : null;
+
+  useEffect(() => {
+    if (collectionViralVideos.length === 0) {
+      setActiveIndex(null);
+      setIsOverlayOpen(false);
+      return;
+    }
+    setActiveIndex((current) => {
+      if (current == null) return current;
+      if (current >= collectionViralVideos.length) {
+        return collectionViralVideos.length - 1;
+      }
+      return current;
+    });
+  }, [collectionViralVideos]);
 
   useEffect(() => {
     if (!selectedVideo) return;
@@ -1268,6 +1345,11 @@ export const CollectionsRoot: React.FC = () => {
     ? `${selectedCollection.videoCount ?? 0} videos · Updated ${formatRelativeTime(selectedCollection.updated)}`
     : `${filteredCollections.length} collections · ${totalVideoCount} videos`;
 
+  const renderSkeletons = (count: number, prefix: string) =>
+    Array.from({ length: count }).map((_, index) => (
+      <GcDashCard key={`${prefix}-${index}`} css={collectionSkeletonStyles} aria-hidden />
+    ));
+
   const renderCollectionCard = (
     collection: Collection,
     variant: CollectionCardVariant = 'default',
@@ -1360,6 +1442,55 @@ export const CollectionsRoot: React.FC = () => {
     );
   };
 
+  const overlayVideoForDisplay = activeOverlayVideo && activeOverlayContent
+    ? {
+        ...activeOverlayVideo,
+        actions: (() => {
+          const favoriteTag = 'favorites';
+          const tags = activeOverlayContent.tags ?? [];
+          const isFavorite = tags.some((tag) => tag.toLowerCase() === favoriteTag);
+          const isFavoriteBusy = favoriteVideoId === activeOverlayContent.id;
+          const favoriteLabel = isFavoriteBusy
+            ? isFavorite
+              ? 'Removing…'
+              : 'Adding…'
+            : isFavorite
+            ? 'Remove from favorites'
+            : 'Add to favorites';
+          const favoriteDescription = isFavoriteBusy
+            ? 'Updating favorites…'
+            : isFavorite
+            ? 'Remove the favorites tag from this clip.'
+            : 'Tag this clip so it surfaces in favorites filters.';
+
+          return [
+            {
+              id: 'remix',
+              label: 'Remix idea',
+              description: 'Write a script inspired by this video',
+              icon: <Wand2 size={18} strokeWidth={1.5} />,
+            },
+            {
+              id: 'create-hooks',
+              label: 'Create hooks',
+              description: 'Try different hook types based on the same concept.',
+              icon: <Sparkles size={18} strokeWidth={1.5} />,
+            },
+            {
+              id: 'add-to-favorites',
+              label: favoriteLabel,
+              description: favoriteDescription,
+              icon: <Star size={18} strokeWidth={1.5} fill={isFavorite ? 'currentColor' : 'none'} />,
+              onClick: () => {
+                if (isFavoriteBusy) return;
+                handleToggleFavorite(activeOverlayContent, !isFavorite);
+              },
+            },
+          ] as VideoOverlayAction[];
+        })(),
+      }
+    : activeOverlayVideo;
+
   const gridContent = (
     <div css={css`display: flex; flex-direction: column; gap: 32px;`}>
       <GcDashCard>
@@ -1441,7 +1572,11 @@ export const CollectionsRoot: React.FC = () => {
             </select>
           </div>
         </div>
-        {filteredCollections.length === 0 ? (
+        {isCollectionsLoading && filteredCollections.length === 0 ? (
+          <section css={sharedMasonryGridStyles}>
+            {renderSkeletons(6, 'collection-skeleton-initial')}
+          </section>
+        ) : filteredCollections.length === 0 ? (
           <GcDashBlankSlate
             description={collections.length === 0 ? 'You have not created any collections yet.' : 'No collections match your search right now.'}
             primaryAction={
@@ -1451,10 +1586,8 @@ export const CollectionsRoot: React.FC = () => {
             }
           />
         ) : (
-          <div css={collectionsGridStyles}>
-            {filteredCollections.map((collection) =>
-              renderCollectionCard(collection)
-            )}
+          <section css={sharedMasonryGridStyles}>
+            {filteredCollections.map((collection) => renderCollectionCard(collection))}
             <GcDashCard interactive onClick={handleCreateCollection}>
               <GcDashCardBody css={css`gap: 12px; text-align: center; align-items: center;`}>
                 <GcDashCardTitle>Create new collection</GcDashCardTitle>
@@ -1466,7 +1599,8 @@ export const CollectionsRoot: React.FC = () => {
                 </GcDashButton>
               </GcDashCardBody>
             </GcDashCard>
-          </div>
+            {isCollectionsLoading && renderSkeletons(2, 'collection-skeleton-ongoing')}
+          </section>
         )}
       </section>
     </div>
@@ -1557,7 +1691,7 @@ export const CollectionsRoot: React.FC = () => {
                 leadingIcon={<span aria-hidden>🔍</span>}
                 style={{ width: '260px' }}
               />
-              <div css={css`display: inline-flex; gap: 8px; flex-wrap: wrap;`}>
+              <div css={css`display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: center;`}>
                 {(['all', 'tiktok', 'instagram'] as const).map((platform) => (
                   <GcDashButton
                     key={platform}
@@ -1568,6 +1702,15 @@ export const CollectionsRoot: React.FC = () => {
                     {platform === 'all' ? 'All' : platform.charAt(0).toUpperCase() + platform.slice(1)}
                   </GcDashButton>
                 ))}
+                <GcDashButton
+                  variant={favoritesOnly ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setFavoritesOnly((prev) => !prev)}
+                  aria-pressed={favoritesOnly}
+                  leadingIcon={<StarFilledIcon label="" />}
+                >
+                  Favorites only
+                </GcDashButton>
               </div>
             </div>
           </div>
@@ -1582,132 +1725,43 @@ export const CollectionsRoot: React.FC = () => {
               }
             />
           ) : (
-            <div css={videoGridStyles}>
-              {filteredVideos.map((video) => {
-                const compactViews = formatCompactViews(video);
-                const platformLabel = (() => {
-                  const platform = (video.platform || '').toLowerCase();
-                  if (platform === 'tiktok') return 'TikTok';
-                  if (platform === 'instagram') return 'Instagram';
-                  if (!platform) return 'Unknown';
-                  return platform.charAt(0).toUpperCase() + platform.slice(1);
-                })();
+            <section css={sharedMasonryGridStyles}>
+              {collectionViralVideos.map((viralVideo, index) => {
+                const contentItem = filteredVideos[index];
+                if (!contentItem) return null;
+
+                const removing = deletingVideoId === contentItem.id;
+                const overlayActions: ViralClipCardAction[] = [
+                  {
+                    id: 'view-insights',
+                    label: 'View insights',
+                    icon: <MediaServicesPresentationIcon label="" />,
+                    variant: 'primary',
+                    onClick: () => openOverlayAtIndex(index),
+                  },
+                  {
+                    id: 'remove',
+                    label: removing ? 'Removing…' : 'Remove',
+                    icon: <TrashIcon label="" />,
+                    variant: 'ghost',
+                    onClick: () => handleDeleteVideo(contentItem),
+                    disabled: removing,
+                    isLoading: removing,
+                  },
+                ];
+
                 return (
-                  <GcDashCard key={video.id} interactive={false} css={videoCardShellStyles}>
-                    <GcDashCardBody css={videoCardBodyStyles}>
-                      <div
-                        css={videoCardInteractiveStyles}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Play ${video.title}`}
-                        onClick={() => handleVideoPlay(video)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            handleVideoPlay(video);
-                          }
-                        }}
-                      >
-                        <div css={videoCardThumbnailStyles}>
-                          {video.thumbnail ? (
-                            <img src={video.thumbnail} alt="" loading="lazy" />
-                          ) : (
-                            <div css={videoThumbnailPlaceholderStyles}>Preview unavailable</div>
-                          )}
-                          <div className="video-overlay" css={videoCardOverlayStyles}>
-                            <span className="play-indicator">▶</span>
-                          </div>
-                          <span css={videoDurationBadgeStyles}>
-                            {video.duration ? `${video.duration}s` : 'Short'}
-                          </span>
-                          <span css={videoPlatformBadgeStyles}>{platformLabel}</span>
-                          {compactViews && (
-                            <div css={css`
-                              position: absolute;
-                              left: 8px;
-                              bottom: 8px;
-                              display: inline-flex;
-                              align-items: center;
-                              gap: 6px;
-                              padding: 4px 10px;
-                              border-radius: 999px;
-                              background: rgba(9, 30, 66, 0.7);
-                              color: #fff;
-                              font-size: 12px;
-                              font-weight: 600;
-                            `}>
-                              <span aria-hidden>▶</span>
-                              <span>{compactViews}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div css={videoCardInfoStyles}>
-                        <GcDashCardTitle css={videoTitleStyles}>{video.title}</GcDashCardTitle>
-                        <div css={videoMetaRowStyles}>
-                          {video.creator && <span>{video.creator}</span>}
-                          {video.creator && <span>•</span>}
-                          <span>{formatRelativeTime(video.created)}</span>
-                        </div>
-                        {(() => {
-                          const metrics = deriveVideoMetrics(video);
-                          if (metrics.length === 0) return null;
-                          return (
-                            <div css={videoMetricRowStyles}>
-                              {metrics.map((metric) => (
-                                <span key={metric.label}>
-                                  {metric.label}: <strong>{metric.value}</strong>
-                                </span>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                        {video.tags.length > 0 && (
-                          <div css={videoTagRowStyles}>
-                            {video.tags.slice(0, 3).map((tag) => (
-                              <GcDashLabel key={tag} variant="soft" tone="neutral" uppercase={false}>
-                                #{tag}
-                              </GcDashLabel>
-                            ))}
-                            {video.tags.length > 3 && (
-                              <GcDashLabel variant="soft" tone="neutral" uppercase={false}>
-                                +{video.tags.length - 3}
-                              </GcDashLabel>
-                            )}
-                          </div>
-                        )}
-                        <div css={videoCardFooterStyles}>
-                          <GcDashButton
-                            variant="ghost"
-                            size="sm"
-                            leadingIcon={<SettingsIcon label="" />}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setSelectedVideo(video);
-                              setIsVideoModalOpen(true);
-                            }}
-                          >
-                            Inspect
-                          </GcDashButton>
-                          <GcDashButton
-                            variant="ghost"
-                            size="sm"
-                            leadingIcon={<TrashIcon label="" />}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleDeleteVideo(video);
-                            }}
-                            disabled={deletingVideoId === video.id}
-                          >
-                            Remove
-                          </GcDashButton>
-                        </div>
-                      </div>
-                    </GcDashCardBody>
-                  </GcDashCard>
+                  <ViralClipCard
+                    key={viralVideo.id}
+                    video={viralVideo}
+                    onOpen={() => handleVideoPlay(contentItem)}
+                    onPlay={() => handleVideoPlay(contentItem)}
+                    onViewInsights={() => openOverlayAtIndex(index)}
+                    overlayActions={overlayActions}
+                  />
                 );
               })}
-            </div>
+            </section>
           )}
         </GcDashCardBody>
       </GcDashCard>
@@ -1718,9 +1772,9 @@ export const CollectionsRoot: React.FC = () => {
   const handlePreviousNav = () => navigate('/write-redesign');
 
   return (
-    <div css={pageContainerStyles}>
+    <div css={sharedPageContainerStyles}>
       {modals}
-      <div css={shellStyles}>
+      <div css={sharedShellStyles}>
         <GcDashHeader
           leading={
             <>
@@ -1749,6 +1803,13 @@ export const CollectionsRoot: React.FC = () => {
         videos={filteredVideos}
         onClose={() => setIsVideoModalOpen(false)}
         onNavigateVideo={handleNavigateVideo}
+      />
+
+      <VideoInsightsOverlay
+        open={isOverlayOpen && Boolean(overlayVideoForDisplay)}
+        onClose={handleCloseOverlay}
+        onNavigate={handleNavigateOverlay}
+        video={overlayVideoForDisplay ?? null}
       />
     </div>
   );
