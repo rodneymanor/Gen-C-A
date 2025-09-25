@@ -334,7 +334,7 @@ export const ViralClipCard: React.FC<ViralClipCardProps> = ({
               <GcDashButton
                 key={action.id}
                 variant={action.variant ?? 'primary'}
-                size="sm"
+                size="small"
                 leadingIcon={action.icon}
                 css={actionsButtonStyles}
                 onClick={(event) => {

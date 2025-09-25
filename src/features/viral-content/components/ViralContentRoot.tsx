@@ -429,7 +429,7 @@ export const ViralContentRoot: React.FC = () => {
                   <GcDashButton
                     key={option.key}
                     variant={platform === option.key ? 'secondary' : 'ghost'}
-                    size="sm"
+                    size="small"
                     onClick={() => setPlatform(option.key)}
                   >
                     {option.emoji} {option.label}

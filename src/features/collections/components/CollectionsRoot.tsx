@@ -1696,7 +1696,7 @@ export const CollectionsRoot: React.FC = () => {
                   <GcDashButton
                     key={platform}
                     variant={platformFilter === platform ? 'primary' : 'ghost'}
-                    size="sm"
+                    size="small"
                     onClick={() => setPlatformFilter(platform)}
                   >
                     {platform === 'all' ? 'All' : platform.charAt(0).toUpperCase() + platform.slice(1)}
@@ -1704,7 +1704,7 @@ export const CollectionsRoot: React.FC = () => {
                 ))}
                 <GcDashButton
                   variant={favoritesOnly ? 'primary' : 'ghost'}
-                  size="sm"
+                  size="small"
                   onClick={() => setFavoritesOnly((prev) => !prev)}
                   aria-pressed={favoritesOnly}
                   leadingIcon={<StarFilledIcon label="" />}

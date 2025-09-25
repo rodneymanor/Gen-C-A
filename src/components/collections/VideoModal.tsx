@@ -951,7 +951,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
           {(video.description?.length ?? video.metadata?.caption?.length ?? 0) > 320 && (
             <GcDashButton
               variant="ghost"
-              size="sm"
+              size="small"
               onClick={() => setDescriptionExpanded((expanded) => !expanded)}
             >
               {descriptionExpanded ? 'Show less' : 'Show more'}
@@ -970,11 +970,11 @@ export const VideoModal: React.FC<VideoModalProps> = ({
           <p css={sectionSubtitleStyles}>Hook-to-close structure pulled from scripting data.</p>
         </div>
         <div css={css`display: inline-flex; gap: ${gcDashSpacing.xs}; flex-wrap: wrap;`}>
-          <GcDashButton variant="ghost" size="sm" onClick={handleCopyAll} disabled={scriptComponents.length === 0}>
+          <GcDashButton variant="ghost" size="small" onClick={handleCopyAll} disabled={scriptComponents.length === 0}>
             <CopyIcon label="" size="small" primaryColor="currentColor" />
             Copy all
           </GcDashButton>
-          <GcDashButton variant="secondary" size="sm" disabled>
+          <GcDashButton variant="secondary" size="small" disabled>
             <DownloadIcon label="" size="small" primaryColor="currentColor" />
             Export outline
           </GcDashButton>
@@ -1018,7 +1018,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                         <GcDashCardFooter>
                           <GcDashButton
                             variant="ghost"
-                            size="sm"
+                            size="small"
                             onClick={() => handleCopyToClipboard(component.content)}
                           >
                             <CopyIcon label="" size="small" primaryColor="currentColor" />
@@ -1027,7 +1027,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                           {shouldClamp && (
                             <GcDashButton
                               variant="ghost"
-                              size="sm"
+                              size="small"
                               onClick={() =>
                                 setScriptExpanded((prev) => ({ ...prev, [component.id]: !expanded }))
                               }
@@ -1053,7 +1053,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
         <GcDashCardTitle>Full Transcript</GcDashCardTitle>
         <GcDashButton
           variant="ghost"
-          size="sm"
+          size="small"
           onClick={() => formattedTranscript && handleCopyToClipboard(formattedTranscript)}
           disabled={!formattedTranscript}
         >
@@ -1068,7 +1068,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
         {formattedTranscript && formattedTranscript.length > 900 && (
           <GcDashButton
             variant="ghost"
-            size="sm"
+            size="small"
             onClick={() => setTranscriptExpanded((expanded) => !expanded)}
           >
             {transcriptExpanded ? 'Show less' : 'Show more'}
@@ -1248,7 +1248,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                       : 'We could not render an embeddable preview for this video.'}
                   </span>
                   {video.url && (
-                    <GcDashButton variant="primary" size="sm" onClick={openOriginal}>
+                    <GcDashButton variant="primary" size="small" onClick={openOriginal}>
                       View on platform
                     </GcDashButton>
                   )}
@@ -1275,13 +1275,13 @@ export const VideoModal: React.FC<VideoModalProps> = ({
 
             <div css={css`display: flex; gap: ${gcDashSpacing.xs}; flex-wrap: wrap;`}>
               {video.url && (
-                <GcDashButton variant="secondary" size="sm" onClick={openOriginal}>
+                <GcDashButton variant="secondary" size="small" onClick={openOriginal}>
                   Open original
                 </GcDashButton>
               )}
               <GcDashButton
                 variant="ghost"
-                size="sm"
+                size="small"
                 onClick={() => formattedTranscript && handleCopyToClipboard(formattedTranscript)}
                 disabled={!formattedTranscript}
               >
@@ -1293,10 +1293,10 @@ export const VideoModal: React.FC<VideoModalProps> = ({
 
           <section css={rightPaneStyles}>
             <div css={actionBarStyles}>
-              <GcDashButton variant="primary" size="md">Rewrite as script</GcDashButton>
-              <GcDashButton variant="secondary" size="md">Extract content ideas</GcDashButton>
-              <GcDashButton variant="secondary" size="md">Generate hooks</GcDashButton>
-              <GcDashButton variant="ghost" size="md">Add to my collection</GcDashButton>
+              <GcDashButton variant="primary" size="medium">Rewrite as script</GcDashButton>
+              <GcDashButton variant="secondary" size="medium">Extract content ideas</GcDashButton>
+              <GcDashButton variant="secondary" size="medium">Generate hooks</GcDashButton>
+              <GcDashButton variant="ghost" size="medium">Add to my collection</GcDashButton>
             </div>
 
             <div css={scrollRegionStyles}>{renderActiveContent()}</div>

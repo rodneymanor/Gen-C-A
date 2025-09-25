@@ -11,7 +11,7 @@ export type GcDashButtonVariant =
   | 'danger'
   | 'link';
 
-export type GcDashButtonSize = 'sm' | 'md' | 'lg';
+export type GcDashButtonSize = 'small' | 'medium' | 'large';
 
 export interface GcDashButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: GcDashButtonVariant;
@@ -54,17 +54,17 @@ const baseStyle = css`
 `;
 
 const sizeStyles: Record<GcDashButtonSize, ReturnType<typeof css>> = {
-  sm: css`
+  small: css`
     min-height: 36px;
     padding: 0 ${gcDashSpacing.sm};
     font-size: 14px;
   `,
-  md: css`
+  medium: css`
     min-height: 44px;
     padding: 0 ${gcDashSpacing.md};
     font-size: 15px;
   `,
-  lg: css`
+  large: css`
     min-height: 52px;
     padding: 0 ${gcDashSpacing.lg};
     font-size: 16px;
@@ -155,7 +155,7 @@ export const GcDashButton = forwardRef<HTMLButtonElement, GcDashButtonProps>(
   (
     {
       variant = 'primary',
-      size = 'md',
+      size = 'medium',
       isLoading = false,
       disabled,
       fullWidth,

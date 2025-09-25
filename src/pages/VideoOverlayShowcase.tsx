@@ -94,7 +94,7 @@ export const VideoOverlayShowcase: React.FC = () => {
           <GcDashCardSubtitle>
             Click the button below to launch the overlay. The content mirrors the analysis from our design brief.
           </GcDashCardSubtitle>
-          <GcDashButton variant="primary" size="md" onClick={() => setIsOpen(true)}>
+          <GcDashButton variant="primary" size="medium" onClick={() => setIsOpen(true)}>
             Launch overlay
           </GcDashButton>
         </GcDashCardBody>

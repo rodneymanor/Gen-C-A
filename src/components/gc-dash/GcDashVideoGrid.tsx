@@ -553,7 +553,7 @@ export function GcDashVideoGridControls({
                 <GcDashButton
                   key={type.value}
                   variant={gridType === type.value ? 'primary' : 'ghost'}
-                  size="sm"
+                  size="small"
                   onClick={() => onGridTypeChange(type.value)}
                   leadingIcon={type.icon}
                 >
@@ -570,7 +570,7 @@ export function GcDashVideoGridControls({
             {columnOptions.map((option) => (
               <GcDashButton
                 key={option}
-                size="sm"
+                size="small"
                 variant={columns === option ? 'primary' : 'ghost'}
                 onClick={() => onColumnsChange(option)}
               >
@@ -582,7 +582,7 @@ export function GcDashVideoGridControls({
 
         <div css={css`display: flex; align-items: center; gap: ${gcDashSpacing.md}; flex-wrap: wrap;`}>
           <GcDashButton
-            size="sm"
+            size="small"
             variant={slideoutOpen ? 'secondary' : 'ghost'}
             onClick={onSlideoutToggle}
           >

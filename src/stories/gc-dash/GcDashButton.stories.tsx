@@ -15,7 +15,7 @@ const meta: Meta<typeof GcDashButton> = {
     },
     size: {
       control: 'inline-radio',
-      options: ['sm', 'md', 'lg'],
+      options: ['small', 'medium', 'large'],
     },
     isLoading: {
       control: 'boolean',

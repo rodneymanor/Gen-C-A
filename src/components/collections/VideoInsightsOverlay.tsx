@@ -961,7 +961,7 @@ export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClos
               </div>
 
               <GcDashButton
-                size="md"
+                size="medium"
                 leadingIcon={<Play size={18} strokeWidth={1.6} />}
                 onClick={() => {
                   if (video.url) {
@@ -1075,7 +1075,7 @@ export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClos
                   </span>
                   <GcDashButton
                     variant="link"
-                    size="sm"
+                    size="small"
                     onClick={() => setDescriptionExpanded((prev) => !prev)}
                     css={css`
                       color: ${palette.zoomBlue};
@@ -1113,7 +1113,7 @@ export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClos
                   </span>
                   <GcDashButton
                     variant="link"
-                    size="sm"
+                    size="small"
                     onClick={() => setTranscriptExpanded((prev) => !prev)}
                     css={css`
                       color: ${palette.zoomBlue};
@@ -1186,7 +1186,7 @@ export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClos
 
             {video.url && (
               <GcDashButton
-                size="sm"
+                size="small"
                 leadingIcon={<ExternalLink size={16} strokeWidth={1.5} />}
                 onClick={() => window.open(video.url as string, '_blank', 'noopener')}
                 css={css`

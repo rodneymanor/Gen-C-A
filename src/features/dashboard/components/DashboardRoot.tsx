@@ -448,7 +448,7 @@ export const DashboardRoot: React.FC = () => {
                           </div>
                           <div className="meta-row">{entry.updatedLabel}</div>
                           <p className="summary">{entry.summary}</p>
-                          <GcDashButton variant="link" size="sm" trailingIcon={<ArrowRightIcon label="" />} onClick={() => navigate('/collections')}>
+                          <GcDashButton variant="link" size="small" trailingIcon={<ArrowRightIcon label="" />} onClick={() => navigate('/collections')}>
                             Review details
                           </GcDashButton>
                         </div>

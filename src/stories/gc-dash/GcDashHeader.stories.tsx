@@ -60,10 +60,10 @@ export const WithSearchInput: Story = {
       }
       actions={
         <>
-          <GcDashButton variant="ghost" size="sm" leadingIcon={<RefreshIcon label="" />}>
+          <GcDashButton variant="ghost" size="small" leadingIcon={<RefreshIcon label="" />}>
             Refresh
           </GcDashButton>
-          <GcDashButton variant="primary" size="sm" leadingIcon={<AddIcon label="" />}>
+          <GcDashButton variant="primary" size="small" leadingIcon={<AddIcon label="" />}>
             New script
           </GcDashButton>
         </>

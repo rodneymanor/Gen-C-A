@@ -57,7 +57,7 @@ export function ScriptPanelHeader({
           <div className="flex overflow-hidden rounded-[var(--radius-button)] border border-neutral-200 bg-neutral-50">
             <Button
               variant="ghost"
-              size="sm"
+              size="small"
               onClick={() => onCopy(scriptData.fullScript)}
               disabled={copyStatus === "copying"}
               className={cn(
@@ -71,7 +71,7 @@ export function ScriptPanelHeader({
             {showDownload && (
               <Button
                 variant="ghost"
-                size="sm"
+                size="small"
                 onClick={onDownload}
                 disabled={isDownloading}
                 className="h-9 rounded-none px-2"
@@ -149,7 +149,7 @@ export function FullScriptView({ script, metrics, showMetrics, onCopy, copyStatu
           {/* Copy Button */}
           <Button
             variant="ghost"
-            size="sm"
+            size="small"
             onClick={() => onCopy(script)}
             className={cn(
               "absolute top-5 right-5 h-7 px-3 text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100",
@@ -221,7 +221,7 @@ export function ComponentsView({ components, onCopy }: ComponentsViewProps) {
           {/* Copy Button */}
           <Button
             variant="ghost"
-            size="sm"
+            size="small"
             onClick={() => handleComponentCopy(component.content, component.id, component.type)}
             className={cn(
               "absolute top-5 right-5 h-7 px-3 text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100",
@@ -325,7 +325,7 @@ export function HooksView({ hooks, onCopy }: HooksViewProps) {
           {/* Copy Button */}
           <Button
             variant="ghost"
-            size="sm"
+            size="small"
             onClick={() => handleHookCopy(hook.content, hook.id, hook.type)}
             className={cn(
               "absolute top-5 right-5 h-7 px-3 text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100",

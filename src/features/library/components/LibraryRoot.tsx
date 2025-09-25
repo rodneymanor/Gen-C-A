@@ -568,7 +568,7 @@ const LibraryPreviewCard: React.FC<LibraryPreviewCardProps> = ({
       <GcDashCardFooter>
         <GcDashButton
           variant="secondary"
-          size="sm"
+          size="small"
           leadingIcon={<EditIcon label="" />}
           onClick={onOpen}
         >
@@ -576,7 +576,7 @@ const LibraryPreviewCard: React.FC<LibraryPreviewCardProps> = ({
         </GcDashButton>
         <GcDashButton
           variant="ghost"
-          size="sm"
+          size="small"
           leadingIcon={<AddIcon label="" />}
           onClick={onWriteScript}
         >
@@ -584,7 +584,7 @@ const LibraryPreviewCard: React.FC<LibraryPreviewCardProps> = ({
         </GcDashButton>
         <GcDashButton
           variant="ghost"
-          size="sm"
+          size="small"
           leadingIcon={<TrashIcon label="" />}
           onClick={onDelete}
           disabled={deleting}
@@ -809,7 +809,7 @@ export const LibraryRoot: React.FC = () => {
               ? (
                   <GcDashButton
                     variant="ghost"
-                    size="sm"
+                    size="small"
                     onClick={() => {
                       setSearchQuery('');
                       setSearchDraft('');
@@ -832,7 +832,7 @@ export const LibraryRoot: React.FC = () => {
                 </div>
                 <GcDashButton
                   variant="ghost"
-                  size="sm"
+                  size="small"
                   onClick={() => {
                     void refreshContent();
                   }}
@@ -871,7 +871,7 @@ export const LibraryRoot: React.FC = () => {
                       {preview && <p className="description">{preview}</p>}
                       <GcDashButton
                         variant="link"
-                        size="sm"
+                        size="small"
                         onClick={() => handleOpenEditor(item)}
                       >
                         Open details
@@ -945,7 +945,7 @@ export const LibraryRoot: React.FC = () => {
             <div css={ctaButtonStyles}>
               <GcDashButton
                 variant="secondary"
-                size="lg"
+                size="large"
                 leadingIcon={<DocumentIcon label="" />}
                 onClick={handleCreateNote}
               >
@@ -955,7 +955,7 @@ export const LibraryRoot: React.FC = () => {
             <div css={ctaButtonStyles}>
               <GcDashButton
                 variant="primary"
-                size="lg"
+                size="large"
                 leadingIcon={<AddIcon label="" />}
                 onClick={handleWriteScript}
               >
@@ -987,7 +987,7 @@ export const LibraryRoot: React.FC = () => {
                 <GcDashButton
                   key={token.key}
                   variant={isActive ? 'secondary' : 'ghost'}
-                  size="sm"
+                  size="small"
                   onClick={() => setActiveFilter(token.key)}
                 >
                   {token.label}
@@ -1000,7 +1000,7 @@ export const LibraryRoot: React.FC = () => {
           <div css={actionsGroupStyles}>
             <GcDashButton
               variant="ghost"
-              size="sm"
+              size="small"
               leadingIcon={<RefreshIcon label="" />}
               onClick={() => {
                 void refreshContent();
