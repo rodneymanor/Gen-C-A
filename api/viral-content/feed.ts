@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { ViralContentRepository } from '../../src/services/viral-content/repository.ts';
-import type { ViralPlatform } from '../../src/services/viral-content/types.ts';
-import { getAdminDb } from '../../src/lib/firebase-admin.ts';
+import { ViralContentRepository } from '../../src/services/viral-content/repository';
+import type { ViralPlatform } from '../../src/services/viral-content/types';
+import { getAdminDb } from '../../src/lib/firebase-admin';
 
 function formatMetric(value: unknown): string {
   if (typeof value !== 'number' || Number.isNaN(value)) return '0';
