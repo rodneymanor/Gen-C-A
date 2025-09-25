@@ -5,6 +5,7 @@ import Form, { Field } from '@atlaskit/form';
 import Toggle from '@atlaskit/toggle';
 import Select from '@atlaskit/select';
 import Button, { ButtonGroup } from '@atlaskit/button';
+import LoadingButton from '@atlaskit/button/loading-button';
 import SectionMessage from '@atlaskit/section-message';
 import { User } from '../../types';
 
@@ -363,7 +364,7 @@ export function NotificationSettings({ user }: NotificationSettingsProps) {
 
       {/* Information Message */}
       <div css={sectionStyles}>
-        <SectionMessage appearance="info">
+        <SectionMessage appearance="information">
           <p>
             <strong>Note:</strong> Some critical notifications (like security alerts and billing issues) 
             cannot be disabled and will always be sent via email.
@@ -374,9 +375,9 @@ export function NotificationSettings({ user }: NotificationSettingsProps) {
       {/* Form Actions */}
       <div css={formActionsStyles}>
         <ButtonGroup>
-          <Button type="button" appearance="primary" onClick={handleSubmit} isLoading={isLoading}>
+          <LoadingButton type="button" appearance="primary" onClick={handleSubmit} isLoading={isLoading}>
             Save Preferences
-          </Button>
+          </LoadingButton>
           <Button type="button" appearance="subtle" onClick={handleReset}>
             Reset to Defaults
           </Button>

@@ -120,6 +120,13 @@ const AIActionsDropdown = styled.div`
   display: inline-block;
 `;
 
+const DropdownChevron = styled.span<{ open: boolean }>`
+  display: inline-flex;
+  margin-left: ${token('space.100')};
+  transition: transform ${token('motion.duration.fast')} ${token('motion.easing.standard')};
+  transform: rotate(${props => (props.open ? 180 : 0)}deg);
+`;
+
 const DropdownContent = styled.div<{ isOpen: boolean }>`
   position: absolute;
   bottom: 100%;
@@ -362,14 +369,9 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         >
           <SparklesIcon label="" size="small" />
           AI Actions
-          <ChevronDownIcon 
-            size={14} 
-            style={{ 
-              marginLeft: token('space.100'),
-              transform: isAIDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-              transition: `transform ${token('motion.duration.fast')} ${token('motion.easing.standard')}`
-            }} 
-          />
+          <DropdownChevron open={isAIDropdownOpen}>
+            <ChevronDownIcon label="" size="small" />
+          </DropdownChevron>
         </ShinyButton>
         
         <DropdownContent ref={dropdownRef} isOpen={isAIDropdownOpen}>

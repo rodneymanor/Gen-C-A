@@ -7,6 +7,7 @@ import PlayIcon from '@atlaskit/icon/glyph/vid-play'
 import DetailViewIcon from '@atlaskit/icon/glyph/detail-view'
 import LikeIcon from '@atlaskit/icon/glyph/like'
 import CommentIcon from '@atlaskit/icon/glyph/comment'
+import type { GlyphProps } from '@atlaskit/icon/types'
 import type { ViralVideo } from '../types'
 import { PLATFORM_EMOJI, PLATFORM_LABELS } from '../constants/feed'
 
@@ -238,10 +239,7 @@ const actionsButtonStyles = css`
   min-width: 180px;
 `
 
-const metricIconComponents: Record<
-  string,
-  React.ComponentType<{ label: string; size?: 'small' | 'medium' | 'large'; primaryColor?: string }>
-> = {
+const metricIconComponents: Record<string, React.ComponentType<GlyphProps>> = {
   views: DetailViewIcon,
   likes: LikeIcon,
   comments: CommentIcon

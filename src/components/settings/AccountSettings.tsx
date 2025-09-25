@@ -5,6 +5,7 @@ import Form, { Field, ErrorMessage, HelperMessage } from '@atlaskit/form';
 import Textfield from '@atlaskit/textfield';
 import Select from '@atlaskit/select';
 import Button, { ButtonGroup } from '@atlaskit/button';
+import LoadingButton from '@atlaskit/button/loading-button';
 import Avatar from '@atlaskit/avatar';
 import SectionMessage from '@atlaskit/section-message';
 import { User } from '../../types';
@@ -44,14 +45,14 @@ const timezoneOptions = [
 ];
 
 // Form validation functions
-const validateFullName = (value: string) => {
+const validateFullName = (value?: string) => {
   if (!value || value.trim().length < 2) {
     return 'Full name must be at least 2 characters';
   }
   return undefined;
 };
 
-const validateEmail = (value: string) => {
+const validateEmail = (value?: string) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!value) {
     return 'Email is required';
@@ -62,7 +63,7 @@ const validateEmail = (value: string) => {
   return undefined;
 };
 
-const validateUsername = (value: string) => {
+const validateUsername = (value?: string) => {
   if (!value || value.trim().length < 3) {
     return 'Username must be at least 3 characters';
   }
@@ -269,25 +270,56 @@ export function AccountSettings({ user }: AccountSettingsProps) {
                 </Field>
 
                 <Field name="timezone" label="Timezone" defaultValue={initialValues.timezone}>
-                  {({ fieldProps }) => (
-                    <>
-                      <Select
-                        {...fieldProps}
-                        options={timezoneOptions}
-                        placeholder="Select your timezone"
-                        isSearchable
-                      />
-                      <HelperMessage>Used for displaying dates and scheduling</HelperMessage>
-                    </>
-                  )}
+                  {({ fieldProps }) => {
+                    const {
+                      value,
+                      onChange,
+                      onBlur,
+                      id,
+                      name,
+                      isDisabled,
+                      ['aria-describedby']: ariaDescribedBy,
+                    } = fieldProps as {
+                      value?: string;
+                      onChange: (value?: string) => void;
+                      onBlur?: React.FocusEventHandler;
+                      id?: string;
+                      name?: string;
+                      isDisabled?: boolean;
+                      'aria-describedby'?: string;
+                    };
+
+                    const selectedOption = timezoneOptions.find((option) => option.value === value) ?? null;
+
+                    return (
+                      <>
+                        <Select
+                          inputId={id}
+                          name={name}
+                          value={selectedOption}
+                          options={timezoneOptions}
+                          placeholder="Select your timezone"
+                          isSearchable
+                          isDisabled={isDisabled}
+                          aria-describedby={ariaDescribedBy}
+                          onBlur={onBlur}
+                          onChange={(option) => {
+                            const next = Array.isArray(option) ? option[0] : option;
+                            onChange(next?.value);
+                          }}
+                        />
+                        <HelperMessage>Used for displaying dates and scheduling</HelperMessage>
+                      </>
+                    );
+                  }}
                 </Field>
               </div>
 
               <div css={formActionsStyles}>
                 <ButtonGroup>
-                  <Button type="submit" appearance="primary" isLoading={isLoading}>
+                  <LoadingButton type="submit" appearance="primary" isLoading={isLoading}>
                     Save Changes
-                  </Button>
+                  </LoadingButton>
                   <Button appearance="subtle" type="button">
                     Cancel
                   </Button>
@@ -300,7 +332,7 @@ export function AccountSettings({ user }: AccountSettingsProps) {
 
       {/* Account Information */}
       <div css={sectionStyles}>
-        <SectionMessage appearance="info">
+        <SectionMessage appearance="information">
           <p>
             <strong>Account created:</strong> {user.id ? 'Recently' : 'Unknown'}
           </p>

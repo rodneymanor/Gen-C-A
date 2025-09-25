@@ -44,6 +44,9 @@ import {
 import { useDebugger, DEBUG_LEVELS } from '../../../utils/debugger';
 import { usePageLoad } from '../../../contexts/PageLoadContext';
 
+type Platform = 'all' | 'tiktok' | 'instagram' | 'youtube';
+type CollectionPlatform = Exclude<Platform, 'all'>;
+
 const pinnedCollectionsRowStyles = css`
   display: flex;
   gap: 12px;
@@ -267,24 +270,24 @@ const coerceDate = (value: any): Date => {
   return new Date();
 };
 
-const normalizePlatform = (platform?: string) => {
+const normalizePlatform = (platform?: string): CollectionPlatform | '' => {
   if (!platform) return '';
   const value = platform.toLowerCase();
   if (value.includes('tiktok')) return 'tiktok';
   if (value.includes('instagram')) return 'instagram';
   if (value.includes('youtube')) return 'youtube';
-  return value;
+  return '';
 };
 
-const coercePlatform = (platform?: string): Exclude<Platform, 'all'> => {
+const coercePlatform = (platform?: string): CollectionPlatform => {
   const normalized = normalizePlatform(platform);
-  if (normalized === 'instagram' || normalized === 'youtube') {
+  if (normalized) {
     return normalized;
   }
   return 'tiktok';
 };
 
-const platformBestForMap: Record<Exclude<Platform, 'all'>, string[]> = {
+const platformBestForMap: Record<CollectionPlatform, string[]> = {
   instagram: ['Storytelling reels', 'Brand highlights', 'Community building'],
   tiktok: ['Trend remixes', 'Hook experiments', 'Fast inspiration'],
   youtube: ['Educational breakdowns', 'Narrative explainers', 'Channel teasers'],
@@ -491,7 +494,7 @@ const mapServerVideoToContentItem = (v: any): ContentItem => {
     title: v.title || v.name || contentMetadata.title || 'Untitled clip',
     description: v.description || v.caption || metadata.caption || contentMetadata.description || '',
     type: 'video',
-    platform: normalizePlatform(v.platform || contentMetadata.platform || v.sourcePlatform),
+    platform: normalizePlatform(v.platform || contentMetadata.platform || v.sourcePlatform) || undefined,
     thumbnail: thumbnail || '',
     url: bestUrl,
     duration,
@@ -710,7 +713,7 @@ export const CollectionsRoot: React.FC = () => {
   const [videos, setVideos] = useState<ContentItem[]>([]);
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
   const [isDedupeBusy, setIsDedupeBusy] = useState(false);
-  const [platformFilter, setPlatformFilter] = useState<'all' | 'tiktok' | 'instagram'>('all');
+  const [platformFilter, setPlatformFilter] = useState<Platform>('all');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<ContentItem | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
@@ -1692,7 +1695,7 @@ export const CollectionsRoot: React.FC = () => {
                 style={{ width: '260px' }}
               />
               <div css={css`display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: center;`}>
-                {(['all', 'tiktok', 'instagram'] as const).map((platform) => (
+                {(['all', 'tiktok', 'instagram', 'youtube'] as const).map((platform) => (
                   <GcDashButton
                     key={platform}
                     variant={platformFilter === platform ? 'primary' : 'ghost'}

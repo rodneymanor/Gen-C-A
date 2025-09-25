@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { css } from '@emotion/react';
 import DynamicTable from '@atlaskit/dynamic-table';
+import type { UIAnalyticsEvent } from '@atlaskit/analytics-next';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { VideoGrid as OriginalGrid } from '../layout/Grid';
+import { VideoGrid as LayoutGrid } from '../layout/Grid';
+import { VideoGrid as LegacyVideoGrid } from '../collections/VideoGrid';
 import { formatDuration, getPlatformIconComponent, formatRelativeTime } from '../../utils/format';
 import type { ContentItem } from '../../types';
 
@@ -345,9 +347,9 @@ export const EnhancedVideoGrid: React.FC<EnhancedVideoGridProps> = ({
     return sorted;
   }, [videos, sortKey, sortOrder]);
 
-  const handleSort = (sortKey: string, sortOrder: 'ASC' | 'DESC') => {
-    setSortKey(sortKey);
-    setSortOrder(sortOrder);
+  const handleSort = (data: { key: string; sortOrder: 'ASC' | 'DESC' }, _event?: UIAnalyticsEvent) => {
+    setSortKey(data.key);
+    setSortOrder(data.sortOrder);
   };
 
   const handleVideoToggle = (video: ContentItem, checked: boolean) => {
@@ -446,7 +448,15 @@ export const EnhancedVideoGrid: React.FC<EnhancedVideoGridProps> = ({
   };
 
   if (fallbackToOriginal) {
-    return <OriginalGrid>{/* Fallback content */}</OriginalGrid>;
+    return (
+      <LegacyVideoGrid
+        videos={videos}
+        onVideoSelect={onVideoSelect}
+        onVideoPlay={onVideoPlay}
+        selectedVideos={selectedVideos}
+        showBulkActions={showBulkActions}
+      />
+    );
   }
 
   if (videos.length === 0) {
@@ -506,21 +516,22 @@ export const EnhancedVideoGrid: React.FC<EnhancedVideoGridProps> = ({
       {viewMode === 'table' ? (
         <div className="table-container">
           <Card appearance="elevated" spacing="compact">
-            <DynamicTable
-              className="enhanced-video-table"
-              head={tableHead}
-              rows={tableRows}
-              rowsPerPage={20}
-              isLoading={false}
-              isFixedSize={false}
-              onSort={handleSort}
-              sortKey={sortKey}
-              sortOrder={sortOrder}
-            />
+            <div className="enhanced-video-table">
+              <DynamicTable
+                head={tableHead}
+                rows={tableRows}
+                rowsPerPage={20}
+                isLoading={false}
+                isFixedSize={false}
+                onSort={handleSort}
+                sortKey={sortKey}
+                sortOrder={sortOrder}
+              />
+            </div>
           </Card>
         </div>
       ) : (
-        <OriginalGrid role="grid" aria-label="Video collection">
+        <LayoutGrid role="grid" aria-label="Video collection">
           {sortedVideos.map(video => (
             <Card
               key={video.id}
@@ -573,7 +584,7 @@ export const EnhancedVideoGrid: React.FC<EnhancedVideoGridProps> = ({
               </CardContent>
             </Card>
           ))}
-        </OriginalGrid>
+        </LayoutGrid>
       )}
     </div>
   );

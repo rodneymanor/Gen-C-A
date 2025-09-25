@@ -100,7 +100,7 @@ export const focus = {
 } as const;
 
 // Container query breakpoints for modern responsive design
-export const containerQuery = {
+export const containerBreakpoints = {
   xs: 'var(--container-xs)',   // 240px
   sm: 'var(--container-sm)',   // 384px
   md: 'var(--container-md)',   // 512px
@@ -127,6 +127,6 @@ export const effects = {
   animationDuration,
   transition,
   focus,
-  containerQuery,
+  containerBreakpoints,
   breakpoint,
 } as const;

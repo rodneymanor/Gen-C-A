@@ -19,22 +19,22 @@ export function useScriptsApi(): UseScriptsApiReturn {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { firebaseUser } = useAuth();
 
   const getAuthHeaders = useCallback(async () => {
-    if (!user) throw new Error("User not authenticated");
+    if (!firebaseUser) throw new Error("User not authenticated");
 
     // Get the ID token for authentication
-    const idToken = await user.getIdToken();
+    const idToken = await firebaseUser.getIdToken();
 
     return {
       "Content-Type": "application/json",
       Authorization: `Bearer ${idToken}`,
     };
-  }, [user]);
+  }, [firebaseUser]);
 
   const fetchScripts = useCallback(async () => {
-    if (!user) return;
+    if (!firebaseUser) return;
 
     setLoading(true);
     setError(null);
@@ -61,11 +61,11 @@ export function useScriptsApi(): UseScriptsApiReturn {
     } finally {
       setLoading(false);
     }
-  }, [user, getAuthHeaders]);
+  }, [firebaseUser, getAuthHeaders]);
 
   const createScript = useCallback(
     async (scriptData: CreateScriptRequest): Promise<Script | null> => {
-      if (!user) {
+      if (!firebaseUser) {
         setError("User not authenticated");
         return null;
       }
@@ -100,12 +100,12 @@ export function useScriptsApi(): UseScriptsApiReturn {
         setLoading(false);
       }
     },
-    [user, getAuthHeaders],
+    [firebaseUser, getAuthHeaders],
   );
 
   const updateScript = useCallback(
     async (id: string, updateData: UpdateScriptRequest): Promise<Script | null> => {
-      if (!user) {
+      if (!firebaseUser) {
         setError("User not authenticated");
         return null;
       }
@@ -140,12 +140,12 @@ export function useScriptsApi(): UseScriptsApiReturn {
         setLoading(false);
       }
     },
-    [user, getAuthHeaders],
+    [firebaseUser, getAuthHeaders],
   );
 
   const deleteScript = useCallback(
     async (id: string): Promise<boolean> => {
-      if (!user) {
+      if (!firebaseUser) {
         setError("User not authenticated");
         return false;
       }
@@ -179,7 +179,7 @@ export function useScriptsApi(): UseScriptsApiReturn {
         setLoading(false);
       }
     },
-    [user, getAuthHeaders],
+    [firebaseUser, getAuthHeaders],
   );
 
   return {

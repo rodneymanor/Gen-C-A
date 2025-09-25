@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { css } from '@emotion/react';
 import { token } from '@atlaskit/tokens';
 import Button from '@atlaskit/button';
+import LoadingButton from '@atlaskit/button/loading-button';
 import DynamicTable from '@atlaskit/dynamic-table';
-import ModalDialog, { ModalTransition } from '@atlaskit/modal-dialog';
+import ModalDialog, { ModalTransition, ModalHeader, ModalTitle, ModalBody } from '@atlaskit/modal-dialog';
 import Form, { Field, ErrorMessage } from '@atlaskit/form';
 import Textfield from '@atlaskit/textfield';
 import SectionMessage from '@atlaskit/section-message';
@@ -211,7 +212,7 @@ export function ApiKeySettings() {
           </Button>
         </div>
 
-        <SectionMessage appearance="info">
+        <SectionMessage appearance="information">
           <p>
             API keys let you authenticate the Chrome extension and other integrations. Only one active key is allowed at a time.
           </p>
@@ -261,9 +262,9 @@ export function ApiKeySettings() {
             <p><strong>Requests:</strong> {status.activeKey?.requestCount.toLocaleString() ?? 0}</p>
             <p><strong>Violations:</strong> {status.activeKey?.violations.toLocaleString() ?? 0}</p>
             <div css={css`margin-top: ${token('space.200')};`}>
-              <Button appearance="warning" onClick={handleRevoke} isLoading={revoking}>
+              <LoadingButton appearance="warning" onClick={handleRevoke} isLoading={revoking}>
                 Revoke API Key
-              </Button>
+              </LoadingButton>
             </div>
           </div>
         ) : (
@@ -329,9 +330,9 @@ export function ApiKeySettings() {
                   <Button appearance="subtle" onClick={() => setIsCreateModalOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" appearance="primary" isLoading={isSaving}>
+                  <LoadingButton type="submit" appearance="primary" isLoading={isSaving}>
                     Generate Key
-                  </Button>
+                  </LoadingButton>
                 </div>
               </form>
             )}
@@ -342,8 +343,11 @@ export function ApiKeySettings() {
           <>
             <ModalTransition>
               {isCreateModalOpen && (
-                <ModalDialog heading="Generate New API Key" onClose={() => setIsCreateModalOpen(false)}>
-                  {form}
+                <ModalDialog onClose={() => setIsCreateModalOpen(false)}>
+                  <ModalHeader>
+                    <ModalTitle>Generate New API Key</ModalTitle>
+                  </ModalHeader>
+                  <ModalBody>{form}</ModalBody>
                 </ModalDialog>
               )}
             </ModalTransition>

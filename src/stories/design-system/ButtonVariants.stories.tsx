@@ -42,6 +42,8 @@ const variantLabels: Record<NonNullable<ButtonProps['variant']>, string> = {
   danger: 'Danger',
   'ppx-primary': 'Perplexity Primary',
   soft: 'Soft',
+  ghost: 'Ghost',
+  outline: 'Outline',
 };
 
 const variants: Array<NonNullable<ButtonProps['variant']>> = [
@@ -56,6 +58,8 @@ const variants: Array<NonNullable<ButtonProps['variant']>> = [
   'warning',
   'danger',
   'ppx-primary',
+  'ghost',
+  'outline',
 ];
 
 export const VariantsShowcase: Story = {

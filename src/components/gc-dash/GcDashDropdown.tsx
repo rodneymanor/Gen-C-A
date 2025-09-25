@@ -21,7 +21,7 @@ export interface GcDashDropdownOption {
 
 export type GcDashDropdownAlign = 'start' | 'end';
 
-export interface GcDashDropdownProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface GcDashDropdownProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onSelect'> {
   label: string;
   placeholder?: React.ReactNode;
   options: GcDashDropdownOption[];

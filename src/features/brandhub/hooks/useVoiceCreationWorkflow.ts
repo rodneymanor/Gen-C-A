@@ -33,6 +33,10 @@ interface UseVoiceCreationWorkflowResult {
   context: VoiceWorkflowContext | null
 }
 
+type Step1Data = NonNullable<VoiceWorkflowState['step1']['data']>
+type Step2Data = NonNullable<VoiceWorkflowState['step2']['data']>
+type Step3Data = NonNullable<VoiceWorkflowState['step3']['data']>
+
 export const useVoiceCreationWorkflow = (
   options: UseVoiceCreationWorkflowOptions = {}
 ): UseVoiceCreationWorkflowResult => {
@@ -58,8 +62,8 @@ export const useVoiceCreationWorkflow = (
     async (input: string, platform: PlatformType) => {
       setWorkflow({
         step1: { status: 'running' },
-        step2: initialStepState(),
-        step3: initialStepState(),
+        step2: initialStepState<Step2Data>(),
+        step3: initialStepState<Step3Data>(),
         step5: initialStepState()
       })
       setContext(null)
@@ -83,16 +87,16 @@ export const useVoiceCreationWorkflow = (
               platform: result.context.platform
             }
           },
-          step2: initialStepState(),
-          step3: initialStepState(),
+          step2: initialStepState<Step2Data>(),
+          step3: initialStepState<Step3Data>(),
           step5: initialStepState()
         })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         setWorkflow({
           step1: { status: 'error', message },
-          step2: initialStepState(),
-          step3: initialStepState(),
+          step2: initialStepState<Step2Data>(),
+          step3: initialStepState<Step3Data>(),
           step5: initialStepState()
         })
         setContext(null)
@@ -110,7 +114,7 @@ export const useVoiceCreationWorkflow = (
     setWorkflow((prev) => ({
       ...prev,
       step2: { status: 'running' },
-      step3: initialStepState(),
+      step3: initialStepState<Step3Data>(),
       step5: initialStepState()
     }))
 

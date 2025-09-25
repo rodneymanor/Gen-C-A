@@ -42,7 +42,7 @@ export function useGridKeyboardNavigation<T>({
 }: UseGridKeyboardNavigationOptions<T>): UseGridKeyboardNavigationResult<T> {
   const gridRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
-  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollTimeoutRef = useRef<number | undefined>();
   const lastDetectedColumns = useRef<number>(columns);
 
   const [focusedIndex, setFocusedIndex] = useState<number>(initialFocusIndex);
@@ -174,7 +174,7 @@ export function useGridKeyboardNavigation<T>({
     setIsScrolling(true);
 
     if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
+      window.clearTimeout(scrollTimeoutRef.current);
     }
 
     scrollTimeoutRef.current = window.setTimeout(() => {
@@ -220,8 +220,8 @@ export function useGridKeyboardNavigation<T>({
     return () => {
       window.removeEventListener('scroll', handleWindowScroll);
       gridElement?.removeEventListener('scroll', handleScroll);
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
+    if (scrollTimeoutRef.current) {
+      window.clearTimeout(scrollTimeoutRef.current);
       }
     };
   }, [handleScroll, disabled]);

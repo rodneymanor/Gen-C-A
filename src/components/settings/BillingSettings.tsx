@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { css } from '@emotion/react';
 import { token } from '@atlaskit/tokens';
 import Button, { ButtonGroup } from '@atlaskit/button';
+import LoadingButton from '@atlaskit/button/loading-button';
 import SectionMessage from '@atlaskit/section-message';
 import Lozenge from '@atlaskit/lozenge';
 import { Card } from '../ui/Card';
@@ -330,29 +331,29 @@ export function BillingSettings({ user }: BillingSettingsProps) {
               <div css={css`margin-top: ${token('space.300')};`}>
                 {planId === currentPlan ? (
                   currentPlan === 'free' ? (
-                    <Button appearance="primary" onClick={() => handleUpgrade('premium')} isLoading={isLoading}>
+                    <LoadingButton appearance="primary" onClick={() => handleUpgrade('premium')} isLoading={isLoading}>
                       Upgrade Now
-                    </Button>
+                    </LoadingButton>
                   ) : (
                     <ButtonGroup>
-                      <Button appearance="subtle" onClick={handleCancelSubscription} isLoading={isLoading}>
+                      <LoadingButton appearance="subtle" onClick={handleCancelSubscription} isLoading={isLoading}>
                         Cancel
-                      </Button>
+                      </LoadingButton>
                       {currentPlan !== 'enterprise' && (
-                        <Button appearance="primary" onClick={() => handleUpgrade('enterprise')} isLoading={isLoading}>
+                        <LoadingButton appearance="primary" onClick={() => handleUpgrade('enterprise')} isLoading={isLoading}>
                           Upgrade
-                        </Button>
+                        </LoadingButton>
                       )}
                     </ButtonGroup>
                   )
                 ) : (
-                  <Button 
+                  <LoadingButton 
                     appearance={planId === 'premium' ? 'primary' : 'default'}
                     onClick={() => handleUpgrade(planId)}
                     isLoading={isLoading}
                   >
                     {planId === 'premium' ? 'Choose Premium' : `Upgrade to ${plan.name}`}
-                  </Button>
+                  </LoadingButton>
                 )}
               </div>
             </div>
@@ -386,7 +387,7 @@ export function BillingSettings({ user }: BillingSettingsProps) {
 
       {/* Information Message */}
       <div css={sectionStyles}>
-        <SectionMessage appearance="info">
+        <SectionMessage appearance="information">
           <p>
             <strong>Need help?</strong> Contact our billing support team if you have questions about your subscription or billing.
           </p>

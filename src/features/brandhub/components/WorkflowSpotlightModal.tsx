@@ -74,7 +74,7 @@ type WorkflowSpotlightModalProps = {
 }
 
 export const WorkflowSpotlightModal: React.FC<WorkflowSpotlightModalProps> = ({ open, onClose }) => (
-  <BasicModal open={open} title="How voice creation works" onClose={onClose} size="medium">
+  <BasicModal open={open} title="How voice creation works" onClose={onClose} size="large">
     <div css={workflowSpotlightStyles}>
       <div className="workflow-intro">
         <p>

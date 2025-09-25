@@ -11,7 +11,7 @@ export interface GcDashTabItem {
   disabled?: boolean;
 }
 
-export interface GcDashTabsProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface GcDashTabsProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
   tabs: GcDashTabItem[];
   defaultTabId?: string;
   activeTabId?: string;

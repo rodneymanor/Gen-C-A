@@ -86,7 +86,7 @@ async function attemptUpload(
   filename: string,
   attempt: number,
   maxRetries: number,
-): Promise<{ cdnUrl: string; filename: string } | null> {
+): Promise<{ cdnUrl: string; directUrl: string; filename: string } | null> {
   console.log(`🔄 [BUNNY] Attempt ${attempt}/${maxRetries}`);
 
   const timeout = 120000 + 60000 * (attempt - 1); // 120s, 180s, 240s
@@ -119,7 +119,7 @@ async function attemptUpload(
 
   return {
     cdnUrl: iframeUrl,
-    directUrl: directUrl,
+    directUrl,
     filename: videoGuid,
   };
 }
@@ -153,7 +153,7 @@ async function performRetryLoop(
   config: { libraryId: string; apiKey: string; hostname: string },
   arrayBuffer: ArrayBuffer,
   filename: string,
-): Promise<{ cdnUrl: string; filename: string } | null> {
+): Promise<{ cdnUrl: string; directUrl: string; filename: string } | null> {
   const MAX_RETRIES = 3;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -170,7 +170,8 @@ async function performRetryLoop(
         await new Promise((resolve) => setTimeout(resolve, backoffDelay));
       }
     } catch (error) {
-      console.error(`❌ [BUNNY] Attempt ${attempt} failed:`, error);
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error(`❌ [BUNNY] Attempt ${attempt} failed:`, err);
 
       if (attempt === MAX_RETRIES) {
         console.error("❌ [BUNNY] All retry attempts exhausted");
@@ -182,8 +183,8 @@ async function performRetryLoop(
       console.log(`🔍 [BUNNY] Error details for monitoring:`, {
         attempt,
         maxRetries: MAX_RETRIES,
-        errorType: error.constructor.name,
-        errorMessage: error.message,
+        errorType: err.name,
+        errorMessage: err.message,
         timestamp: new Date().toISOString(),
         bufferSize: arrayBuffer.byteLength,
         filename,
@@ -199,7 +200,7 @@ export async function uploadToBunnyStream(
   buffer: Buffer,
   filename: string,
   _mimeType: string,
-): Promise<{ cdnUrl: string; filename: string } | null> {
+): Promise<{ cdnUrl: string; directUrl: string; filename: string } | null> {
   try {
     console.log("🚀 [BUNNY] Starting upload to Bunny Stream...");
 
@@ -207,7 +208,7 @@ export async function uploadToBunnyStream(
     testBunnyStreamConfig();
 
     // Convert Buffer to ArrayBuffer as required by the guide
-    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
     console.log("🔄 [BUNNY] Converted Buffer to ArrayBuffer:", arrayBuffer.byteLength, "bytes");
 
     // Validate configuration
@@ -488,15 +489,16 @@ async function streamVideoToBunny(sourceUrl: string, videoGuid: string, maxRetri
       console.log(`✅ [BUNNY_STREAM] Successfully uploaded ${videoSizeMB}MB to Bunny.net`);
       return true;
     } catch (error) {
-      console.error(`❌ [BUNNY_STREAM] Download-upload error (attempt ${attempt}):`, error);
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error(`❌ [BUNNY_STREAM] Download-upload error (attempt ${attempt}):`, err);
       if (attempt < maxRetries) {
         const retryDelay = Math.min(15000, 3000 * Math.pow(2, attempt - 1)); // Exponential backoff, max 15s
         console.log(`🔄 [BUNNY_STREAM] Retrying in ${retryDelay}ms (exponential backoff)...`);
         console.log(`🔍 [BUNNY_STREAM] Error monitoring details:`, {
           attempt,
           maxRetries,
-          errorType: error.constructor.name,
-          errorMessage: error.message,
+          errorType: err.name,
+          errorMessage: err.message,
           sourceUrl: sourceUrl.substring(0, 100) + "...",
           videoGuid,
           timestamp: new Date().toISOString(),

@@ -216,13 +216,18 @@ const IssuesList = styled.div`
     
     .issue-count {
       font-weight: ${token('font.weight.semibold')};
-      color: ${props => props.count > 0 ? token('color.text.warning') : token('color.text.success')};
-      background: ${props => props.count > 0 ? token('color.background.warning.subtle') : token('color.background.success.subtle')};
+      color: ${token('color.text.success')};
+      background: ${token('color.background.success.subtle')};
       padding: ${token('space.050')} ${token('space.100')};
       border-radius: var(--radius-large);
       font-size: ${token('font.size.050')};
       min-width: 24px;
       text-align: center;
+    }
+
+    &.has-issues .issue-count {
+      color: ${token('color.text.warning')};
+      background: ${token('color.background.warning.subtle')};
     }
   }
 `;
@@ -290,7 +295,12 @@ const StatsToggleButton = styled.button`
   }
 
   .toggle-icon {
+    display: inline-flex;
     transition: transform ${token('motion.duration.fast')} ${token('motion.easing.standard')};
+  }
+
+  .toggle-icon.open {
+    transform: rotate(90deg);
   }
 `;
 
@@ -469,12 +479,9 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                 aria-expanded={showMoreStats}
                 aria-controls="readability-stats-details"
               >
-                <ChevronRightIcon
-                  label=""
-                  size="small"
-                  className="toggle-icon"
-                  style={{ transform: showMoreStats ? 'rotate(90deg)' : 'rotate(0deg)' }}
-                />
+                <span className={`toggle-icon ${showMoreStats ? 'open' : ''}`} aria-hidden="true">
+                  <ChevronRightIcon label="" size="small" />
+                </span>
                 {showMoreStats ? 'Hide stats' : 'Show more stats'}
               </StatsToggleButton>
               {showMoreStats && (
@@ -501,7 +508,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                     <TrendingIcon label="" size="small" />
                     Hard to read sentences
                   </span>
-                  <span className="issue-count" count={readabilityMetrics.issues.hardToRead}>
+                  <span className="issue-count">
                     {readabilityMetrics.issues.hardToRead}
                   </span>
                 </div>
@@ -511,7 +518,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                     <WarningIcon label="" size="small" />
                     Very hard to read sentences
                   </span>
-                  <span className="issue-count" count={readabilityMetrics.issues.veryHardToRead}>
+                  <span className="issue-count">
                     {readabilityMetrics.issues.veryHardToRead}
                   </span>
                 </div>
@@ -521,7 +528,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                     <TypeIcon label="" size="small" />
                     Adverbs
                   </span>
-                  <span className="issue-count" count={readabilityMetrics.issues.adverbs}>
+                  <span className="issue-count">
                     {readabilityMetrics.issues.adverbs}
                   </span>
                 </div>
@@ -531,7 +538,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                     <PeopleIcon label="" size="small" />
                     Passive voice
                   </span>
-                  <span className="issue-count" count={readabilityMetrics.issues.passiveVoice}>
+                  <span className="issue-count">
                     {readabilityMetrics.issues.passiveVoice}
                   </span>
                 </div>
@@ -541,7 +548,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                     <HashIcon label="" size="small" />
                     Complex phrases
                   </span>
-                  <span className="issue-count" count={readabilityMetrics.issues.complexPhrases}>
+                  <span className="issue-count">
                     {readabilityMetrics.issues.complexPhrases}
                   </span>
                 </div>

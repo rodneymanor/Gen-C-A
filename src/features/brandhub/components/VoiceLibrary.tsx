@@ -117,6 +117,10 @@ const voiceCardStyles = css`
     margin-top: auto;
     padding-top: var(--space-2);
     padding-bottom: var(--space-3);
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    align-items: center;
   }
 `
 
@@ -240,14 +244,7 @@ export const VoiceLibrary: React.FC<VoiceLibraryProps> = ({
                 <span>·</span>
                 <span>{voice.lastUpdated}</span>
               </div>
-              <CardFooter
-                className="voice-actions"
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: 'var(--space-3)'
-                }}
-              >
+              <CardFooter className="voice-actions">
                 <Button variant="secondary" size="small" onClick={() => onOpenVoice?.(voice.id)}>
                   Open voice workspace
                 </Button>

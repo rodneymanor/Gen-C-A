@@ -369,7 +369,6 @@ export const EnhancedScriptGenerator: React.FC<EnhancedScriptGeneratorProps> = (
                             setPromptValue(e.target.value);
                             fieldProps.onChange(e.target.value);
                           }}
-                          minimumRows={3}
                           maxLength={1000}
                         />
                         {error && <ErrorMessage>{error}</ErrorMessage>}

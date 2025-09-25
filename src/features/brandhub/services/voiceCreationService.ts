@@ -18,12 +18,18 @@ export { transcribeVideos, analyzeTranscripts, createVoicePersona, saveVoiceTemp
 export const videoDisplayMapper = mapVideosForDisplay
 export const constants = voiceCreationConstants
 
-export const initialStepState = (): WorkflowStepState => ({ status: 'pending' })
+export const initialStepState = <TData = unknown>(): WorkflowStepState<TData> => ({ status: 'pending' })
 
 export const buildInitialWorkflowState = (): VoiceWorkflowState => ({
-  step1: initialStepState(),
-  step2: initialStepState(),
-  step3: initialStepState(),
+  step1: initialStepState<{ videoCount: number; displayHandle: string; platform: PlatformType }>(),
+  step2: initialStepState<{ transcripts: number; videosProcessed: number }>(),
+  step3: initialStepState<{
+    transcripts: number;
+    hooks: number;
+    bridges: number;
+    ctas: number;
+    nuggets: number;
+  }>(),
   step5: initialStepState()
 })
 

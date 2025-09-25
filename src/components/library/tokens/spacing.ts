@@ -37,7 +37,7 @@ export const spaceResponsive = {
 } as const;
 
 // Semantic spacing tokens for specific use cases
-export const semantic = {
+export const spacingSemantic = {
   // Component internal spacing
   componentPadding: 'var(--space-component-padding)', // 16px
   sectionGap: 'var(--space-section-gap)',             // 32px
@@ -85,7 +85,7 @@ export const tapSpacing = {
 export const spacing = {
   space,
   spaceResponsive,
-  semantic,
+  semantic: spacingSemantic,
   layout,
   touchTarget,
   interactiveHeight,
