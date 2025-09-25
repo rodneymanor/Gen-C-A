@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAdminDb } from '../../src/lib/firebase-admin';
 
 type ViralPlatform = 'youtube' | 'instagram' | 'tiktok';
 
@@ -30,7 +29,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const pageSize = Math.min(60, Math.max(10, parseInt(String(req.query?.pageSize ?? '24'), 10) || 24));
   const searchQuery = typeof req.query?.search === 'string' ? req.query.search.trim() : '';
 
-  const db = getAdminDb();
+  const { getDb } = await import('../../src/api-routes/utils/firebase-admin.js');
+  const db = getDb();
   if (!db) {
     return res.status(500).json({ success: false, error: 'Firestore not configured' });
   }

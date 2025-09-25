@@ -47,7 +47,8 @@
     "format": "prettier \"**/*.{js,jsx,ts,tsx,css,md,json}\" --write",
     "format:check": "prettier \"**/*.{js,jsx,ts,tsx,css,md,json}\" --check",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "smoke:prod": "node scripts/prod-troubleshoot.mjs --base=https://www.gencapp.pro"
   },
   "dependencies": {
     "@atlaskit/avatar": "^25.1.19",
