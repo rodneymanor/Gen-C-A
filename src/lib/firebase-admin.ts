@@ -5,6 +5,24 @@ import path from 'path';
 
 let db: Firestore | null = null;
 let settingsApplied = false;
+let loggedInit = false;
+
+function detectCredentialMethod(): string {
+  try {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) return 'service_account_json';
+    const triplet =
+      (process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) &&
+      process.env.FIREBASE_CLIENT_EMAIL &&
+      process.env.FIREBASE_PRIVATE_KEY;
+    if (triplet) return 'triplet_env_vars';
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      return 'file_path_env';
+    }
+    return 'application_default_credentials_or_unknown';
+  } catch {
+    return 'unknown';
+  }
+}
 
 export function getAdminDb(): Firestore | null {
   try {
@@ -28,9 +46,17 @@ export function getAdminDb(): Firestore | null {
       if (saJson) {
         const serviceAccount = JSON.parse(saJson);
         initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.project_id });
+        if (!loggedInit) {
+          console.log('[firebase-admin] initialized via service_account_json');
+          loggedInit = true;
+        }
       } else if (projectId && clientEmail && privateKey) {
         // 2) Triplet env vars
         initializeApp({ credential: cert({ projectId, clientEmail, privateKey }), projectId });
+        if (!loggedInit) {
+          console.log('[firebase-admin] initialized via triplet_env_vars');
+          loggedInit = true;
+        }
       } else {
         // 3) Service account file path
         let saPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS || '';
@@ -56,9 +82,17 @@ export function getAdminDb(): Firestore | null {
         if (resolvedPath && fs.existsSync(resolvedPath)) {
           const serviceAccount = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
           initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.project_id });
+          if (!loggedInit) {
+            console.log('[firebase-admin] initialized via service_account_file');
+            loggedInit = true;
+          }
         } else {
           // 4) ADC fallback
           initializeApp({ credential: applicationDefault() });
+          if (!loggedInit) {
+            console.log('[firebase-admin] initialized via application_default_credentials');
+            loggedInit = true;
+          }
         }
       }
     }
@@ -70,7 +104,12 @@ export function getAdminDb(): Firestore | null {
     }
     return db;
   } catch (err) {
-    console.error('[firebase-admin] init error:', err);
+    try {
+      const method = detectCredentialMethod();
+      console.error('[firebase-admin] init error (method=' + method + '):', err);
+    } catch {
+      console.error('[firebase-admin] init error:', err);
+    }
     return null;
   }
 }
