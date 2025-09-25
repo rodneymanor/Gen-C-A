@@ -301,6 +301,13 @@ export class CollectionsAdminService {
     const profile = await this.ensureUserProfile(userId);
     const platform = videoData.platform || guessPlatformFromUrl(videoData.originalUrl);
 
+    console.log('[collections-admin] addVideoToCollection', {
+      userId,
+      collectionId,
+      platform,
+      urlPreview: String(videoData.originalUrl).slice(0, 80),
+    });
+
     const collectionContext = await this.getCollectionContext(collectionId);
     const collectionOwnerId = collectionContext.data?.userId || userId;
 
@@ -341,12 +348,22 @@ export class CollectionsAdminService {
 
     const docRef = await this.db.collection('videos').add(video);
 
+    console.log('[collections-admin] video document created', {
+      videoId: docRef.id,
+      collectionId,
+      ownerId: collectionOwnerId,
+    });
+
     if (collectionId && collectionId !== 'all-videos') {
       const collectionRef = this.db.collection('collections').doc(String(collectionId));
       const snapshot = await collectionRef.get();
       if (snapshot.exists) {
         const current = snapshot.data()?.videoCount || 0;
         await collectionRef.update({ videoCount: current + 1, updatedAt: nowIso() });
+        console.log('[collections-admin] incremented collection count', {
+          collectionId,
+          newCount: current + 1,
+        });
       }
     }
 

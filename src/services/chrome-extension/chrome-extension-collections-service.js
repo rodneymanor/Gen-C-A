@@ -86,6 +86,11 @@ export class ChromeExtensionCollectionsService {
       .get();
 
     if (!snapshot.empty) {
+      console.log('[chrome-extension][service] using existing collection', {
+        userId,
+        collectionTitle: normalizedTitle,
+        collectionId: snapshot.docs[0].id,
+      });
       return snapshot.docs[0].id;
     }
 
@@ -93,6 +98,12 @@ export class ChromeExtensionCollectionsService {
     const collection = await collectionsService.createCollection(userId, {
       title: normalizedTitle,
       description: '',
+    });
+
+    console.log('[chrome-extension][service] created collection', {
+      userId,
+      collectionTitle: normalizedTitle,
+      collectionId: collection.id,
     });
 
     return collection.id;
@@ -184,6 +195,10 @@ export class ChromeExtensionCollectionsService {
     }
 
     if (!this.firestore) {
+      console.log('[chrome-extension][service] using filesystem fallback store', {
+        userId,
+        collectionTitle: normalizedTitle,
+      });
       return this.addVideoToFallbackStore({
         userId,
         videoUrl: normalizedUrl,
@@ -195,6 +210,12 @@ export class ChromeExtensionCollectionsService {
     try {
       const collectionId = await this.ensureCollection(this.firestore, userId, normalizedTitle);
       const collectionsService = getCollectionsAdminService(this.firestore);
+      console.log('[chrome-extension][service] calling admin addVideoToCollection', {
+        userId,
+        collectionId,
+        videoUrl: normalizedUrl,
+        hasTitle: Boolean(optionalTitle),
+      });
       const result = await collectionsService.addVideoToCollection(userId, {
         collectionId,
         videoData: {
@@ -202,6 +223,12 @@ export class ChromeExtensionCollectionsService {
           platform: guessPlatformFromUrl(normalizedUrl),
           title: optionalTitle,
         },
+      });
+
+      console.log('[chrome-extension][service] admin addVideoToCollection result', {
+        userId,
+        collectionId,
+        videoId: result?.videoId,
       });
 
       return {
@@ -212,6 +239,7 @@ export class ChromeExtensionCollectionsService {
         videoUrl: normalizedUrl,
       };
     } catch (error) {
+      console.error('[chrome-extension][service] addVideo error', error);
       if (error instanceof CollectionsServiceError) {
         throw error;
       }

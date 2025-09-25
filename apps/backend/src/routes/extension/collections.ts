@@ -245,6 +245,14 @@ collectionsRouter.post('/add-video', async (req: Request, res: Response) => {
       return;
     }
 
+    console.log('[chrome-extension][backend] add-video request', {
+      userId: user.uid,
+      collectionTitle,
+      hasCustomTitle: Boolean(title),
+      urlPreview: String(videoUrl).slice(0, 80),
+      hasDb: Boolean(db),
+    });
+
     const service = getChromeExtensionCollectionsService({ firestore: db, dataDir: DATA_DIR });
     const result = await service.addVideo({
       userId: String(user.uid),
@@ -253,12 +261,21 @@ collectionsRouter.post('/add-video', async (req: Request, res: Response) => {
       title: title ? String(title) : undefined,
     });
 
+    console.log('[chrome-extension][backend] add-video success', {
+      userId: user.uid,
+      collectionTitle,
+      videoId: result?.videoId,
+      jobId: result?.jobId,
+      collectionId: result?.collectionId,
+    });
+
     res.status(201).json({
       success: true,
       message: 'Video added to processing queue',
       ...result,
     });
   } catch (error) {
+    console.error('[chrome-extension][backend] add-video error', error);
     sendCollectionsError(res, error, 'Failed to add video to collection');
   }
 });

@@ -190,6 +190,18 @@ export const POST = requireAuth(async (request, context) => {
     const body = await request.json();
     const { userId: requestedUserId, collectionId, videoData } = body;
 
+    console.log("🛰️ [Add Video] Incoming request", {
+      authenticatedUserId,
+      requestedUserId,
+      collectionId,
+      urlPreview: videoData?.originalUrl?.slice(0, 60),
+      headers: {
+        userIdHeader: request.headers.get("x-user-id") || null,
+        apiKeyPresent: request.headers.has("x-api-key"),
+        authorizationPresent: request.headers.has("authorization"),
+      },
+    });
+
     // Validate required fields
     if (!collectionId || !videoData) {
       return createErrorResponse(

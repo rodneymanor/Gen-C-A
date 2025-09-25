@@ -4,6 +4,19 @@ import { authenticateApiKey } from "@/lib/api-key-auth";
 import { getAdminDb, isAdminInitialized } from "@/lib/firebase-admin";
 import { buildInternalUrl } from "@/lib/utils/url";
 
+const createJobId = () => `job_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
+const guessPlatformFromUrl = (url: string): string => {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.includes("tiktok")) return "tiktok";
+    if (host.includes("instagram")) return "instagram";
+  } catch {
+    // ignore parse errors and fall through to unknown
+  }
+  return "unknown";
+};
+
 interface AddVideoBody {
   videoUrl: string;
   collectionTitle: string;
@@ -21,6 +34,13 @@ export async function POST(request: NextRequest) {
     if (!videoUrl || !collectionTitle) {
       return NextResponse.json({ success: false, error: "videoUrl and collectionTitle are required" }, { status: 400 });
     }
+
+    console.log("🔐 [Chrome Add Video] Authenticated request", {
+      userId,
+      collectionTitle,
+      hasTitle: Boolean(title),
+      urlPreview: videoUrl.slice(0, 60),
+    });
 
     if (!isAdminInitialized) {
       return NextResponse.json({ success: false, error: "Firebase Admin not configured" }, { status: 500 });
@@ -54,52 +74,78 @@ export async function POST(request: NextRequest) {
       collectionId = docRef.id;
     }
 
-    // Use the queue-based workflow (same as UI) instead of the old direct add-video-to-collection
-    const headers: HeadersInit = { "content-type": "application/json" };
+    const headers: HeadersInit = { "content-type": "application/json", "x-user-id": userId };
     const apiKey = request.headers.get("x-api-key");
     const authHeader = request.headers.get("authorization");
     if (apiKey) headers["x-api-key"] = apiKey;
     if (authHeader) headers["authorization"] = authHeader;
 
-    console.log(`🎬 [Chrome Add Video] Using queue workflow for: ${videoUrl}`);
+    console.log(`🎬 [Chrome Add Video] Forwarding to add-to-collection for: ${videoUrl}`);
     console.log(`📁 [Chrome Add Video] Target collection: ${collectionTitle} (${collectionId})`);
+    console.log("🛰️ [Chrome Add Video] Forward payload", {
+      userId,
+      collectionId,
+      platform: guessPlatformFromUrl(videoUrl),
+      hasAuthHeader: Boolean(authHeader),
+      hasApiKey: Boolean(apiKey),
+    });
 
-    // Step 1: Add video to processing queue
-    const queueRes = await fetch(buildInternalUrl("/api/video/add-to-queue"), {
+    const addRes = await fetch(buildInternalUrl("/api/videos/add-to-collection"), {
       method: "POST",
       headers,
       body: JSON.stringify({
-        videoUrl,
         userId,
         collectionId,
-        title: title || "Video from Chrome Extension",
+        videoData: {
+          originalUrl: videoUrl,
+          platform: guessPlatformFromUrl(videoUrl),
+          addedAt: new Date().toISOString(),
+          processing: {
+            components: {
+              hook: title || "Auto-generated hook",
+              bridge: "",
+              nugget: "",
+              wta: "",
+            },
+          },
+        },
       }),
     });
 
-    if (!queueRes.ok) {
-      const queueError = await queueRes.json();
-      console.error("❌ [Chrome Add Video] Queue failed:", queueError);
+    if (!addRes.ok) {
+      const addError = await addRes.json().catch(() => ({}));
+      console.error("❌ [Chrome Add Video] Add-to-collection failed:", addError);
       return NextResponse.json(
         {
           success: false,
-          error: `Failed to queue video: ${queueError.error || "Unknown error"}`,
+          error: addError?.error || addError?.message || "Failed to add video to collection",
         },
-        { status: queueRes.status },
+        { status: addRes.status },
       );
     }
 
-    const queueData = await queueRes.json();
-    console.log(`✅ [Chrome Add Video] Video queued successfully:`, queueData);
-
-    // Return success response similar to the UI workflow
-    return NextResponse.json({
-      success: true,
-      message: "Video added to processing queue",
-      jobId: queueData.jobId,
-      collectionTitle,
-      collectionId,
-      videoUrl,
+    const addData = await addRes.json();
+    console.log(`✅ [Chrome Add Video] Video added successfully:`, addData);
+    console.log("📦 [Chrome Add Video] Response summary", {
+      status: addRes.status,
+      videoId: addData?.videoId,
+      hasVideo: Boolean(addData?.video),
+      message: addData?.message,
     });
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: addData?.message || "Video added successfully to collection",
+        jobId: createJobId(),
+        collectionTitle,
+        collectionId,
+        videoUrl,
+        videoId: addData?.videoId,
+        video: addData?.video,
+      },
+      { status: addRes.status },
+    );
   } catch (error) {
     console.error("❌ [Chrome Add Video to Collection] Error:", error);
     return NextResponse.json({ success: false, error: "Failed to add video to collection" }, { status: 500 });
