@@ -59,14 +59,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     report.checks.brandVoices = { ok: false, error: e?.message || String(e) };
   }
 
-  // Viral content (no auth)
+  // Viral content (no auth) - query directly to avoid TS imports
   try {
-    const { ViralContentRepository } = await import(
-      '../../src/services/viral-content/repository'
-    );
-    const repo = new ViralContentRepository({ db });
-    const vids = await repo.listVideos({ limit: 1 });
-    report.checks.viralContent = { ok: true, sampleCount: Array.isArray(vids) ? vids.length : 0 };
+    const collectionName = process.env.VIRAL_CONTENT_COLLECTION || 'viral_content_videos';
+    const snap = await db
+      .collection(collectionName)
+      .orderBy('firstSeenAt', 'desc')
+      .limit(1)
+      .get();
+    report.checks.viralContent = { ok: true, sampleCount: snap.size };
   } catch (e: any) {
     report.checks.viralContent = { ok: false, error: e?.message || String(e) };
   }
@@ -105,4 +106,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return res.status(200).json(report);
 }
-

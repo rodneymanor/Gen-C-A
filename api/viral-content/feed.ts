@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { ViralContentRepository } from '../../src/services/viral-content/repository';
-import type { ViralPlatform } from '../../src/services/viral-content/types';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAdminDb } from '../../src/lib/firebase-admin';
+
+type ViralPlatform = 'youtube' | 'instagram' | 'tiktok';
 
 function formatMetric(value: unknown): string {
   if (typeof value !== 'number' || Number.isNaN(value)) return '0';
@@ -34,13 +35,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ success: false, error: 'Firestore not configured' });
   }
 
-  const repository = new ViralContentRepository({ db });
   const today = new Date().toISOString().slice(0, 10);
+  const collectionName = process.env.VIRAL_CONTENT_COLLECTION || 'viral_content_videos';
 
   try {
-    const newVideos = await repository.listVideos({ platform, includeNewSince: today, limit: 120 });
-    const baseLimit = (page + 1) * pageSize + newVideos.length + 40;
-    const recentVideos = await repository.listVideos({ platform, limit: baseLimit });
+    // Fetch recent videos
+    const baseLimit = (page + 1) * pageSize + 120 + 40; // room for new + extra
+
+    let query = db
+      .collection(collectionName)
+      .orderBy('firstSeenAt', 'desc')
+      .limit(baseLimit);
+
+    if (platform && platform !== 'all') {
+      query = query.where('platform', '==', platform);
+    }
+
+    const snap = await query.get();
+    const recentVideos = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+
+    const newVideos = recentVideos.filter((v) => (v.firstSeenDate ?? '') >= today).slice(0, 120);
 
     const newVideoIds = new Set(newVideos.map((video) => video.id));
     const merged = [
