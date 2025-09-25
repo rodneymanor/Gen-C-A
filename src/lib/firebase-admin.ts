@@ -12,42 +12,54 @@ export function getAdminDb(): Firestore | null {
 
     // Initialize app if needed
     if (!getApps().length) {
-      // Prefer service account JSON from env or local file
-      let saPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 'genc-a8f49-firebase-adminsdk-fbsvc-7b158a0d7d.json';
-      let resolvedPath = path.isAbsolute(saPath) ? saPath : path.join(process.cwd(), saPath);
-      if (!process.env.FIREBASE_SERVICE_ACCOUNT && !fs.existsSync(resolvedPath)) {
-        // Auto-discover service account file by pattern in project root
-        const files = fs
-          .readdirSync(process.cwd())
-          .filter((f) => /genc-a8f49-firebase-adminsdk-.*\.json$/i.test(f))
-          .map((f) => ({ f, m: fs.statSync(path.join(process.cwd(), f)).mtimeMs }))
-          .sort((a, b) => b.m - a.m)
-          .map((x) => x.f);
-        if (files.length > 0) {
-          saPath = files[0]; // most recently modified service account file
-          resolvedPath = path.join(process.cwd(), saPath);
-        }
-      }
-      const gaPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      // Strategy order:
+      // 1) FIREBASE_SERVICE_ACCOUNT (full JSON string)
+      // 2) FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY
+      // 3) FIREBASE_SERVICE_ACCOUNT_PATH or GOOGLE_APPLICATION_CREDENTIALS (file path)
+      // 4) applicationDefault()
 
-      if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-        initializeApp({ credential: cert(serviceAccount as any), projectId: serviceAccount.project_id });
-        // console.log('[firebase-admin] initialized using FIREBASE_SERVICE_ACCOUNT env');
-      } else if (fs.existsSync(resolvedPath)) {
-        const serviceAccount = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
-        initializeApp({ credential: cert(serviceAccount as any), projectId: serviceAccount.project_id });
-        // Also set GOOGLE_APPLICATION_CREDENTIALS for any underlying clients
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = resolvedPath;
-        // console.log('[firebase-admin] initialized using local service account file:', resolvedPath);
-      } else if (gaPath && fs.existsSync(gaPath)) {
-        const serviceAccount = JSON.parse(fs.readFileSync(gaPath, 'utf8'));
-        initializeApp({ credential: cert(serviceAccount as any), projectId: serviceAccount.project_id });
-        // console.log('[firebase-admin] initialized using GOOGLE_APPLICATION_CREDENTIALS env');
+      const saJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+      const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+      const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+      const privateKeyEnv = process.env.FIREBASE_PRIVATE_KEY;
+      const privateKey = privateKeyEnv ? privateKeyEnv.replace(/\\n/g, '\n') : undefined;
+
+      // 1) Full JSON blob (recommended for Vercel)
+      if (saJson) {
+        const serviceAccount = JSON.parse(saJson);
+        initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.project_id });
+      } else if (projectId && clientEmail && privateKey) {
+        // 2) Triplet env vars
+        initializeApp({ credential: cert({ projectId, clientEmail, privateKey }), projectId });
       } else {
-        // Fallback to application default credentials
-        initializeApp({ credential: applicationDefault() });
-        // console.warn('[firebase-admin] initialized using applicationDefault credentials');
+        // 3) Service account file path
+        let saPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS || '';
+        let resolvedPath = saPath ? (path.isAbsolute(saPath) ? saPath : path.join(process.cwd(), saPath)) : '';
+
+        // Try to auto-discover a matching JSON file in project root if not provided or missing
+        if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+          try {
+            const files = fs
+              .readdirSync(process.cwd())
+              .filter((f) => /firebase-adminsdk-.*\.json$/i.test(f))
+              .map((f) => ({ f, m: fs.statSync(path.join(process.cwd(), f)).mtimeMs }))
+              .sort((a, b) => b.m - a.m)
+              .map((x) => x.f);
+            if (files.length > 0) {
+              resolvedPath = path.join(process.cwd(), files[0]);
+            }
+          } catch {
+            // ignore fs errors in serverless
+          }
+        }
+
+        if (resolvedPath && fs.existsSync(resolvedPath)) {
+          const serviceAccount = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
+          initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.project_id });
+        } else {
+          // 4) ADC fallback
+          initializeApp({ credential: applicationDefault() });
+        }
       }
     }
 
