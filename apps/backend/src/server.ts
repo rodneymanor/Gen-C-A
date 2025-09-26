@@ -1,9 +1,8 @@
-import * as dotenv from 'dotenv';
-
 import { createApp } from './app';
+import { loadDotEnvFiles, validateEnv } from '../../src/config/env';
 
-dotenv.config({ path: '.env.local' });
-dotenv.config({ path: '.env' });
+loadDotEnvFiles();
+validateEnv('backend');
 
 const port = Number(process.env.BACKEND_PORT || process.env.PORT || 5001);
 const app = createApp();

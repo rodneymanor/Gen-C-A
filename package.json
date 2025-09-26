@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k \"npm run backend:dev\" \"vite\"",
+    "dev:full": "npm run dev",
     "dev:old": "concurrently \"npm run api\" \"vite\"",
     "dev:frontend": "vite",
     "api": "node server.js",
@@ -48,7 +49,8 @@
     "format:check": "prettier \"**/*.{js,jsx,ts,tsx,css,md,json}\" --check",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "smoke:prod": "node scripts/prod-troubleshoot.mjs --base=https://www.gencapp.pro"
+    "smoke:prod": "node scripts/prod-troubleshoot.mjs --base=https://www.gencapp.pro",
+    "smoke:local": "node scripts/smoke-local.mjs"
   },
   "dependencies": {
     "@atlaskit/avatar": "^25.1.19",

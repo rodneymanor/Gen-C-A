@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { debugLogRequest } from '../_utils/request-logger';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const headerValue = (req.headers['x-user-id'] as string) || (req.headers['X-User-Id'] as any);
@@ -11,6 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    debugLogRequest(req, 'collections/index:incoming', { userId });
     const { getDb } = await import('../../src/api-routes/utils/firebase-admin.js');
     const db = getDb();
     if (!db) return res.status(503).json({ success: false, error: 'Firestore not initialized' });

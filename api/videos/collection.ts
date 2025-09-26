@@ -5,11 +5,14 @@ import {
   resolveCollectionsService,
   sendCollectionsError,
 } from '../_utils/collections-service';
+import { debugLogRequest } from '../_utils/request-logger';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method Not Allowed' });
   }
+
+  debugLogRequest(req, 'videos/collection:incoming');
 
   const userId = (await resolveUserId(req)) || extractUserId(req);
   if (!userId) {
@@ -22,6 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const { collectionId, videoLimit } = (req.body as any) || {};
+  debugLogRequest(req, 'videos/collection:resolved', { userId, collectionId, videoLimit });
 
   try {
     const service = resolveCollectionsService();

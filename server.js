@@ -14,6 +14,7 @@ import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { validateEnv } from './src/config/env.runtime.js';
 
 const envCandidates = ['.env.local', '.env'];
 for (const candidate of envCandidates) {
@@ -22,6 +23,9 @@ for (const candidate of envCandidates) {
     dotenv.config({ path: envPath });
   }
 }
+
+// Validate env for the dev server; warn by default during migration
+validateEnv('dev-server');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -37,6 +41,19 @@ const BACKEND_PROXY_TARGET =
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Simple request logging for observability during unification
+app.use((req, res, next) => {
+  const start = Date.now();
+  const { method, originalUrl } = req;
+  const id = Math.random().toString(36).slice(2, 8);
+  console.log(`[dev:${id}] ➡️  ${method} ${originalUrl}`);
+  res.on('finish', () => {
+    const dur = Date.now() - start;
+    console.log(`[dev:${id}] ⬅️  ${res.statusCode} ${method} ${originalUrl} (${dur}ms)`);
+  });
+  next();
+});
 
 async function forwardToBackend(req, res, pathOverride) {
   const base = BACKEND_PROXY_TARGET.replace(/\/$/, '');
