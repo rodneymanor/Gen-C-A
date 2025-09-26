@@ -13,6 +13,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const userId = (await resolveUserId(req)) || extractUserId(req);
   if (!userId) {
+    console.warn('[videos/collection] missing user context', {
+      hasAuth: !!(req.headers['authorization'] || req.headers['Authorization']),
+      hasUidHeader: !!(req.headers['x-user-id'] || req.headers['X-User-Id']),
+      hasApiKey: !!(req.headers['x-api-key'] || req.headers['X-Api-Key'])
+    });
     return res.status(401).json({ success: false, error: 'Unauthorized: missing user context' });
   }
 
