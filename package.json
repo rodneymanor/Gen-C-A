@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently -k \"npm run backend:dev\" \"vite\"",
     "dev:full": "npm run dev",
+    "dev:restart": "bash ./restart-dev.sh",
     "dev:old": "concurrently \"npm run api\" \"vite\"",
     "dev:frontend": "vite",
     "api": "node server.js",

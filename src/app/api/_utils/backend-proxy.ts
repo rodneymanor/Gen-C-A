@@ -22,8 +22,8 @@ function buildTargetUrl(req: NextRequest, pathOverride?: string): string {
   return url.toString();
 }
 
-function pickHeaders(req: NextRequest): HeadersInit {
-  const allow = ['authorization', 'x-api-key', 'x-user-id', 'x-internal-secret', 'content-type'];
+function pickHeaders(req: NextRequest): Record<string, string> {
+  const allow = ['authorization', 'x-api-key', 'x-user-id', 'x-internal-secret', 'content-type'] as const;
   const out: Record<string, string> = {};
   for (const key of allow) {
     const value = req.headers.get(key);
@@ -55,4 +55,3 @@ export async function forwardToBackend(req: NextRequest, pathOverride?: string) 
   const text = await response.text();
   return new NextResponse(text, init);
 }
-

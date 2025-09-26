@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
 
 type Runtime = 'backend' | 'dev-server' | 'frontend';
 
@@ -172,9 +173,7 @@ export function loadDotEnvFiles() {
   for (const file of candidates) {
     const p = path.resolve(process.cwd(), file);
     if (fs.existsSync(p)) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      require('dotenv').config({ path: p });
+      dotenv.config({ path: p });
     }
   }
 }
-
