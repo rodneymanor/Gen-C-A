@@ -1,37 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import {
-  extractUserId,
-  resolveUserId,
-  resolveCollectionsService,
-  sendCollectionsError,
-} from '../_utils/collections-service';
 import { debugLogRequest } from '../_utils/request-logger';
+import { proxyToBackend } from '../_utils/backend-proxy';
 
+// TEMP SHIM: Delegate to canonical backend implementation.
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method Not Allowed' });
   }
-
-  debugLogRequest(req, 'videos/collection:incoming');
-
-  const userId = (await resolveUserId(req)) || extractUserId(req);
-  if (!userId) {
-    console.warn('[videos/collection] missing user context', {
-      hasAuth: !!(req.headers['authorization'] || req.headers['Authorization']),
-      hasUidHeader: !!(req.headers['x-user-id'] || req.headers['X-User-Id']),
-      hasApiKey: !!(req.headers['x-api-key'] || req.headers['X-Api-Key'])
-    });
-    return res.status(401).json({ success: false, error: 'Unauthorized: missing user context' });
-  }
-
-  const { collectionId, videoLimit } = (req.body as any) || {};
-  debugLogRequest(req, 'videos/collection:resolved', { userId, collectionId, videoLimit });
-
-  try {
-    const service = resolveCollectionsService();
-    const result = await service.listCollectionVideos(userId, { collectionId, limit: videoLimit });
-    return res.status(200).json({ success: true, videos: result.videos, totalCount: result.totalCount });
-  } catch (error) {
-    return sendCollectionsError(res, error, 'Failed to fetch collection videos', '[api/videos/collection] error:');
-  }
+  debugLogRequest(req, 'videos/collection:proxy');
+  return proxyToBackend(req, res, '/api/videos/collection');
 }
