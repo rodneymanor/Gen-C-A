@@ -72,9 +72,13 @@ async function main() {
   const voices = await fetchJson('/api/brand-voices/list');
   logStatus('GET /api/brand-voices/list', voices);
 
-  // Chrome extension endpoints (optional API key + uid)
+  // Chrome extension endpoints (optional API key; auto-resolve uid via whoami)
   const extKey = process.env.EXT_TEST_API_KEY || process.env.INTERNAL_API_SECRET;
-  const extUid = process.env.EXT_TEST_UID || process.env.ADMIN_DEFAULT_USER_ID || process.env.DEFAULT_EXTENSION_USER_ID;
+  let extUid = process.env.EXT_TEST_UID || process.env.ADMIN_DEFAULT_USER_ID || process.env.DEFAULT_EXTENSION_USER_ID;
+  if (extKey && !extUid) {
+    const who = await fetchJson('/api/diagnostics/whoami', { headers: { 'x-api-key': extKey } });
+    if (who.ok && who.body?.uid) extUid = who.body.uid;
+  }
   if (extKey && extUid) {
     const hdrs = { 'x-api-key': extKey, 'x-user-id': extUid };
     const extCols = await fetchJson('/api/chrome-extension/collections', { headers: hdrs });
@@ -82,7 +86,7 @@ async function main() {
     const extNotes = await fetchJson('/api/chrome-extension/notes', { headers: hdrs });
     logStatus('GET /api/chrome-extension/notes', extNotes);
   } else {
-    console.log('ℹ️ Skipping extension checks (set EXT_TEST_API_KEY and EXT_TEST_UID to enable).');
+    console.log('ℹ️ Skipping extension checks (set EXT_TEST_API_KEY and EXT_TEST_UID to enable, or ensure mapping on server).');
   }
 
   // Auth endpoints (optional)
