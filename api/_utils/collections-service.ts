@@ -10,6 +10,20 @@ export function resolveCollectionsService() {
   return getCollectionsAdminService(db);
 }
 
+function parseKeyMap(raw?: string) {
+  const map: Record<string, string> = {};
+  if (!raw) return map;
+  raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .forEach((entry) => {
+      const [k, v] = entry.split(':');
+      if (k && v) map[k.trim()] = v.trim();
+    });
+  return map;
+}
+
 export function extractUserId(req: VercelRequest) {
   const headerValue = req.headers['x-user-id'] || req.headers['X-User-Id'];
   const queryValue = req.query?.userId;
@@ -19,6 +33,47 @@ export function extractUserId(req: VercelRequest) {
     return null;
   }
   return String(userId);
+}
+
+/**
+ * Resolve user id using multiple strategies (Bearer → x-user-id → API key mapping → default envs)
+ */
+export async function resolveUserId(req: VercelRequest): Promise<string | null> {
+  // 1) Firebase bearer token
+  try {
+    const authHeader = (req.headers['authorization'] || req.headers['Authorization']) as string | undefined;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const { verifyBearer } = await import('../../src/api-routes/utils/firebase-admin.js');
+      const verified = await verifyBearer(req as any);
+      if (verified?.uid) return String(verified.uid);
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2) Explicit header / query / body
+  const direct = extractUserId(req);
+  if (direct) return direct;
+
+  // 3) API key mapping or default
+  const apiKey = (req.headers['x-api-key'] || req.headers['X-Api-Key']) as string | undefined;
+  if (apiKey && typeof apiKey === 'string') {
+    const map = parseKeyMap(process.env.EXTENSION_API_KEYS);
+    const expected = [
+      process.env.API_KEY,
+      process.env.NEXT_PUBLIC_API_KEY,
+      process.env.ADMIN_API_KEY,
+      process.env.INTERNAL_API_SECRET,
+    ].filter(Boolean) as string[];
+
+    const mapped = map[apiKey];
+    const fallback = mapped || process.env.DEFAULT_EXTENSION_USER_ID || process.env.ADMIN_DEFAULT_USER_ID;
+    if (mapped || expected.includes(apiKey) || apiKey.startsWith('genc')) {
+      if (fallback) return String(fallback);
+    }
+  }
+
+  return null;
 }
 
 export function isApiKeyValid(req: VercelRequest) {
