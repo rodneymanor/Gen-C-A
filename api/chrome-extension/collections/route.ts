@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateApiKey } from "@/lib/api-key-auth";
-import { buildInternalUrl } from "@/lib/utils/url";
+// Avoid buildInternalUrl for serverless; resolve same-origin URLs from the request
 
 /**
  * GET /api/chrome-extension/collections
@@ -99,7 +99,10 @@ export async function GET(request: NextRequest) {
     if (apiKey) forwardedHeaders["x-api-key"] = apiKey;
     if (authHeader) forwardedHeaders["authorization"] = authHeader;
 
-    const res = await fetch(buildInternalUrl("/api/collections"), {
+    const origin = request.nextUrl?.origin || `https://${request.headers.get('host')}`;
+    const target = new URL("/api/collections", origin);
+    console.log("[Chrome Collections][GET] forwarding ->", target.toString());
+    const res = await fetch(target, {
       method: "GET",
       headers: forwardedHeaders,
       cache: "no-store",
@@ -182,7 +185,10 @@ export async function POST(request: NextRequest) {
     if (apiKey) forwardedHeaders["x-api-key"] = apiKey;
     if (authHeader) forwardedHeaders["authorization"] = authHeader;
 
-    const res = await fetch(buildInternalUrl("/api/collections"), {
+    const origin = request.nextUrl?.origin || `https://${request.headers.get('host')}`;
+    const target = new URL("/api/collections", origin);
+    console.log("[Chrome Collections][POST] forwarding ->", target.toString());
+    const res = await fetch(target, {
       method: "POST",
       headers: forwardedHeaders,
       body: JSON.stringify(body ?? {}),

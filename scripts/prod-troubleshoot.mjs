@@ -72,6 +72,19 @@ async function main() {
   const voices = await fetchJson('/api/brand-voices/list');
   logStatus('GET /api/brand-voices/list', voices);
 
+  // Chrome extension endpoints (optional API key + uid)
+  const extKey = process.env.EXT_TEST_API_KEY || process.env.INTERNAL_API_SECRET;
+  const extUid = process.env.EXT_TEST_UID || process.env.ADMIN_DEFAULT_USER_ID || process.env.DEFAULT_EXTENSION_USER_ID;
+  if (extKey && extUid) {
+    const hdrs = { 'x-api-key': extKey, 'x-user-id': extUid };
+    const extCols = await fetchJson('/api/chrome-extension/collections', { headers: hdrs });
+    logStatus('GET /api/chrome-extension/collections', extCols);
+    const extNotes = await fetchJson('/api/chrome-extension/notes', { headers: hdrs });
+    logStatus('GET /api/chrome-extension/notes', extNotes);
+  } else {
+    console.log('ℹ️ Skipping extension checks (set EXT_TEST_API_KEY and EXT_TEST_UID to enable).');
+  }
+
   // Auth endpoints (optional)
   const email = process.env.FIREBASE_TEST_EMAIL;
   const password = process.env.FIREBASE_TEST_PASSWORD;
@@ -111,4 +124,3 @@ async function main() {
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
-

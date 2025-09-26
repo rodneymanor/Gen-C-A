@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateApiKey } from "@/lib/api-key-auth";
-import { buildInternalUrl } from "@/lib/utils/url";
+// Resolve same-origin internal URL at runtime
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +15,10 @@ export async function POST(request: NextRequest) {
     if (apiKey) headers["x-api-key"] = apiKey;
     if (authHeader) headers["authorization"] = authHeader;
 
-    const response = await fetch(buildInternalUrl("/api/chrome-extension/idea-inbox/text"), {
+    const origin = request.nextUrl?.origin || `https://${request.headers.get('host')}`;
+    const target = new URL("/api/chrome-extension/idea-inbox/text", origin);
+    console.log("[Chrome Idea Text] forwarding ->", target.toString());
+    const response = await fetch(target, {
       method: "POST",
       headers,
       body: JSON.stringify(body ?? {}),

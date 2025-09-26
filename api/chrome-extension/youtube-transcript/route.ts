@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateApiKey } from "@/lib/api-key-auth";
-import { buildInternalUrl } from "@/lib/utils/url";
+// Resolve same-origin URL at runtime; avoid backend fallbacks
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +15,10 @@ export async function POST(request: NextRequest) {
     if (apiKey) headers["x-api-key"] = apiKey;
     if (authHeader) headers["authorization"] = authHeader;
 
-    const response = await fetch(buildInternalUrl("/api/chrome-extension/youtube-transcript"), {
+    const origin = request.nextUrl?.origin || `https://${request.headers.get('host')}`;
+    const target = new URL("/api/chrome-extension/youtube-transcript", origin);
+    console.log("[Chrome YT Transcript][POST] forwarding ->", target.toString());
+    const response = await fetch(target, {
       method: "POST",
       headers,
       body: JSON.stringify(body ?? {}),
@@ -34,7 +37,9 @@ export async function GET(request: NextRequest) {
     const authResult = await authenticateApiKey(request);
     if (authResult instanceof NextResponse) return authResult;
 
-    const forwardedUrl = new URL(buildInternalUrl("/api/chrome-extension/youtube-transcript"));
+    const origin = request.nextUrl?.origin || `https://${request.headers.get('host')}`;
+    const forwardedUrl = new URL("/api/chrome-extension/youtube-transcript", origin);
+    console.log("[Chrome YT Transcript][GET] forwarding ->", forwardedUrl.toString());
     const original = new URL(request.url);
     original.searchParams.forEach((value, key) => {
       forwardedUrl.searchParams.set(key, value);
