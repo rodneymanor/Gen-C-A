@@ -20,6 +20,7 @@ import scriptsIdHandler from './scripts/[id]';
 import notesIndexHandler from './notes/index';
 import extCollectionsHandler from './chrome-extension/collections';
 import extNotesHandler from './chrome-extension/notes';
+import extAddVideoHandler from './chrome-extension/collections/add-video';
 import notesIdHandler from './notes/[id]';
 import collectionsIndexHandler from './collections/index';
 import collectionsUserCollectionsHandler from './collections/user-collections';
@@ -180,6 +181,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Chrome extension endpoints (handle locally first)
     if (path === '/api/chrome-extension/collections') {
       return extCollectionsHandler(req, res);
+    }
+    if (path === '/api/chrome-extension/collections/add-video' && req.method === 'POST') {
+      return extAddVideoHandler(req, res);
     }
     if (path === '/api/chrome-extension/notes') {
       return extNotesHandler(req, res);
