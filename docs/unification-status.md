@@ -13,7 +13,7 @@ This document tracks the current state of the application unification effort and
  - OpenAPI contract: Scripts endpoints are documented in `openapi/openapi.yaml`, generate typed clients, and are validated at runtime.
 - Observability: Lightweight request logging added to dev server; smoke script verifies backend vs. proxy parity.
 
-Recent focus: removed redundant serverless handlers under `api/**`, consolidated to a single catch‑all proxy, added CI smoke, and expanded OpenAPI to Notes/Collections.
+Recent focus: removed redundant serverless handlers under `api/**`, consolidated to a single catch‑all proxy, removed `api/_utils`, added CI smoke, and expanded OpenAPI to Notes/Collections.
 
 ## Environment Contract
 - [x] `.env.example` added with complete variable inventory.

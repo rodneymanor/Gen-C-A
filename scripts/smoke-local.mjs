@@ -128,6 +128,16 @@ async function main() {
     allOk &&= videoRes.status === 201 || videoRes.status === 200;
   }
 
+  // Collections/Videos contract presence checks (expect 401 without auth)
+  try {
+    const vList = await fetch(`${backend}/api/videos/collection`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ collectionId: 'all-videos', videoLimit: 3 }) });
+    console.log(`videos/collection POST (no auth) → backend:${vList.status}`);
+    allOk &&= vList.status === 401 || vList.status === 400 || vList.status === 200; // allow 400/401/200 depending on backend setup
+  } catch (e) {
+    console.log('videos/collection check failed:', e.message);
+    allOk = false;
+  }
+
   // Optional: collections endpoints when a test user is provided
   if (userId) {
     const bc = await fetch(`${backend}/api/collections?userId=${encodeURIComponent(userId)}`);
