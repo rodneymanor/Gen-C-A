@@ -28,6 +28,11 @@ To get to a single, predictable app, adopt the following guardrails:
 4. **Explicit environment manifests.** Capture required environment variables (RapidAPI keys, Gemini, Firebase credentials) in a typed schema that runs on boot for both local and production builds. Fail fast when configuration is incomplete.
 5. **Incremental, testable slices.** Ship consolidation in small phases with automated smoke tests per route so beginners can validate each step before proceeding.
 
+## Current Focus (Phase 2 slices)
+- Chrome Extension endpoints: unified behind `apps/backend/src/routes/extension.ts`. Traffic now routes via the serverless catch‑all proxy (`api/[...path].ts`) or an optional Vercel rewrite.
+- Video ingest parity: all `api/video/*` Next handlers removed in favor of catch‑all; dev proxy remains until parity is validated, then we’ll drop JSON fallbacks in `server.js`.
+- OpenAPI coverage: extended from Scripts to Notes + Collections (list, update, move/copy/delete) and Videos (collection listing, add‑to‑collection). Generated client used by hooks and services.
+
 ## Recommended migration roadmap
 
 ### Phase 0 – Stabilize environments
@@ -42,6 +47,12 @@ To get to a single, predictable app, adopt the following guardrails:
 - Inside `apps/backend`, expose every route currently proxied via `server.js`, using the existing controllers as a starting point. Ensure TikTok, Instagram, collections, notes, scripts, and viral content endpoints return the same payload shape as today.
 - Modify the Vercel `api/**` files and Next.js App Router handlers to delegate directly to the backend service over HTTP (or import shared service modules) while clearly marking them as temporary shims.
 - Remove fallback data paths from `server.js` once the backend responds consistently in development to avoid masking failures.
+
+Acceptance criteria for this phase (Chrome Extension slice):
+- `GET/POST /api/chrome-extension/youtube-transcript` return backend responses in dev and prod with identical shapes.
+- `POST /api/chrome-extension/idea-inbox/text` and `/idea-inbox/video` succeed under test/dev auth and 401 without.
+- No self-recursive calls in App Router; either direct backend call or rewrite-based delegation.
+ - All `api/**` serverless handlers removed (except the catch‑all); requests are served by backend (verified via `x-served-by: backend`).
 
 ### Phase 3 – Unify authentication & permissions
 - Implement a single Express middleware in `apps/backend` that verifies Firebase tokens for user routes and enforces role checks for admin routes. Reference the same middleware from every controller.
@@ -58,6 +69,14 @@ To get to a single, predictable app, adopt the following guardrails:
 - **Feature boundaries:** Document which directory owns which responsibilities (`src/services` for business logic, `apps/backend` for HTTP transport, `src/pages`/`src/features` for UI) to reduce accidental cross-cutting changes.
 - **Testing guidance:** Provide ready-to-run scripts (Vitest/unit for services, Playwright or simple fetch-based smoke tests for APIs) so that every phase in the roadmap can be validated by beginners without deep backend knowledge.
 - **Change management:** Encourage feature flags or environment-based toggles when rolling out new ingestion providers (TikTok, Instagram) to prevent regressions from breaking unrelated flows.
+ - **CI:** PRs run backend + smoke tests automatically; logs include `x-served-by` headers to ensure requests hit the canonical backend.
+
+## Environment manifest (reference)
+- `.env.example` enumerates required keys and recommended defaults. Key items for current slice:
+  - `BACKEND_INTERNAL_URL`, `BACKEND_URL`: used by shims to reach canonical backend.
+  - `RAPIDAPI_KEY`: required for YouTube transcript endpoint.
+  - `INTERNAL_API_SECRET` or Firebase ID token: used for protected Chrome Extension flows.
+
 
 By following this plan, the team can converge on a single, testable backend runtime, eliminate the local vs. production drift, and give beginners a reliable workflow for adding features without reintroducing duplication.
 

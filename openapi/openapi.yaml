@@ -3,7 +3,7 @@ info:
   title: Gen-C Scripts API
   version: 1.0.0
   description: |
-    OpenAPI specification for the scripts surfaces served by the Gen-C backend.
+    OpenAPI specification for key backend surfaces used by the dashboard.
     The documented endpoints power script CRUD flows in the dashboard and the
     YouTube idea seed generator. Responses follow the existing `{ success: ... }`
     envelope used by the legacy fetch helpers.
@@ -19,6 +19,133 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    Note:
+      type: object
+      additionalProperties: true
+      required: [id, title, content, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        content: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        starred: { type: boolean }
+        userId: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    NotesResponse:
+      type: object
+      required: [success]
+      additionalProperties: true
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        notes:
+          type: array
+          items: { $ref: '#/components/schemas/Note' }
+    NoteResponse:
+      type: object
+      required: [success]
+      additionalProperties: true
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        note: { $ref: '#/components/schemas/Note' }
+    CreateNoteRequest:
+      type: object
+      additionalProperties: true
+      required: [title, content]
+      properties:
+        title: { type: string }
+        content: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        starred: { type: boolean }
+    UpdateNoteRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        title: { type: string }
+        content: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        starred: { type: boolean }
+    Collection:
+      type: object
+      additionalProperties: true
+      required: [id, title, userId]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        userId: { type: string }
+        videoCount: { type: number }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CollectionsResponse:
+      type: object
+      required: [success]
+      additionalProperties: true
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        collections:
+          type: array
+          items: { $ref: '#/components/schemas/Collection' }
+    MoveVideoRequest:
+      type: object
+      additionalProperties: false
+      required: [videoId, toCollectionId]
+      properties:
+        videoId: { type: string }
+        fromCollectionId: { type: string }
+        toCollectionId: { type: string }
+    CopyVideoRequest:
+      type: object
+      additionalProperties: false
+      required: [videoId, toCollectionId]
+      properties:
+        videoId: { type: string }
+        fromCollectionId: { type: string }
+        toCollectionId: { type: string }
+    UpdateCollectionRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+    VideosResponse:
+      type: object
+      additionalProperties: true
+      required: [success, videos]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        videos:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        totalCount: { type: number }
+        lastDocId: { type: string }
+    AddVideoToCollectionRequest:
+      type: object
+      additionalProperties: true
+      required: [userId, collectionId, videoData]
+      properties:
+        userId: { type: string }
+        collectionId: { type: string }
+        videoData:
+          type: object
+          additionalProperties: true
     Script:
       type: object
       description: Script document persisted in Firestore.
@@ -293,6 +420,296 @@ components:
             audienceLevel: { type: string }
             transcriptChars: { type: integer }
 paths:
+  /api/notes:
+    get:
+      summary: List notes for the authenticated user.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Notes fetched successfully.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotesResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    post:
+      summary: Create a note for the authenticated user.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateNoteRequest' }
+      responses:
+        '201':
+          description: Note created successfully.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NoteResponse' }
+        '400':
+          description: Invalid payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /api/notes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Fetch a note by id.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Note returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NoteResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Note not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    put:
+      summary: Update a note by id.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateNoteRequest' }
+      responses:
+        '200':
+          description: Note updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NoteResponse' }
+        '400':
+          description: Invalid update payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Note not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      summary: Delete a note by id.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Note deleted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BasicSuccessResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Note not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /api/collections:
+    get:
+      summary: List collections for the authenticated user.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Collections fetched successfully.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CollectionsResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /api/collections/move-video:
+    post:
+      summary: Move a video between collections.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MoveVideoRequest' }
+      responses:
+        '200':
+          description: Video moved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BasicSuccessResponse' }
+        '400':
+          description: Invalid payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /api/collections/copy-video:
+    post:
+      summary: Copy a video to another collection.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CopyVideoRequest' }
+      responses:
+        '200':
+          description: Video copied.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BasicSuccessResponse' }
+        '400':
+          description: Invalid payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /api/collections/update:
+    patch:
+      summary: Update a collection's metadata.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCollectionRequest' }
+      responses:
+        '200':
+          description: Collection updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BasicSuccessResponse' }
+        '400':
+          description: Invalid payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /api/collections/delete:
+    delete:
+      summary: Delete a collection by id.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Collection deleted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BasicSuccessResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /api/videos/collection:
+    post:
+      summary: List videos for a collection.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              properties:
+                collectionId: { type: string }
+                videoLimit: { type: number }
+                lastDocId: { type: string }
+      responses:
+        '200':
+          description: Videos returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VideosResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /api/videos/add-to-collection:
+    post:
+      summary: Add a processed video to a collection.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddVideoToCollectionRequest' }
+      responses:
+        '200':
+          description: Video added.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  videoId: { type: string }
+        '400':
+          description: Invalid payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
   /api/scripts:
     get:
       summary: List scripts for the authenticated user.

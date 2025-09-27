@@ -111,8 +111,10 @@ async function forwardToBackend(req, res, pathOverride) {
   const text = await response.text();
   try {
     const data = text ? JSON.parse(text) : null;
+    res.setHeader('x-served-by', 'dev-proxy');
     res.status(response.status).json(data);
   } catch {
+    res.setHeader('x-served-by', 'dev-proxy');
     res.status(response.status).send(text);
   }
 }

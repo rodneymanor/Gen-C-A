@@ -979,29 +979,20 @@ export class CollectionsService {
     lastDocId?: string,
     firebaseToken?: string,
   ): Promise<VideosApiResponse> {
-    const params = new URLSearchParams();
-    if (collectionId) params.append("collectionId", collectionId);
-    params.append("limit", limit.toString());
-    if (lastDocId) params.append("lastDocId", lastDocId);
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (firebaseToken) {
-      headers["Authorization"] = `Bearer ${firebaseToken}`;
-    }
-
-    const response = await fetch(`/api/collections/collection-videos?${params.toString()}`, {
-      method: "GET",
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (firebaseToken) headers["Authorization"] = `Bearer ${firebaseToken}`;
+    const { createApiClient } = await import("@/api/client");
+    const client = createApiClient("");
+    const { data, error } = await client.POST("/api/videos/collection", {
       headers,
+      body: {
+        collectionId: collectionId || undefined,
+        videoLimit: limit,
+        lastDocId: lastDocId || undefined,
+      },
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch videos: ${response.statusText}`);
-    }
-
-    return response.json();
+    if (error) throw new Error("Failed to fetch videos");
+    return (data || { success: true, videos: [], totalCount: 0 });
   }
 
   /**
@@ -1022,30 +1013,16 @@ export class CollectionsService {
         };
       }
 
-      const response = await fetch("/api/videos/add-to-collection", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          collectionId,
-          videoData,
-        }),
+      const { createApiClient } = await import("@/api/client");
+      const client = createApiClient("");
+      const { data, error } = await client.POST("/api/videos/add-to-collection", {
+        body: { userId, collectionId, videoData },
+        headers: { "Content-Type": "application/json" },
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        console.error("Failed to add video:", result);
-        return {
-          success: false,
-          message: result.message ?? "Failed to add video to collection",
-          error: result.error,
-        };
+      if (error) {
+        return { success: false, message: "Failed to add video to collection", error: (error as any)?.error } as any;
       }
-
-      return result;
+      return data as any;
     } catch (error) {
       console.error("❌ [VIDEO_COLLECTION] Unexpected error:", error);
       return {

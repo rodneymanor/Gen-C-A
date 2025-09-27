@@ -3,108 +3,728 @@
  * Do not make direct changes to the file.
  */
 
+
 /** OneOf type helpers */
 type Without<T, U> = { [P in Exclude<keyof T, keyof U>]?: never };
 type XOR<T, U> = (T | U) extends object ? (Without<T, U> & U) | (Without<U, T> & T) : T | U;
 type OneOf<T extends any[]> = T extends [infer Only] ? Only : T extends [infer A, infer B, ...infer Rest] ? OneOf<[XOR<A, B>, ...Rest]> : never;
 
 export interface paths {
-  "/api/scripts": {
+  "/api/notes": {
+    /** List notes for the authenticated user. */
     get: {
       responses: {
-        200: { content: { "application/json": components["schemas"]["ScriptsResponse"] } };
-        401: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        503: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
+        /** @description Notes fetched successfully. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["NotesResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
       };
     };
+    /** Create a note for the authenticated user. */
     post: {
-      requestBody: { content: { "application/json": components["schemas"]["CreateScriptRequest"] } };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CreateNoteRequest"];
+        };
+      };
       responses: {
-        200: { content: { "application/json": components["schemas"]["ScriptResponse"] } };
-        400: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        401: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        503: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
+        /** @description Note created successfully. */
+        201: {
+          content: {
+            "application/json": components["schemas"]["NoteResponse"];
+          };
+        };
+        /** @description Invalid payload. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/notes/{id}": {
+    /** Fetch a note by id. */
+    get: {
+      parameters: {
+        path: {
+          id: string;
+        };
+      };
+      responses: {
+        /** @description Note returned. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["NoteResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Note not found. */
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    /** Update a note by id. */
+    put: {
+      parameters: {
+        path: {
+          id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdateNoteRequest"];
+        };
+      };
+      responses: {
+        /** @description Note updated. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["NoteResponse"];
+          };
+        };
+        /** @description Invalid update payload. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Note not found. */
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    /** Delete a note by id. */
+    delete: {
+      parameters: {
+        path: {
+          id: string;
+        };
+      };
+      responses: {
+        /** @description Note deleted. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["BasicSuccessResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Note not found. */
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+  };
+  "/api/collections": {
+    /** List collections for the authenticated user. */
+    get: {
+      responses: {
+        /** @description Collections fetched successfully. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["CollectionsResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/collections/move-video": {
+    /** Move a video between collections. */
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["MoveVideoRequest"];
+        };
+      };
+      responses: {
+        /** @description Video moved. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["BasicSuccessResponse"];
+          };
+        };
+        /** @description Invalid payload. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/collections/copy-video": {
+    /** Copy a video to another collection. */
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CopyVideoRequest"];
+        };
+      };
+      responses: {
+        /** @description Video copied. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["BasicSuccessResponse"];
+          };
+        };
+        /** @description Invalid payload. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/collections/update": {
+    /** Update a collection's metadata. */
+    patch: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdateCollectionRequest"];
+        };
+      };
+      responses: {
+        /** @description Collection updated. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["BasicSuccessResponse"];
+          };
+        };
+        /** @description Invalid payload. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/collections/delete": {
+    /** Delete a collection by id. */
+    delete: {
+      parameters: {
+        query: {
+          id: string;
+        };
+      };
+      responses: {
+        /** @description Collection deleted. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["BasicSuccessResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Not found. */
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/videos/collection": {
+    /** List videos for a collection. */
+    post: {
+      requestBody: {
+        content: {
+          "application/json": {
+            collectionId?: string;
+            videoLimit?: number;
+            lastDocId?: string;
+            [key: string]: unknown;
+          };
+        };
+      };
+      responses: {
+        /** @description Videos returned. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["VideosResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/videos/add-to-collection": {
+    /** Add a processed video to a collection. */
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["AddVideoToCollectionRequest"];
+        };
+      };
+      responses: {
+        /** @description Video added. */
+        200: {
+          content: {
+            "application/json": {
+              /** @enum {boolean} */
+              success?: true;
+              videoId?: string;
+              [key: string]: unknown;
+            };
+          };
+        };
+        /** @description Invalid payload. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/scripts": {
+    /** List scripts for the authenticated user. */
+    get: {
+      responses: {
+        /** @description Scripts fetched successfully. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["ScriptsResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Firestore unavailable. */
+        503: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    /** Create a script for the authenticated user. */
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CreateScriptRequest"];
+        };
+      };
+      responses: {
+        /** @description Script created. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["ScriptResponse"];
+          };
+        };
+        /** @description Invalid request payload. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Firestore unavailable. */
+        503: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
       };
     };
   };
   "/api/scripts/{id}": {
-    parameters: { path: { id: string } };
+    /** Fetch a script by id. */
     get: {
-      parameters: { path: { id: string } };
+      parameters: {
+        path: {
+          id: string;
+        };
+      };
       responses: {
-        200: { content: { "application/json": components["schemas"]["ScriptResponse"] } };
-        401: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        403: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        404: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
+        /** @description Script returned. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["ScriptResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Script belongs to another user. */
+        403: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Script not found. */
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
       };
     };
+    /** Update a script. */
     put: {
-      parameters: { path: { id: string } };
-      requestBody: { content: { "application/json": components["schemas"]["UpdateScriptRequest"] } };
+      parameters: {
+        path: {
+          id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["UpdateScriptRequest"];
+        };
+      };
       responses: {
-        200: { content: { "application/json": components["schemas"]["ScriptResponse"] } };
-        400: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        401: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        403: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        404: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
+        /** @description Script updated. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["ScriptResponse"];
+          };
+        };
+        /** @description Invalid update payload. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Script belongs to another user. */
+        403: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Script not found. */
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
       };
     };
+    /** Delete a script. */
     delete: {
-      parameters: { path: { id: string } };
+      parameters: {
+        path: {
+          id: string;
+        };
+      };
       responses: {
-        200: { content: { "application/json": components["schemas"]["BasicSuccessResponse"] } };
-        401: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        403: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        404: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
+        /** @description Script deleted. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["BasicSuccessResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Script belongs to another user. */
+        403: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Script not found. */
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    parameters: {
+      path: {
+        id: string;
       };
     };
   };
   "/api/scripts/youtube-ideas": {
+    /** Generate YouTube idea seeds from a transcript. */
     post: {
-      requestBody: { content: { "application/json": components["schemas"]["GenerateIdeaSeedsRequest"] } };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["GenerateIdeaSeedsRequest"];
+        };
+      };
       responses: {
-        200: { content: { "application/json": components["schemas"]["GenerateIdeaSeedsResponse"] } };
-        400: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        401: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        502: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
-        503: { content: { "application/json": components["schemas"]["ErrorResponse"] } };
+        /** @description Idea seeds generated. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["GenerateIdeaSeedsResponse"];
+          };
+        };
+        /** @description Invalid payload or transcript. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Authentication required. */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Downstream model failure. */
+        502: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Service unavailable (e.g., missing Gemini key). */
+        503: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
       };
     };
   };
 }
 
+export type webhooks = Record<string, never>;
+
 export interface components {
   schemas: {
+    Note: {
+      id: string;
+      title: string;
+      content: string;
+      tags?: string[];
+      starred?: boolean;
+      userId?: string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+      [key: string]: unknown;
+    };
+    NotesResponse: {
+      /** @enum {boolean} */
+      success: true;
+      notes?: components["schemas"]["Note"][];
+      [key: string]: unknown;
+    };
+    NoteResponse: {
+      /** @enum {boolean} */
+      success: true;
+      note?: components["schemas"]["Note"];
+      [key: string]: unknown;
+    };
+    CreateNoteRequest: {
+      title: string;
+      content: string;
+      tags?: string[];
+      starred?: boolean;
+      [key: string]: unknown;
+    };
+    UpdateNoteRequest: {
+      title?: string;
+      content?: string;
+      tags?: string[];
+      starred?: boolean;
+      [key: string]: unknown;
+    };
+    Collection: {
+      id: string;
+      title: string;
+      description?: string;
+      userId: string;
+      videoCount?: number;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      [key: string]: unknown;
+    };
+    CollectionsResponse: {
+      /** @enum {boolean} */
+      success: true;
+      collections?: components["schemas"]["Collection"][];
+      [key: string]: unknown;
+    };
+    MoveVideoRequest: {
+      videoId: string;
+      fromCollectionId?: string;
+      toCollectionId: string;
+    };
+    CopyVideoRequest: {
+      videoId: string;
+      fromCollectionId?: string;
+      toCollectionId: string;
+    };
+    UpdateCollectionRequest: {
+      id?: string;
+      title?: string;
+      description?: string;
+      [key: string]: unknown;
+    };
+    VideosResponse: {
+      /** @enum {boolean} */
+      success: true;
+      videos: {
+          [key: string]: unknown;
+        }[];
+      totalCount?: number;
+      lastDocId?: string;
+      [key: string]: unknown;
+    };
+    AddVideoToCollectionRequest: {
+      userId: string;
+      collectionId: string;
+      videoData: {
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+    /** @description Script document persisted in Firestore. */
     Script: {
       id: string;
       title: string;
       content: string;
       authors?: string;
+      /** @enum {string} */
       status?: "draft" | "published" | "scheduled" | "sent";
-      performance?: { views?: number; engagement?: number };
+      performance?: {
+        views?: number;
+        engagement?: number;
+      };
       category?: string;
+      /** Format: date-time */
       createdAt: string;
+      /** Format: date-time */
       updatedAt: string;
+      /** Format: date-time */
       viewedAt?: string;
       duration?: string;
       tags?: string[];
+      /** @enum {string} */
       fileType?: "Script" | "Template";
       summary?: string;
       userId?: string;
+      /** @enum {string} */
       approach?: "speed-write" | "educational" | "ai-voice";
-      voice?: { id?: string; name?: string; badges?: string[]; [k: string]: unknown };
+      voice?: components["schemas"]["ScriptVoice"];
       originalIdea?: string;
       targetLength?: string;
       wordCount?: number;
       characterCount?: number;
       source?: string;
+      /** Format: date-time */
       scheduledDate?: string;
+      /** @enum {string} */
       platform?: "tiktok" | "instagram" | "youtube";
+      /** Format: uri */
       publishedUrl?: string;
       isThread?: boolean;
       threadParts?: string[];
-      elements?: { [k: string]: unknown };
-      [k: string]: unknown;
+      elements?: {
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+    ScriptVoice: {
+      id?: string;
+      name?: string;
+      badges?: string[];
+      [key: string]: unknown;
     };
     CreateScriptRequest: {
       title: string;
@@ -112,17 +732,21 @@ export interface components {
       category?: string;
       tags?: string[];
       summary?: string;
+      /** @enum {string} */
       approach: "speed-write" | "educational" | "ai-voice";
-      voice?: components["schemas"]["Script"]["voice"];
+      voice?: components["schemas"]["ScriptVoice"];
       originalIdea?: string;
       targetLength?: string;
       source?: string;
+      /** Format: date-time */
       scheduledDate?: string;
+      /** @enum {string} */
       platform?: "tiktok" | "instagram" | "youtube";
+      /** @enum {string} */
       status?: "draft" | "scheduled" | "sent";
       isThread?: boolean;
       threadParts?: string[];
-      [k: string]: unknown;
+      [key: string]: unknown;
     };
     UpdateScriptRequest: {
       title?: string;
@@ -130,37 +754,92 @@ export interface components {
       category?: string;
       tags?: string[];
       summary?: string;
+      /** @enum {string} */
       status?: "draft" | "published" | "scheduled" | "sent";
+      /** Format: date-time */
       scheduledDate?: string;
+      /** @enum {string} */
       platform?: "tiktok" | "instagram" | "youtube";
+      /** Format: uri */
       publishedUrl?: string;
       isThread?: boolean;
       threadParts?: string[];
-      [k: string]: unknown;
+      [key: string]: unknown;
     };
-    ErrorResponse: { success: false; error: string; debug?: Record<string, never>; [k: string]: unknown };
-    ScriptsResponse: { success: true; scripts?: components["schemas"]["Script"][]; [k: string]: unknown };
-    ScriptResponse: { success: true; script?: components["schemas"]["Script"]; [k: string]: unknown };
-    BasicSuccessResponse: { success: true; [k: string]: unknown };
-    TranscriptChunk: { text: string; start?: number; end?: number; timestamp?: number[]; [k: string]: unknown };
+    ErrorResponse: {
+      /** @enum {boolean} */
+      success: false;
+      error: string;
+      /** @description Optional debug payload returned for internal errors. */
+      debug?: Record<string, never>;
+      [key: string]: unknown;
+    };
+    ScriptsResponse: {
+      /** @enum {boolean} */
+      success: true;
+      scripts?: components["schemas"]["Script"][];
+      [key: string]: unknown;
+    };
+    ScriptResponse: {
+      /** @enum {boolean} */
+      success: true;
+      script?: components["schemas"]["Script"];
+      [key: string]: unknown;
+    };
+    BasicSuccessResponse: {
+      /** @enum {boolean} */
+      success: true;
+      [key: string]: unknown;
+    };
+    TranscriptChunk: {
+      text: string;
+      start?: number;
+      end?: number;
+      timestamp?: number[];
+      [key: string]: unknown;
+    };
     IdeaSeed: {
       coreClaim: string;
       payoff: string;
-      proof: { type: "stat" | "example" | "quote" | "demo"; text: string; numbers?: string };
+      proof: {
+        /** @enum {string} */
+        type: "stat" | "example" | "quote" | "demo";
+        text: string;
+        numbers?: string;
+      };
       mechanismOrSteps?: string[];
+      /** @enum {string} */
       angle: "question" | "contrarian" | "stat_shock" | "mistake" | "myth" | "story";
       painPoint?: string;
       reasonToBelieve?: string;
       context?: string;
       promise?: string;
-      cta: { type: "comment" | "watch_full" | "subscribe" | "download" | "signup" | "follow" | "buy"; prompt: string; target?: OneOf<[string, { videoTs: number }]> };
+      cta: {
+        /** @enum {string} */
+        type: "comment" | "watch_full" | "subscribe" | "download" | "signup" | "follow" | "buy";
+        prompt: string;
+        target?: OneOf<[string, {
+          videoTs: number;
+        }]>;
+      };
       entities?: string[];
+      /** @enum {string} */
       audienceLevel?: "beginner" | "intermediate" | "advanced";
-      provenance: { startSec: number; endSec: number };
-      scores: { hookPotential: number; specificity: number; actionability: number; novelty: number; overall: number };
-      [k: string]: unknown;
+      provenance: {
+        startSec: number;
+        endSec: number;
+      };
+      scores: {
+        hookPotential: number;
+        specificity: number;
+        actionability: number;
+        novelty: number;
+        overall: number;
+      };
+      [key: string]: unknown;
     };
     GenerateIdeaSeedsRequest: {
+      /** Format: uri */
       url?: string;
       lang?: string;
       videoId?: string;
@@ -168,14 +847,24 @@ export interface components {
       chunks?: components["schemas"]["TranscriptChunk"][];
       maxIdeas?: number;
       minOverall?: number;
+      /** @enum {string} */
       audienceLevel?: "beginner" | "intermediate" | "advanced";
-      [k: string]: unknown;
+      [key: string]: unknown;
     };
     GenerateIdeaSeedsResponse: {
+      /** @enum {boolean} */
       success: true;
       ideas: components["schemas"]["IdeaSeed"][];
-      meta?: { model?: string; durationMs?: number; maxIdeas?: number; minOverall?: number; audienceLevel?: string; transcriptChars?: number; [k: string]: unknown };
-      [k: string]: unknown;
+      meta?: {
+        model?: string;
+        durationMs?: number;
+        maxIdeas?: number;
+        minOverall?: number;
+        audienceLevel?: string;
+        transcriptChars?: number;
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
     };
   };
   responses: never;
@@ -185,8 +874,8 @@ export interface components {
   pathItems: never;
 }
 
-export type operations = Record<string, never>;
-export type webhooks = Record<string, never>;
 export type $defs = Record<string, never>;
+
 export type external = Record<string, never>;
 
+export type operations = Record<string, never>;

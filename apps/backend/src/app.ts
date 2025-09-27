@@ -27,6 +27,12 @@ export function createApp() {
   app.use(cors());
   app.use(express.json({ limit: '10mb' }));
 
+  // Identify responses as coming from the canonical backend
+  app.use((req, res, next) => {
+    res.setHeader('x-served-by', 'backend');
+    next();
+  });
+
   // Health endpoint (not part of OpenAPI; keep before validator)
   app.get('/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok' });

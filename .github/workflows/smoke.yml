@@ -1,0 +1,57 @@
+name: Smoke
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start backend
+        run: |
+          nohup npm run -s backend:dev > backend.log 2>&1 & echo $! > backend.pid
+          for i in {1..60}; do
+            curl -fsS http://localhost:5001/health && exit 0 || true
+            sleep 1
+          done
+          echo "Backend failed to start" && exit 1
+
+      - name: Run smoke tests
+        env:
+          BACKEND_URL: http://localhost:5001
+        run: |
+          node scripts/smoke-local.mjs | tee smoke.log
+
+      - name: Show served-by summary
+        if: always()
+        run: |
+          echo '--- x-served-by occurrences ---'
+          grep -Eo "\[(backend|shim|dev-proxy)\]" -n smoke.log || true
+
+      - name: Upload backend log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-log
+          path: backend.log
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f backend.pid ]; then kill $(cat backend.pid) || true; fi
+          rm -f backend.pid

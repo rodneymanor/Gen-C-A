@@ -1,6 +1,7 @@
 import type { ContentItem } from '@/types';
 import { ReactDebugger, DEBUG_LEVELS } from '@/utils/debugger';
 import { auth } from '@/lib/firebase';
+import { createApiClient } from '@/api/client';
 
 function mapScriptToItem(script: any): ContentItem {
   const created = script.createdAt ? new Date(script.createdAt) : new Date();
@@ -74,27 +75,22 @@ async function buildAuthHeaders(): Promise<Record<string, string>> {
 
 export async function getLibraryContent(): Promise<ContentItem[]> {
   const headers = await buildAuthHeaders();
+  const client = createApiClient('');
 
-  const [scriptsResponse, notesResponse] = await Promise.all([
-    fetch('/api/scripts', { cache: 'no-store' as any, headers }),
-    fetch('/api/notes', { cache: 'no-store' as any, headers }),
+  const [scriptsRes, notesRes] = await Promise.all([
+    client.GET('/api/scripts', { headers }),
+    client.GET('/api/notes', { headers }),
   ]);
 
-  if (!scriptsResponse.ok) {
-    throw new Error('Failed to load scripts.');
-  }
+  if (scriptsRes.error) throw new Error('Failed to load scripts');
+  if (notesRes.error) throw new Error('Failed to load notes');
 
-  if (!notesResponse.ok) {
-    throw new Error('Failed to load notes.');
-  }
-
-  const scriptsPayload = await scriptsResponse.json();
-  const notesPayload = await notesResponse.json();
-
-  const scripts = Array.isArray(scriptsPayload?.scripts)
-    ? scriptsPayload.scripts
+  const scripts = Array.isArray(scriptsRes.data?.scripts)
+    ? (scriptsRes.data?.scripts as any[])
     : [];
-  const notes = Array.isArray(notesPayload?.notes) ? notesPayload.notes : [];
+  const notes = Array.isArray(notesRes.data?.notes)
+    ? (notesRes.data?.notes as any[])
+    : [];
 
   return [...scripts.map(mapScriptToItem), ...notes.map(mapNoteToItem)];
 }
@@ -102,15 +98,9 @@ export async function getLibraryContent(): Promise<ContentItem[]> {
 export async function deleteLibraryItem(item: ContentItem): Promise<void> {
   const debug = new ReactDebugger('LibraryService', { level: DEBUG_LEVELS.DEBUG });
 
-  let endpoint: string | null = null;
+  const client = createApiClient('');
 
-  if (item.type === 'script') {
-    endpoint = `/api/scripts/${item.id}`;
-  } else if (item.type === 'note') {
-    endpoint = `/api/notes/${item.id}`;
-  }
-
-  if (!endpoint) {
+  if (item.type !== 'script' && item.type !== 'note') {
     debug.warn('Delete not supported for content type', { type: item.type });
     return;
   }
@@ -118,23 +108,19 @@ export async function deleteLibraryItem(item: ContentItem): Promise<void> {
   const headers = await buildAuthHeaders();
   headers['X-Client'] = 'library-actions';
 
-  const response = await fetch(endpoint, {
-    method: 'DELETE',
-    headers,
-  });
-
-  if (!response.ok) {
-    const message = await response.text().catch(() => '');
-    debug.error('Failed to delete content item', {
-      id: item.id,
-      status: response.status,
-      message,
+  if (item.type === 'script') {
+    const { error } = await client.DELETE('/api/scripts/{id}', {
+      params: { path: { id: item.id } },
+      headers,
     });
-    throw new Error(
-      message || `Failed to delete content (status ${response.status})`,
-    );
+    if (error) throw new Error('Failed to delete script');
+  } else {
+    const { error } = await client.DELETE('/api/notes/{id}', {
+      params: { path: { id: item.id } },
+      headers,
+    });
+    if (error) throw new Error('Failed to delete note');
   }
 
   debug.info('Deleted content item', { id: item.id, type: item.type });
 }
-
