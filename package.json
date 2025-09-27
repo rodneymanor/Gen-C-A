@@ -51,7 +51,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "smoke:prod": "node scripts/prod-troubleshoot.mjs --base=https://www.gencapp.pro",
-    "smoke:local": "node scripts/smoke-local.mjs"
+    "smoke:local": "node scripts/smoke-local.mjs",
+    "dns:add:api": "./scripts/vercel-add-subdomain.sh --domain gencapp.pro --sub api"
   },
   "dependencies": {
     "@atlaskit/avatar": "^25.1.19",

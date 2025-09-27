@@ -3,6 +3,8 @@
 ## Overview
 This audit summarizes why the local and deployed builds diverge, documents the overlapping runtime stacks that power the app today, and proposes a pragmatic roadmap for converging everything into a single, easy-to-maintain architecture.
 
+For current progress, tasks, and verification steps, see the living status document: `docs/unification-status.md`.
+
 ## Symptoms observed in production
 - **Environment-specific behaviour.** The local development server (`server.js`) spins up an Express app that mocks Next.js handlers, proxies to the internal backend, and falls back to stub data when imports fail, so features continue to “work” even when dependencies are missing.【F:server.js†L3-L284】
 - **Serverless deployment mismatch.** The deployed build on Vercel is driven by static rewrites with serverless API files, so any Express-only fallback or un-migrated handler simply disappears in production.【F:vercel.json†L1-L10】

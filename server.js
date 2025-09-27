@@ -42,6 +42,10 @@ const BACKEND_PROXY_TARGET =
 app.use(cors());
 app.use(express.json());
 
+// Priority shims: ensure instagram/tiktok always hit canonical backend in dev
+app.use('/api/instagram', forwardHandler());
+app.use('/api/tiktok', forwardHandler());
+
 // Simple request logging for observability during unification
 app.use((req, res, next) => {
   const start = Date.now();
@@ -212,13 +216,11 @@ async function setupRoutes() {
     app.post('/api/creators/follow', handleCreatorTranscription);
     app.post('/api/creators/transcribe', handleCreatorTranscription);
 
-    // Instagram specific endpoints
-    app.get('/api/instagram/user-id', handleInstagramUserId);
-    app.get('/api/instagram/user-reels', handleInstagramReels);
-    app.post('/api/instagram/user-reels', handleInstagramReels);
+    // Instagram: delegate to canonical backend to avoid divergence
+    app.use('/api/instagram', forwardHandler());
 
-    // TikTok API routes
-    app.post('/api/tiktok/user-feed', handleTikTokUserFeed);
+    // TikTok: delegate to canonical backend
+    app.use('/api/tiktok', forwardHandler());
 
     app.post('/api/video/transcribe-from-url', handleVideoTranscribe);
     app.post('/api/video/scrape-url', handleVideoScrape);
