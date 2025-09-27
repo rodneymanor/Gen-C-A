@@ -1,7 +1,7 @@
 import express, { type Request, type Response } from 'express';
 import cors from 'cors';
 import path from 'node:path';
-import { OpenApiValidator } from 'express-openapi-validator';
+import { middleware as openapiValidator } from 'express-openapi-validator';
 
 import { notesRouter } from './routes/notes';
 import { scriptsRouter } from './routes/scripts';
@@ -19,7 +19,6 @@ import { extensionRouter } from './routes/extension/index.js';
 import { keysRouter } from './routes/keys.js';
 import { viralContentRouter } from './routes/viral-content';
 
-export const OPENAPI_VALIDATOR_PROMISE = 'openApiValidatorPromise' as const;
 const scriptsApiSpecPath = path.resolve(process.cwd(), 'openapi/openapi.yaml');
 
 export function createApp() {
@@ -28,15 +27,19 @@ export function createApp() {
   app.use(cors());
   app.use(express.json({ limit: '10mb' }));
 
-  // Install OpenAPI validator for documented routes (request/response)
-  const validatorPromise = new OpenApiValidator({
-    apiSpec: scriptsApiSpecPath,
-    validateRequests: true,
-    validateResponses: true,
-  }).install(app);
+  // Health endpoint (not part of OpenAPI; keep before validator)
+  app.get('/health', (_req: Request, res: Response) => {
+    res.json({ status: 'ok' });
+  });
 
-  // Expose promise so server can await readiness before listening
-  (app as any).locals[OPENAPI_VALIDATOR_PROMISE] = validatorPromise;
+  // Install OpenAPI validator for documented routes (request/response)
+  app.use(
+    ...openapiValidator({
+      apiSpec: scriptsApiSpecPath,
+      validateRequests: true,
+      validateResponses: true,
+    }),
+  );
 
   app.use((req, res, next) => {
     const start = Date.now();
@@ -52,10 +55,6 @@ export function createApp() {
     });
 
     next();
-  });
-
-  app.get('/health', (_req: Request, res: Response) => {
-    res.json({ status: 'ok' });
   });
 
   app.use('/api/notes', notesRouter);

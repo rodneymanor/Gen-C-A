@@ -1,0 +1,8 @@
+[dotenv@17.2.2] injecting env (61) from .env.local -- tip: 📡 version env with Radar: https://dotenvx.com/radar
+Port 5001 in use; falling back to a random open port.
+Backend server listening on http://localhost:51599
+Backend server listening on http://localhost:51599
+Unauthorized: Authorization header required
+    at Function.create (/Users/rmanor/Documents/Development-Local/Gen C A/node_modules/express-openapi-validator/src/framework/types.ts:679:16)
+    at <anonymous> (/Users/rmanor/Documents/Development-Local/Gen C A/node_modules/express-openapi-validator/src/middlewares/openapi.security.ts:94:29)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)

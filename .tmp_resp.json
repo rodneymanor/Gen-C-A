@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Unauthorized: Authorization header required<br> &nbsp; &nbsp;at Function.create (/Users/rmanor/Documents/Development-Local/Gen C A/node_modules/express-openapi-validator/src/framework/types.ts:679:16)<br> &nbsp; &nbsp;at &lt;anonymous&gt; (/Users/rmanor/Documents/Development-Local/Gen C A/node_modules/express-openapi-validator/src/middlewares/openapi.security.ts:94:29)<br> &nbsp; &nbsp;at process.processTicksAndRejections (node:internal/process/task_queues:105:5)</pre>
+</body>
+</html>

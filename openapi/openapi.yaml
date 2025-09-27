@@ -54,14 +54,7 @@ components:
           type: string
           enum: [speed-write, educational, ai-voice]
         voice:
-          type: object
-          additionalProperties: true
-          properties:
-            id: { type: string }
-            name: { type: string }
-            badges:
-              type: array
-              items: { type: string }
+          $ref: '#/components/schemas/ScriptVoice'
         originalIdea: { type: string }
         targetLength: { type: string }
         wordCount: { type: number }
@@ -80,6 +73,15 @@ components:
           type: object
           additionalProperties: true
       additionalProperties: true
+    ScriptVoice:
+      type: object
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        name: { type: string }
+        badges:
+          type: array
+          items: { type: string }
     CreateScriptRequest:
       type: object
       required: [title, content, approach]
@@ -96,7 +98,7 @@ components:
           type: string
           enum: [speed-write, educational, ai-voice]
         voice:
-          $ref: '#/components/schemas/Script/properties/voice'
+          $ref: '#/components/schemas/ScriptVoice'
         originalIdea: { type: string }
         targetLength: { type: string }
         source: { type: string }
@@ -467,4 +469,3 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
-
