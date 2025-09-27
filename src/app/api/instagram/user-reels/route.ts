@@ -1,40 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from 'next/server';
+import { forwardToBackend } from '../../_utils/backend-proxy';
 
-import { getInstagramService, InstagramServiceError } from "@/services/video/instagram-service.js";
+export async function GET(request: NextRequest) {
+  return forwardToBackend(request, '/api/instagram/user-reels');
+}
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = (await request.json()) as {
-      userId?: string;
-      count?: number;
-      includeFeedVideo?: boolean;
-      username?: string;
-    };
-
-    if (!body?.userId?.trim()) {
-      return NextResponse.json(
-        { success: false, error: 'userId is required to fetch reels' },
-        { status: 400 },
-      );
-    }
-
-    const service = getInstagramService();
-    const result = await service.getUserReels({
-      userId: body.userId.trim(),
-      count: body.count,
-      includeFeedVideo: body.includeFeedVideo,
-      username: body.username,
-    });
-    return NextResponse.json(result);
-  } catch (unknownError) {
-    if (unknownError instanceof InstagramServiceError) {
-      return NextResponse.json(
-        { success: false, error: unknownError.message, ...(unknownError.debug ? { debug: unknownError.debug } : {}) },
-        { status: unknownError.statusCode },
-      );
-    }
-    const message = unknownError instanceof Error ? unknownError.message : "Failed to fetch Instagram reels";
-    console.error("[instagram/user-reels] Unexpected error:", message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+  return forwardToBackend(request, '/api/instagram/user-reels');
 }

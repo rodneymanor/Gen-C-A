@@ -30,6 +30,17 @@ async function main() {
   console.log(`viral-content/feed parity: ${parity ? 'OK' : 'MISMATCH'}`);
   allOk &&= parity;
 
+  // Basic 400 parity checks (no external calls made)
+  const check400 = async (name, path) => {
+    const rb = await fetch(`${backend}${path}`);
+    const rd = await fetch(`${dev}${path}`);
+    console.log(`${name} → backend:${rb.status} dev:${rd.status}`);
+    return rb.status === rd.status && rb.status >= 400;
+  };
+
+  allOk &&= await check400('instagram/user-id (missing)', '/api/instagram/user-id');
+  allOk &&= await check400('tiktok/user-feed (missing)', '/api/tiktok/user-feed');
+
   // Optional: collections endpoints when a test user is provided
   if (userId) {
     const bc = await fetch(`${backend}/api/collections?userId=${encodeURIComponent(userId)}`);
