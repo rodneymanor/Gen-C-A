@@ -60,3 +60,10 @@ To get to a single, predictable app, adopt the following guardrails:
 - **Change management:** Encourage feature flags or environment-based toggles when rolling out new ingestion providers (TikTok, Instagram) to prevent regressions from breaking unrelated flows.
 
 By following this plan, the team can converge on a single, testable backend runtime, eliminate the local vs. production drift, and give beginners a reliable workflow for adding features without reintroducing duplication.
+
+## OpenAPI-first workflow (new)
+- Source of truth lives in `openapi/openapi.yaml`. Use `npm run check:spec` before committing to validate syntax. See `docs/openapi-workflow.md` for the full checklist.
+- Regenerate typed clients and shared types with `npm run gen` (writes to `src/api/client` and `src/types/api.d.ts`). Commit the outputs so other runtimes stay in sync.
+- Frontend consumers (starting with `useScriptsApi`) import the generated client and spec-derived types instead of hand-crafted fetch wrappers.
+- The backend mounts `express-openapi-validator` right after `express.json`, ensuring requests/responses on documented routes comply with the contract before business logic runs.
+- Expand coverage route-by-route: once an endpoint is spec'd, delegate consumers to the shared client and add response validation in Express.

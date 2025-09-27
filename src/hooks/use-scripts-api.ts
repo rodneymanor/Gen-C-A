@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Script, CreateScriptRequest, UpdateScriptRequest } from "@/types/script";
+import { createApiClient } from "@/api/client";
 
 interface UseScriptsApiReturn {
   scripts: Script[];
@@ -15,23 +16,21 @@ interface UseScriptsApiReturn {
   deleteScript: (id: string) => Promise<boolean>;
 }
 
+function extractEnvelopeError(payload: unknown): string | undefined {
+  if (payload && typeof payload === "object" && "error" in payload) {
+    const { error } = payload as { error?: unknown };
+    if (typeof error === "string" && error.trim()) return error;
+  }
+  return undefined;
+}
+
 export function useScriptsApi(): UseScriptsApiReturn {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { firebaseUser } = useAuth();
 
-  const getAuthHeaders = useCallback(async () => {
-    if (!firebaseUser) throw new Error("User not authenticated");
-
-    // Get the ID token for authentication
-    const idToken = await firebaseUser.getIdToken();
-
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${idToken}`,
-    };
-  }, [firebaseUser]);
+  const client = useMemo(() => createApiClient(""), []);
 
   const fetchScripts = useCallback(async () => {
     if (!firebaseUser) return;
@@ -40,28 +39,24 @@ export function useScriptsApi(): UseScriptsApiReturn {
     setError(null);
 
     try {
-      const headers = await getAuthHeaders();
-      const response = await fetch("/api/scripts", {
-        headers,
+      if (!firebaseUser) return;
+      const token = await firebaseUser.getIdToken();
+      const { data, error: apiError } = await client.GET("/api/scripts", {
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch scripts: ${response.statusText}`);
+      if (apiError) {
+        throw new Error(extractEnvelopeError(apiError) || "Failed to fetch scripts");
       }
-
-      const data = await response.json();
-      if (data.success) {
-        setScripts(data.scripts);
-      } else {
-        throw new Error(data.error || "Failed to fetch scripts");
-      }
+      if (data?.success) setScripts(data.scripts ?? []);
+      else throw new Error(extractEnvelopeError(data) || "Failed to fetch scripts");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
       console.error("Error fetching scripts:", err);
     } finally {
       setLoading(false);
     }
-  }, [firebaseUser, getAuthHeaders]);
+  }, [firebaseUser, client]);
 
   const createScript = useCallback(
     async (scriptData: CreateScriptRequest): Promise<Script | null> => {
@@ -74,33 +69,27 @@ export function useScriptsApi(): UseScriptsApiReturn {
       setError(null);
 
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch("/api/scripts", {
-          method: "POST",
-          headers,
-          body: JSON.stringify(scriptData),
+        const token = await firebaseUser.getIdToken();
+        const { data, error: apiError } = await client.POST("/api/scripts", {
+          body: scriptData,
+          headers: { Authorization: `Bearer ${token}` },
         });
-
-        if (!response.ok) {
-          throw new Error(`Failed to create script: ${response.statusText}`);
+        if (apiError) throw new Error(extractEnvelopeError(apiError) || "Failed to create script");
+        if (data?.success && data.script) {
+          setScripts((prev) => [data.script as Script, ...prev]);
+          return data.script as Script;
         }
-
-        const data = await response.json();
-        if (data.success && data.script) {
-          setScripts((prev) => [data.script, ...prev]);
-          return data.script;
-        } else {
-          throw new Error(data.error || "Failed to create script");
-        }
+        throw new Error(extractEnvelopeError(data) || "Failed to create script");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        const message = err instanceof Error ? err.message : "Unknown error";
+        setError(message);
         console.error("Error creating script:", err);
         return null;
       } finally {
         setLoading(false);
       }
     },
-    [firebaseUser, getAuthHeaders],
+    [firebaseUser, client],
   );
 
   const updateScript = useCallback(
@@ -114,33 +103,28 @@ export function useScriptsApi(): UseScriptsApiReturn {
       setError(null);
 
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(`/api/scripts/${id}`, {
-          method: "PUT",
-          headers,
-          body: JSON.stringify(updateData),
+        const token = await firebaseUser.getIdToken();
+        const { data, error: apiError } = await client.PUT("/api/scripts/{id}", {
+          params: { path: { id } },
+          body: updateData,
+          headers: { Authorization: `Bearer ${token}` },
         });
-
-        if (!response.ok) {
-          throw new Error(`Failed to update script: ${response.statusText}`);
+        if (apiError) throw new Error(extractEnvelopeError(apiError) || "Failed to update script");
+        if (data?.success && data.script) {
+          setScripts((prev) => prev.map((s) => (s.id === id ? (data.script as Script) : s)));
+          return data.script as Script;
         }
-
-        const data = await response.json();
-        if (data.success && data.script) {
-          setScripts((prev) => prev.map((script) => (script.id === id ? data.script : script)));
-          return data.script;
-        } else {
-          throw new Error(data.error || "Failed to update script");
-        }
+        throw new Error(extractEnvelopeError(data) || "Failed to update script");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        const message = err instanceof Error ? err.message : "Unknown error";
+        setError(message);
         console.error("Error updating script:", err);
         return null;
       } finally {
         setLoading(false);
       }
     },
-    [firebaseUser, getAuthHeaders],
+    [firebaseUser, client],
   );
 
   const deleteScript = useCallback(
@@ -154,32 +138,27 @@ export function useScriptsApi(): UseScriptsApiReturn {
       setError(null);
 
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(`/api/scripts/${id}`, {
-          method: "DELETE",
-          headers,
+        const token = await firebaseUser.getIdToken();
+        const { data, error: apiError } = await client.DELETE("/api/scripts/{id}", {
+          params: { path: { id } },
+          headers: { Authorization: `Bearer ${token}` },
         });
-
-        if (!response.ok) {
-          throw new Error(`Failed to delete script: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        if (data.success) {
-          setScripts((prev) => prev.filter((script) => script.id !== id));
+        if (apiError) throw new Error(extractEnvelopeError(apiError) || "Failed to delete script");
+        if (data?.success) {
+          setScripts((prev) => prev.filter((s) => s.id !== id));
           return true;
-        } else {
-          throw new Error(data.error || "Failed to delete script");
         }
+        throw new Error(extractEnvelopeError(data) || "Failed to delete script");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        const message = err instanceof Error ? err.message : "Unknown error";
+        setError(message);
         console.error("Error deleting script:", err);
         return false;
       } finally {
         setLoading(false);
       }
     },
-    [firebaseUser, getAuthHeaders],
+    [firebaseUser, client],
   );
 
   return {

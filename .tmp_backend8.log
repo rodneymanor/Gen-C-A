@@ -1,0 +1,4 @@
+[dotenv@17.2.2] injecting env (61) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+Port 5001 in use; falling back to a random open port.
+Backend server listening on http://localhost:62369
+Backend server listening on http://localhost:62369

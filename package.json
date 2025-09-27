@@ -52,7 +52,11 @@
     "build-storybook": "storybook build",
     "smoke:prod": "node scripts/prod-troubleshoot.mjs --base=https://www.gencapp.pro",
     "smoke:local": "node scripts/smoke-local.mjs",
-    "dns:add:api": "./scripts/vercel-add-subdomain.sh --domain gencapp.pro --sub api"
+    "dns:add:api": "./scripts/vercel-add-subdomain.sh --domain gencapp.pro --sub api",
+    "gen:client": "node -e \"const fs=require('fs');const p='src/api/client';if(fs.existsSync(p))fs.rmSync(p,{recursive:true,force:true});\" && openapi-generator-cli generate -i openapi/openapi.yaml -g typescript-fetch -o src/api/client --additional-properties=supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true,modelPropertyNaming=camelCase,dateType=string,dateTimeType=string --type-mappings Date=string,DateTime=string",
+    "gen:types": "openapi-typescript openapi/openapi.yaml --output src/types/api.d.ts",
+    "gen": "npm run gen:client && npm run gen:types",
+    "check:spec": "openapi-generator-cli validate -i openapi/openapi.yaml"
   },
   "dependencies": {
     "@atlaskit/avatar": "^25.1.19",
@@ -86,6 +90,7 @@
     "date-fns": "^2.30.0",
     "dotenv": "^17.2.2",
     "express": "^4.21.2",
+    "express-openapi-validator": "^5.1.6",
     "fast-glob": "^3.3.3",
     "firebase": "^12.2.1",
     "firebase-admin": "^13.5.0",
@@ -96,6 +101,7 @@
     "markdown-it": "^14.1.0",
     "natural": "^8.1.0",
     "openai": "^5.20.2",
+    "openapi-fetch": "^0.8.2",
     "pdf-parse": "^1.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -135,6 +141,8 @@
     "eslint-plugin-react-refresh": "^0.4.3",
     "eslint-plugin-storybook": "^9.1.6",
     "jsdom": "^26.1.0",
+    "@openapitools/openapi-generator-cli": "^2.13.3",
+    "openapi-typescript": "^6.7.4",
     "playwright": "^1.55.0",
     "prettier": "^3.6.2",
     "puppeteer": "^24.20.0",

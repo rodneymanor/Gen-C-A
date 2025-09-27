@@ -1,0 +1,470 @@
+openapi: 3.0.3
+info:
+  title: Gen-C Scripts API
+  version: 1.0.0
+  description: |
+    OpenAPI specification for the scripts surfaces served by the Gen-C backend.
+    The documented endpoints power script CRUD flows in the dashboard and the
+    YouTube idea seed generator. Responses follow the existing `{ success: ... }`
+    envelope used by the legacy fetch helpers.
+servers:
+  - url: https://api.gencapp.pro
+    description: Production
+  - url: http://localhost:5001
+    description: Local development
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Script:
+      type: object
+      description: Script document persisted in Firestore.
+      required: [id, title, content, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        content: { type: string }
+        authors: { type: string }
+        status:
+          type: string
+          enum: [draft, published, scheduled, sent]
+        performance:
+          type: object
+          additionalProperties: false
+          properties:
+            views: { type: number }
+            engagement: { type: number }
+        category: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        viewedAt: { type: string, format: date-time }
+        duration: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        fileType:
+          type: string
+          enum: [Script, Template]
+        summary: { type: string }
+        userId: { type: string }
+        approach:
+          type: string
+          enum: [speed-write, educational, ai-voice]
+        voice:
+          type: object
+          additionalProperties: true
+          properties:
+            id: { type: string }
+            name: { type: string }
+            badges:
+              type: array
+              items: { type: string }
+        originalIdea: { type: string }
+        targetLength: { type: string }
+        wordCount: { type: number }
+        characterCount: { type: number }
+        source: { type: string }
+        scheduledDate: { type: string, format: date-time }
+        platform:
+          type: string
+          enum: [tiktok, instagram, youtube]
+        publishedUrl: { type: string, format: uri }
+        isThread: { type: boolean }
+        threadParts:
+          type: array
+          items: { type: string }
+        elements:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+    CreateScriptRequest:
+      type: object
+      required: [title, content, approach]
+      additionalProperties: true
+      properties:
+        title: { type: string }
+        content: { type: string }
+        category: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        summary: { type: string }
+        approach:
+          type: string
+          enum: [speed-write, educational, ai-voice]
+        voice:
+          $ref: '#/components/schemas/Script/properties/voice'
+        originalIdea: { type: string }
+        targetLength: { type: string }
+        source: { type: string }
+        scheduledDate: { type: string, format: date-time }
+        platform:
+          type: string
+          enum: [tiktok, instagram, youtube]
+        status:
+          type: string
+          enum: [draft, scheduled, sent]
+        isThread: { type: boolean }
+        threadParts:
+          type: array
+          items: { type: string }
+    UpdateScriptRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        title: { type: string }
+        content: { type: string }
+        category: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        summary: { type: string }
+        status:
+          type: string
+          enum: [draft, published, scheduled, sent]
+        scheduledDate: { type: string, format: date-time }
+        platform:
+          type: string
+          enum: [tiktok, instagram, youtube]
+        publishedUrl: { type: string, format: uri }
+        isThread: { type: boolean }
+        threadParts:
+          type: array
+          items: { type: string }
+    ErrorResponse:
+      type: object
+      required: [success, error]
+      additionalProperties: true
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error: { type: string }
+        debug:
+          type: object
+          description: Optional debug payload returned for internal errors.
+    ScriptsResponse:
+      type: object
+      required: [success]
+      additionalProperties: true
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        scripts:
+          type: array
+          items: { $ref: '#/components/schemas/Script' }
+    ScriptResponse:
+      type: object
+      required: [success]
+      additionalProperties: true
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        script: { $ref: '#/components/schemas/Script' }
+    BasicSuccessResponse:
+      type: object
+      required: [success]
+      additionalProperties: true
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+    TranscriptChunk:
+      type: object
+      required: [text]
+      additionalProperties: true
+      properties:
+        text: { type: string }
+        start: { type: number }
+        end: { type: number }
+        timestamp:
+          type: array
+          items: { type: number }
+    IdeaSeed:
+      type: object
+      additionalProperties: true
+      required: [coreClaim, payoff, proof, angle, cta, provenance, scores]
+      properties:
+        coreClaim: { type: string }
+        payoff: { type: string }
+        proof:
+          type: object
+          additionalProperties: false
+          required: [type, text]
+          properties:
+            type:
+              type: string
+              enum: [stat, example, quote, demo]
+            text: { type: string }
+            numbers: { type: string }
+        mechanismOrSteps:
+          type: array
+          maxItems: 3
+          items: { type: string }
+        angle:
+          type: string
+          enum: [question, contrarian, stat_shock, mistake, myth, story]
+        painPoint: { type: string }
+        reasonToBelieve: { type: string }
+        context: { type: string }
+        promise: { type: string }
+        cta:
+          type: object
+          additionalProperties: false
+          required: [type, prompt]
+          properties:
+            type:
+              type: string
+              enum: [comment, watch_full, subscribe, download, signup, follow, buy]
+            prompt: { type: string }
+            target:
+              oneOf:
+                - { type: string }
+                - type: object
+                  additionalProperties: false
+                  required: [videoTs]
+                  properties:
+                    videoTs: { type: number }
+        entities:
+          type: array
+          items: { type: string }
+        audienceLevel:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        provenance:
+          type: object
+          additionalProperties: false
+          required: [startSec, endSec]
+          properties:
+            startSec: { type: number }
+            endSec: { type: number }
+        scores:
+          type: object
+          additionalProperties: false
+          required: [hookPotential, specificity, actionability, novelty, overall]
+          properties:
+            hookPotential: { type: number }
+            specificity: { type: number }
+            actionability: { type: number }
+            novelty: { type: number }
+            overall: { type: number }
+    GenerateIdeaSeedsRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        url: { type: string, format: uri }
+        lang: { type: string }
+        videoId: { type: string }
+        transcript: { type: string }
+        chunks:
+          type: array
+          items: { $ref: '#/components/schemas/TranscriptChunk' }
+        maxIdeas: { type: integer, minimum: 1 }
+        minOverall: { type: integer, minimum: 0, maximum: 100 }
+        audienceLevel:
+          type: string
+          enum: [beginner, intermediate, advanced]
+    GenerateIdeaSeedsResponse:
+      type: object
+      additionalProperties: true
+      required: [success, ideas]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        ideas:
+          type: array
+          items: { $ref: '#/components/schemas/IdeaSeed' }
+        meta:
+          type: object
+          additionalProperties: true
+          properties:
+            model: { type: string }
+            durationMs: { type: number }
+            maxIdeas: { type: integer }
+            minOverall: { type: integer }
+            audienceLevel: { type: string }
+            transcriptChars: { type: integer }
+paths:
+  /api/scripts:
+    get:
+      summary: List scripts for the authenticated user.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Scripts fetched successfully.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScriptsResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '503':
+          description: Firestore unavailable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    post:
+      summary: Create a script for the authenticated user.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateScriptRequest' }
+      responses:
+        '200':
+          description: Script created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScriptResponse' }
+        '400':
+          description: Invalid request payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '503':
+          description: Firestore unavailable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /api/scripts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Fetch a script by id.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Script returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScriptResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Script belongs to another user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Script not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    put:
+      summary: Update a script.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateScriptRequest' }
+      responses:
+        '200':
+          description: Script updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScriptResponse' }
+        '400':
+          description: Invalid update payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Script belongs to another user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Script not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      summary: Delete a script.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Script deleted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BasicSuccessResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Script belongs to another user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Script not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /api/scripts/youtube-ideas:
+    post:
+      summary: Generate YouTube idea seeds from a transcript.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GenerateIdeaSeedsRequest' }
+      responses:
+        '200':
+          description: Idea seeds generated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenerateIdeaSeedsResponse' }
+        '400':
+          description: Invalid payload or transcript.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '502':
+          description: Downstream model failure.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '503':
+          description: Service unavailable (e.g., missing Gemini key).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+

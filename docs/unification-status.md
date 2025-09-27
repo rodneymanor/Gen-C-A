@@ -1,6 +1,6 @@
 # Unification Status
 
-- Updated: 2025-09-27 00:55:00Z
+ - Updated: 2025-09-27 01:30:00Z
 - Branch: main
 - Head: 23519e07
 
@@ -9,7 +9,8 @@ This document tracks the current state of the application unification effort and
 ## Summary
 - Canonical backend: apps/backend is the source of truth for business logic.
 - Thin shims: Most Vercel `api/**` and Next App Router handlers now delegate to the backend.
-- Env contract: Shared validation and `.env.example` added; local `.env.local` pins a stable backend port.
+ - Env contract: Shared validation and `.env.example` added; local `.env.local` pins a stable backend port.
+ - OpenAPI contract: Scripts endpoints are documented in `openapi/openapi.yaml`, generate typed clients, and are validated at runtime.
 - Observability: Lightweight request logging added to dev server; smoke script verifies backend vs. proxy parity.
 
 ## Environment Contract
@@ -56,16 +57,27 @@ This document tracks the current state of the application unification effort and
   - Verifies backend /health and dev /api/health
   - Asserts parity for GET `/api/viral-content/feed`
   - Basic error-parity checks for `/api/instagram/user-id` and `/api/tiktok/user-feed` without params
+  - Scripts API validated at runtime via `express-openapi-validator` against `openapi/openapi.yaml`.
 - [ ] Add route-by-route smoke for high-traffic flows (collections/video ingest) with a test `SMOKE_USER_ID`.
 - [ ] Add a small `x-served-by` header from backend and shims to confirm the serving runtime in logs.
+
+## API Contracts & Tooling
+- [x] Document scripts endpoints in `openapi/openapi.yaml`.
+- [x] Generate client + type bundles via `npm run gen` (writes to `src/api/client` and `src/types/api.d.ts`).
+- [x] Frontend hook `useScriptsApi` now consumes the generated client.
+- [x] Backend enforces the scripts spec at runtime with `express-openapi-validator`.
+- [ ] Extend OpenAPI coverage to collections, notes, and video ingest endpoints.
+- [ ] Migrate remaining client hooks to the shared OpenAPI client once specs exist.
 
 ## Outstanding Work
 - Phase 2
   - [ ] Delegate remaining `api/chrome-extension/**` and related App Router handlers.
   - [ ] Remove JSON fallbacks in `server.js` once all delegated routes pass smoke tests.
+- Phase 2.5 (Contract-first)
+  - [ ] Expand OpenAPI spec beyond scripts; regenerate shared clients.
 - Phase 3 (Auth Unification)
   - [ ] Implement shared Firebase auth middleware in backend; enforce roles for admin routes.
-  - [ ] Create centralized frontend API client that injects ID tokens, replaces `x-user-id`/`x-api-key` flows.
+  - [ ] Create centralized frontend API client that injects ID tokens, replaces `x-user-id`/`x-api-key` flows. *(Scripts hook now uses the generated OpenAPI client as the first adopter.)*
   - [ ] Migrate clients (collections, scripts, instagram/tiktok tools) to the centralized client.
 - Phase 4 (Hardening & Cleanup)
   - [ ] Delete duplicate handlers in `api/**` and `src/app/api/**` after traffic fully shifts.
