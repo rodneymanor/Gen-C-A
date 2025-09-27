@@ -1,6 +1,6 @@
 # Unification Status
 
-- Updated: 2025-09-27 00:45:46Z
+- Updated: 2025-09-27 00:55:00Z
 - Branch: main
 - Head: 23519e07
 
@@ -17,7 +17,7 @@ This document tracks the current state of the application unification effort and
 - [x] Runtime validator wired into `apps/backend/src/server.ts` and `server.js`.
 - [x] Stable backend port configured (`BACKEND_PORT=5001`).
 - [x] Local smoke script (`npm run smoke:local`).
-- [ ] Production env configured to set `BACKEND_INTERNAL_URL`/`BACKEND_URL`. Owner: Deployer
+- [x] Production env configured to set `BACKEND_INTERNAL_URL`/`BACKEND_URL` (confirmed by Deployer).
 
 ## Dev Server (server.js)
 - [x] Priority proxy shims for `/api/instagram/*` and `/api/tiktok/*` → backend (prevents local-only fallbacks).
@@ -79,11 +79,10 @@ This document tracks the current state of the application unification effort and
   - Optional: `SMOKE_USER_ID=<uid> npm run smoke:local` to include collections endpoints
 
 ## Deployment Checklist
-- [ ] Set `BACKEND_INTERNAL_URL` (or `BACKEND_URL`) in the serverless environment to point to the canonical backend.
+- [x] Set `BACKEND_INTERNAL_URL` (or `BACKEND_URL`) in the serverless environment to point to the canonical backend.
 - [ ] Confirm `npm run smoke:prod` succeeds against the deployed base.
 - [ ] Monitor logs for `x-served-by` (once added) to ensure requests are served by backend.
 
 ## Notes / Risks
 - Some legacy TypeScript errors remain in the repo; they do not affect the shims but should be addressed as part of service migration.
 - Collections endpoints require a real user id/token; smoke tests will show 404/401 when using placeholders.
-
