@@ -342,13 +342,37 @@ collectionsRouter.post('/add-video', async (req: Request, res: Response) => {
       target: targetUrl.toString(),
     });
 
-    const response = await fetch(targetUrl.toString(), {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
+    try {
+      const response = await fetch(targetUrl.toString(), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
+      if (response.ok) {
+        const data = await response.json();
+        const jobId = `job_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
+        console.log('[chrome-extension][backend] add-video forward success', {
+          userId: user.uid,
+          collectionId,
+          videoId: data?.videoId,
+        });
+
+        res.status(response.status).json({
+          success: true,
+          message: data?.message || 'Video added successfully to collection',
+          jobId,
+          collectionTitle: normalizedTitle,
+          collectionId,
+          videoUrl: normalizedUrl,
+          videoId: data?.videoId,
+          video: data?.video,
+          timestamp: data?.timestamp,
+        });
+        return;
+      }
+
       let errorBody: any = null;
       try {
         errorBody = await response.json();
@@ -356,38 +380,37 @@ collectionsRouter.post('/add-video', async (req: Request, res: Response) => {
         errorBody = { error: 'Failed to add video to collection' };
       }
 
-      console.error('[chrome-extension][backend] add-video forward failed', {
+      console.warn('[chrome-extension][backend] add-video forward failed, falling back to admin service', {
         status: response.status,
         error: errorBody,
       });
-
-      res.status(response.status).json({
-        success: false,
-        error: errorBody?.error || errorBody?.message || 'Failed to add video to collection',
+    } catch (networkError) {
+      console.warn('[chrome-extension][backend] add-video forward network error, falling back', {
+        error: networkError instanceof Error ? networkError.message : networkError,
       });
-      return;
     }
 
-    const data = await response.json();
-    const jobId = `job_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    try {
+      const fallbackResult = await service.addVideo({
+        userId: String(user.uid),
+        videoUrl: normalizedUrl,
+        collectionTitle: normalizedTitle,
+        title: title ? String(title) : undefined,
+      });
 
-    console.log('[chrome-extension][backend] add-video forward success', {
-      userId: user.uid,
-      collectionId,
-      videoId: data?.videoId,
-    });
-
-    res.status(response.status).json({
-      success: true,
-      message: data?.message || 'Video added successfully to collection',
-      jobId,
-      collectionTitle: normalizedTitle,
-      collectionId,
-      videoUrl: normalizedUrl,
-      videoId: data?.videoId,
-      video: data?.video,
-      timestamp: data?.timestamp,
-    });
+      res.status(201).json({
+        success: true,
+        message: 'Video added successfully to collection',
+        jobId: fallbackResult.jobId,
+        collectionTitle: fallbackResult.collectionTitle,
+        collectionId: fallbackResult.collectionId,
+        videoUrl: fallbackResult.videoUrl,
+        videoId: fallbackResult.videoId,
+      });
+    } catch (fallbackError) {
+      console.error('[chrome-extension][backend] add-video fallback error', fallbackError);
+      sendCollectionsError(res, fallbackError, 'Failed to add video to collection');
+    }
   } catch (error) {
     console.error('[chrome-extension][backend] add-video error', error);
     sendCollectionsError(res, error, 'Failed to add video to collection');
