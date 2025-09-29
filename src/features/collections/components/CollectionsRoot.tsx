@@ -737,6 +737,7 @@ export const CollectionsRoot: React.FC = () => {
 
   const createTitleRef = useRef<HTMLInputElement | null>(null);
   const addUrlRef = useRef<HTMLInputElement | null>(null);
+  const transcriptionPollRef = useRef<number | null>(null);
 
   const adjustCollectionVideoCount = useCallback((collectionId: string | undefined, delta: number) => {
     if (!collectionId || collectionId === 'all-videos' || delta === 0) return;
@@ -1071,27 +1072,75 @@ export const CollectionsRoot: React.FC = () => {
     return () => { cancelled = true; };
   }, [isAuthReady, userId, beginPageLoad, endPageLoad]);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadVideos() {
+  const fetchCollectionVideos = useCallback(
+    async (options?: { silent?: boolean }) => {
       if (!isAuthReady || !userId || !selectedCollection) return;
+
+      const collectionId = selectedCollection.id;
+      if (!collectionId) return;
+
+      const silent = options?.silent === true;
+      if (!silent) beginPageLoad();
+
       try {
-        beginPageLoad();
-        const resp = await RbacClient.getCollectionVideos(String(userId), selectedCollection.id, 50);
-        if (!cancelled && resp?.success) {
+        const resp = await RbacClient.getCollectionVideos(String(userId), collectionId, 50);
+        if (resp?.success && selectedCollection?.id === collectionId) {
           setVideos((resp.videos || []).map(mapServerVideoToContentItem));
         }
       } catch (e) {
-        console.warn('Failed to fetch videos', e);
+        if (!silent) console.warn('Failed to fetch videos', e);
       } finally {
-        endPageLoad();
+        if (!silent) endPageLoad();
       }
+    },
+    [isAuthReady, userId, selectedCollection?.id, beginPageLoad, endPageLoad],
+  );
+
+  useEffect(() => {
+    if (view !== 'detail' || !selectedCollection) return;
+    fetchCollectionVideos();
+  }, [view, selectedCollection?.id, fetchCollectionVideos]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const clearPoll = () => {
+      if (transcriptionPollRef.current != null) {
+        window.clearInterval(transcriptionPollRef.current);
+        transcriptionPollRef.current = null;
+      }
+    };
+
+    if (view !== 'detail' || !selectedCollection) {
+      clearPoll();
+      return clearPoll;
     }
-    if (view === 'detail' && selectedCollection) {
-      loadVideos();
+
+    const hasActiveTranscription = videos.some((video) => {
+      const statusCandidate =
+        (video as any).transcriptionStatus ??
+        video.metadata?.transcriptionStatus ??
+        (video.metadata as any)?.transcription_status ??
+        video.metadata?.processing?.transcriptionStatus ??
+        video.metadata?.contentMetadata?.transcriptionStatus ??
+        '';
+      const normalized = typeof statusCandidate === 'string' ? statusCandidate.toLowerCase() : '';
+      return normalized === 'processing' || normalized === 'pending';
+    });
+
+    if (hasActiveTranscription) {
+      if (transcriptionPollRef.current == null) {
+        transcriptionPollRef.current = window.setInterval(() => {
+          fetchCollectionVideos({ silent: true });
+        }, 8000);
+        fetchCollectionVideos({ silent: true });
+      }
+    } else {
+      clearPoll();
     }
-    return () => { cancelled = true; };
-  }, [isAuthReady, userId, view, selectedCollection, beginPageLoad, endPageLoad]);
+
+    return clearPoll;
+  }, [videos, view, selectedCollection?.id, fetchCollectionVideos]);
   useEffect(() => {
     setPlatformFilter('all');
     setFavoritesOnly(false);

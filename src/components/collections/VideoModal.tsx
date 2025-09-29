@@ -5,12 +5,14 @@ import VidPlayIcon from '@atlaskit/icon/glyph/vid-play';
 import PersonIcon from '@atlaskit/icon/glyph/person';
 import CopyIcon from '@atlaskit/icon/glyph/copy';
 import DownloadIcon from '@atlaskit/icon/glyph/download';
+import WarningIcon from '@atlaskit/icon/glyph/warning';
 
 import {
   GcDashButton,
   GcDashIconButton,
   GcDashTabs,
   GcDashLabel,
+  GcDashLoadingSpinner,
   GcDashCard,
   GcDashCardHeader,
   GcDashCardTitle,
@@ -194,6 +196,97 @@ const tabSwitcherStyles = css`
     font-weight: 600;
     padding: 6px 14px;
   }
+`;
+
+type TimelineState = 'complete' | 'current' | 'upcoming' | 'failed';
+
+const TRANSCRIPTION_TIMELINE_STEPS: Array<{ id: string; title: string; description: string }> = [
+  {
+    id: 'fetch',
+    title: 'Fetching clip',
+    description: 'Pulling the source video from the platform.',
+  },
+  {
+    id: 'prepare',
+    title: 'Processing media',
+    description: 'Preparing the audio and uploading it securely.',
+  },
+  {
+    id: 'provider',
+    title: 'Waiting for provider',
+    description: 'Gemini is generating the transcript for this clip.',
+  },
+  {
+    id: 'enrich',
+    title: 'Enriching insights',
+    description: "We'll populate beats and analysis as soon as the transcript lands.",
+  },
+];
+
+const timelineContainerStyles = css`
+  display: grid;
+  gap: ${gcDashSpacing.sm};
+  padding: ${gcDashSpacing.sm};
+  border-radius: ${gcDashShape.radiusSm};
+  background: rgba(45, 140, 255, 0.08);
+`;
+
+const timelineHeaderStyles = css`
+  display: flex;
+  align-items: center;
+  gap: ${gcDashSpacing.xs};
+  font-weight: 600;
+  color: ${gcDashColor.primary};
+`;
+
+const timelineListStyles = css`
+  display: grid;
+  gap: ${gcDashSpacing.xs};
+`;
+
+const timelineItemStyles = (state: TimelineState) => css`
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: ${gcDashSpacing.xs};
+  align-items: flex-start;
+  color: ${state === 'failed' ? gcDashColor.danger : gcDashColor.textPrimary};
+  opacity: ${state === 'upcoming' ? 0.75 : 1};
+
+  strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  span, p {
+    font-size: 12px;
+    color: ${state === 'failed' ? gcDashColor.danger : gcDashColor.textMuted};
+    margin: 0;
+  }
+`;
+
+const timelineBulletStyles = (state: TimelineState) => {
+  const color =
+    state === 'complete'
+      ? gcDashColor.success
+      : state === 'current'
+      ? gcDashColor.primary
+      : state === 'failed'
+      ? gcDashColor.danger
+      : 'rgba(9, 30, 66, 0.3)';
+  return css`
+    position: relative;
+    width: 10px;
+    height: 10px;
+    margin-top: 5px;
+    border-radius: 50%;
+    background: ${color};
+  `;
+};
+
+const timelineFooterStyles = css`
+  font-size: 12px;
+  color: ${gcDashColor.textMuted};
 `;
 
 const layoutStyles = css`
@@ -689,6 +782,28 @@ export const VideoModal: React.FC<VideoModalProps> = ({
   const [scriptExpanded, setScriptExpanded] = useState<Record<string, boolean>>({});
 
   const transcript = useMemo(() => extractTranscript(video), [video]);
+  const transcriptionStatusInfo = useMemo(() => {
+    if (!video) {
+      return { raw: undefined as string | undefined, normalized: undefined as string | undefined, isProcessing: false, isFailed: false, isCompleted: false, hasTranscript: false };
+    }
+
+    const candidates: Array<unknown> = [
+      (video as any).transcriptionStatus,
+      video.metadata?.transcriptionStatus,
+      (video.metadata as any)?.transcription_status,
+      video.metadata?.contentMetadata?.transcriptionStatus,
+      video.metadata?.processing?.transcriptionStatus,
+    ];
+
+    const raw = candidates.find((value) => typeof value === 'string' && value.length > 0) as string | undefined;
+    const normalized = raw ? raw.toLowerCase() : undefined;
+    const hasTranscript = typeof transcript === 'string' && transcript.trim().length > 0;
+    const isProcessing = normalized === 'processing' || normalized === 'pending';
+    const isFailed = normalized === 'failed';
+    const isCompleted = normalized === 'completed' || (hasTranscript && !isProcessing && !isFailed);
+
+    return { raw, normalized, isProcessing, isFailed, isCompleted, hasTranscript };
+  }, [video, transcript]);
   const scriptComponents = useMemo(() => extractScriptComponents(video), [video]);
 
   const scriptComponentsByType = useMemo(() => {
@@ -727,7 +842,10 @@ export const VideoModal: React.FC<VideoModalProps> = ({
     };
   }, [video]);
 
-  const formattedTranscript = useMemo(() => transcript?.trim() ?? '', [transcript]);
+  const formattedTranscript = useMemo(() => {
+    if (!transcriptionStatusInfo.hasTranscript) return '';
+    return transcript?.trim() ?? '';
+  }, [transcript, transcriptionStatusInfo.hasTranscript]);
 
   const views = video?.metadata?.views ?? video?.metadata?.metrics?.views;
   const likes = video?.metadata?.likes ?? video?.metadata?.metrics?.likes;
@@ -1047,6 +1165,28 @@ export const VideoModal: React.FC<VideoModalProps> = ({
     </div>
   );
 
+  const getTimelineStepState = useCallback(
+    (index: number): TimelineState => {
+      if (transcriptionStatusInfo.isFailed) {
+        if (index < 2) return 'complete';
+        if (index === 2) return 'failed';
+        return 'upcoming';
+      }
+
+      if (!transcriptionStatusInfo.isProcessing) {
+        return index === TRANSCRIPTION_TIMELINE_STEPS.length - 1 ? 'upcoming' : 'complete';
+      }
+
+      const activeIndex = 2;
+      if (index < activeIndex) return 'complete';
+      if (index === activeIndex) return 'current';
+      return 'upcoming';
+    },
+    [transcriptionStatusInfo.isFailed, transcriptionStatusInfo.isProcessing],
+  );
+
+  const { isProcessing, isFailed, hasTranscript } = transcriptionStatusInfo;
+
   const transcriptContent = (
     <GcDashCard>
       <GcDashCardHeader>
@@ -1055,24 +1195,84 @@ export const VideoModal: React.FC<VideoModalProps> = ({
           variant="ghost"
           size="small"
           onClick={() => formattedTranscript && handleCopyToClipboard(formattedTranscript)}
-          disabled={!formattedTranscript}
+          disabled={!hasTranscript}
         >
           <CopyIcon label="" size="small" primaryColor="currentColor" />
           Copy transcript
         </GcDashButton>
       </GcDashCardHeader>
       <GcDashCardBody css={css`display: grid; gap: ${gcDashSpacing.sm};`}>
-        <p css={[textBlockStyles, !transcriptExpanded && clampStyles(12)]}>
-          {formattedTranscript || 'Transcript not available yet.'}
-        </p>
-        {formattedTranscript && formattedTranscript.length > 900 && (
-          <GcDashButton
-            variant="ghost"
-            size="small"
-            onClick={() => setTranscriptExpanded((expanded) => !expanded)}
+        {isProcessing && (
+          <div css={timelineContainerStyles}>
+            <div css={timelineHeaderStyles}>
+              <GcDashLoadingSpinner size={16} />
+              <span>Still working on the transcript…</span>
+            </div>
+            <div css={timelineListStyles}>
+              {TRANSCRIPTION_TIMELINE_STEPS.map((step, index) => {
+                const state = getTimelineStepState(index);
+                return (
+                  <div key={step.id} css={timelineItemStyles(state)}>
+                    <span css={timelineBulletStyles(state)} />
+                    <div>
+                      <strong>{step.title}</strong>
+                      <span>{step.description}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div css={timelineFooterStyles}>
+              You can close this window at any time—we&apos;ll keep working in the background and refresh automatically.
+            </div>
+          </div>
+        )}
+        {isFailed && (
+          <div
+            css={css`
+              display: flex;
+              align-items: center;
+              gap: ${gcDashSpacing.xs};
+              padding: ${gcDashSpacing.xs};
+              border-radius: ${gcDashShape.radiusSm};
+              background: #FEE2E2;
+              color: ${gcDashColor.danger};
+              font-size: 14px;
+            `}
           >
-            {transcriptExpanded ? 'Show less' : 'Show more'}
-          </GcDashButton>
+            <WarningIcon label="" />
+            <span>Transcription failed. Retry from the collections menu.</span>
+          </div>
+        )}
+        {!hasTranscript && !isProcessing && !isFailed && (
+          <div
+            css={css`
+              display: flex;
+              align-items: center;
+              gap: ${gcDashSpacing.xs};
+              padding: ${gcDashSpacing.xs};
+              border-radius: ${gcDashShape.radiusSm};
+              background: ${gcDashColor.surfaceAlt};
+              color: ${gcDashColor.textMuted};
+              font-size: 14px;
+            `}
+          >
+            Transcript will appear here once processing completes.
+          </div>
+        )}
+        {hasTranscript && (
+          <>
+            <p css={[textBlockStyles, !transcriptExpanded && clampStyles(12)]}>{formattedTranscript}</p>
+            {formattedTranscript.length > 900 && (
+              <GcDashButton
+                variant="ghost"
+                size="small"
+                onClick={() => setTranscriptExpanded((expanded) => !expanded)}
+              >
+                {transcriptExpanded ? 'Show less' : 'Show more'}
+              </GcDashButton>
+            )}
+          </>
         )}
       </GcDashCardBody>
     </GcDashCard>
@@ -1080,68 +1280,101 @@ export const VideoModal: React.FC<VideoModalProps> = ({
 
   const analysisContent = (
     <div css={analysisGridStyles}>
-      <GcDashCard>
-        <GcDashCardHeader>
-          <div>
-            <GcDashCardTitle>Delivery Grade</GcDashCardTitle>
-            <GcDashCardSubtitle>{analysisSummary.summary}</GcDashCardSubtitle>
-          </div>
-        </GcDashCardHeader>
-        <GcDashCardBody css={analysisDetailStyles}>
-          <div
+      {isProcessing ? (
+        <GcDashCard>
+          <GcDashCardBody
             css={css`
-              font-size: 42px;
-              font-weight: 700;
-              letter-spacing: -0.03em;
-              color: ${gcDashColor.textPrimary};
-            `}
-          >
-            {analysisSummary.grade}
-          </div>
-          <AnalysisMetricRow label="Average score" value={averageScore ? formatScore(averageScore) : 'Pending'} emphasis />
-          <AnalysisMetricRow label="Readability" value={formatScore(performanceMetrics.readability)} />
-          <AnalysisMetricRow label="Engagement" value={formatScore(performanceMetrics.engagement)} />
-          <AnalysisMetricRow label="Hook strength" value={formatScore(performanceMetrics.hookStrength)} />
-        </GcDashCardBody>
-      </GcDashCard>
-
-      <GcDashCard>
-        <GcDashCardHeader>
-          <GcDashCardTitle>Script Density</GcDashCardTitle>
-        </GcDashCardHeader>
-        <GcDashCardBody css={analysisDetailStyles}>
-          <AnalysisMetricRow label="Transcript words" value={transcriptWordCount ? transcriptWordCount.toLocaleString() : '—'} />
-          <AnalysisMetricRow label="Structured beats" value={scriptComponents.length ? scriptComponents.length.toString() : '—'} />
-          <AnalysisMetricRow label="Reading time" value={transcriptWordCount ? formatReadingTime(transcriptWordCount) : '—'} />
-          <AnalysisMetricRow
-            label="Narrative complexity"
-            value={`${complexity.grade} • ${complexity.descriptor}`}
-            emphasis
-          />
-        </GcDashCardBody>
-      </GcDashCard>
-
-      <GcDashCard>
-        <GcDashCardHeader>
-          <GcDashCardTitle>Opportunities</GcDashCardTitle>
-        </GcDashCardHeader>
-        <GcDashCardBody css={analysisDetailStyles}>
-          <ul
-            css={css`
-              margin: 0;
-              padding-left: 18px;
-              display: grid;
-              gap: 8px;
+              display: flex;
+              align-items: center;
+              gap: ${gcDashSpacing.xs};
               font-size: 14px;
-              color: ${gcDashColor.textSecondary};
             `}
           >
-            <li>Tighten your hook to land in the first 3 seconds.</li>
-            <li>Repurpose the golden nugget into carousels or reels.</li>
-            <li>Use WTA as a modular CTA for collection follow-ups.</li>
-          </ul>
-        </GcDashCardBody>
-      </GcDashCard>
+            <GcDashLoadingSpinner size={16} />
+            <span>We're waiting on the transcript to finish before generating analysis.</span>
+          </GcDashCardBody>
+        </GcDashCard>
+      ) : isFailed ? (
+        <GcDashCard>
+          <GcDashCardBody
+            css={css`
+              display: flex;
+              align-items: center;
+              gap: ${gcDashSpacing.xs};
+              font-size: 14px;
+              color: ${gcDashColor.danger};
+            `}
+          >
+            <WarningIcon label="" />
+            <span>Analysis is unavailable until transcription succeeds.</span>
+          </GcDashCardBody>
+        </GcDashCard>
+      ) : (
+        <>
+          <GcDashCard>
+            <GcDashCardHeader>
+              <div>
+                <GcDashCardTitle>Delivery Grade</GcDashCardTitle>
+                <GcDashCardSubtitle>{analysisSummary.summary}</GcDashCardSubtitle>
+              </div>
+            </GcDashCardHeader>
+            <GcDashCardBody css={analysisDetailStyles}>
+              <div
+                css={css`
+                  font-size: 42px;
+                  font-weight: 700;
+                  letter-spacing: -0.03em;
+                  color: ${gcDashColor.textPrimary};
+                `}
+              >
+                {analysisSummary.grade}
+              </div>
+              <AnalysisMetricRow label="Average score" value={averageScore ? formatScore(averageScore) : 'Pending'} emphasis />
+              <AnalysisMetricRow label="Readability" value={formatScore(performanceMetrics.readability)} />
+              <AnalysisMetricRow label="Engagement" value={formatScore(performanceMetrics.engagement)} />
+              <AnalysisMetricRow label="Hook strength" value={formatScore(performanceMetrics.hookStrength)} />
+            </GcDashCardBody>
+          </GcDashCard>
+
+          <GcDashCard>
+            <GcDashCardHeader>
+              <GcDashCardTitle>Script Density</GcDashCardTitle>
+            </GcDashCardHeader>
+            <GcDashCardBody css={analysisDetailStyles}>
+              <AnalysisMetricRow label="Transcript words" value={transcriptWordCount ? transcriptWordCount.toLocaleString() : '—'} />
+              <AnalysisMetricRow label="Structured beats" value={scriptComponents.length ? scriptComponents.length.toString() : '—'} />
+              <AnalysisMetricRow label="Reading time" value={transcriptWordCount ? formatReadingTime(transcriptWordCount) : '—'} />
+              <AnalysisMetricRow
+                label="Narrative complexity"
+                value={`${complexity.grade} • ${complexity.descriptor}`}
+                emphasis
+              />
+            </GcDashCardBody>
+          </GcDashCard>
+
+          <GcDashCard>
+            <GcDashCardHeader>
+              <GcDashCardTitle>Opportunities</GcDashCardTitle>
+            </GcDashCardHeader>
+            <GcDashCardBody css={analysisDetailStyles}>
+              <ul
+                css={css`
+                  margin: 0;
+                  padding-left: 18px;
+                  display: grid;
+                  gap: 8px;
+                  font-size: 14px;
+                  color: ${gcDashColor.textSecondary};
+                `}
+              >
+                <li>Tighten your hook to land in the first 3 seconds.</li>
+                <li>Repurpose the golden nugget into carousels or reels.</li>
+                <li>Use WTA as a modular CTA for collection follow-ups.</li>
+              </ul>
+            </GcDashCardBody>
+          </GcDashCard>
+        </>
+      )}
     </div>
   );
 
