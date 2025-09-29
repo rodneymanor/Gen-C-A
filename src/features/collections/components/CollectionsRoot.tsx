@@ -1102,9 +1102,9 @@ export const CollectionsRoot: React.FC = () => {
   }, [view, selectedCollection?.id, fetchCollectionVideos]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === 'undefined') return;
 
-    const clearPoll = () => {
+    const stopPolling = () => {
       if (transcriptionPollRef.current != null) {
         window.clearInterval(transcriptionPollRef.current);
         transcriptionPollRef.current = null;
@@ -1112,8 +1112,8 @@ export const CollectionsRoot: React.FC = () => {
     };
 
     if (view !== 'detail' || !selectedCollection) {
-      clearPoll();
-      return clearPoll;
+      stopPolling();
+      return;
     }
 
     const hasActiveTranscription = videos.some((video) => {
@@ -1136,11 +1136,16 @@ export const CollectionsRoot: React.FC = () => {
         fetchCollectionVideos({ silent: true });
       }
     } else {
-      clearPoll();
+      stopPolling();
     }
-
-    return clearPoll;
   }, [videos, view, selectedCollection?.id, fetchCollectionVideos]);
+
+  useEffect(() => () => {
+    if (transcriptionPollRef.current != null && typeof window !== 'undefined') {
+      window.clearInterval(transcriptionPollRef.current);
+      transcriptionPollRef.current = null;
+    }
+  }, []);
   useEffect(() => {
     setPlatformFilter('all');
     setFavoritesOnly(false);
