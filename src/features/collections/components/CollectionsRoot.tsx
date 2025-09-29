@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { css } from '@emotion/react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import AddIcon from '@atlaskit/icon/glyph/add';
 import RefreshIcon from '@atlaskit/icon/glyph/refresh';
@@ -701,6 +701,8 @@ const mapContentItemToOverlayVideo = (contentItem: ContentItem): OverlayVideo =>
 
 export const CollectionsRoot: React.FC = () => {
   const navigate = useNavigate();
+  const { collectionId: routeCollectionIdParam } = useParams<{ collectionId?: string }>();
+  const routeCollectionId = routeCollectionIdParam ?? null;
   const debug = useDebugger('Collections', { level: DEBUG_LEVELS.DEBUG });
   const { beginPageLoad, endPageLoad } = usePageLoad();
 
@@ -710,6 +712,7 @@ export const CollectionsRoot: React.FC = () => {
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'size'>('recent');
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isCollectionsLoading, setIsCollectionsLoading] = useState(false);
+  const [collectionsLoaded, setCollectionsLoaded] = useState(false);
   const [videos, setVideos] = useState<ContentItem[]>([]);
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
   const [isDedupeBusy, setIsDedupeBusy] = useState(false);
@@ -738,6 +741,13 @@ export const CollectionsRoot: React.FC = () => {
   const createTitleRef = useRef<HTMLInputElement | null>(null);
   const addUrlRef = useRef<HTMLInputElement | null>(null);
   const transcriptionPollRef = useRef<number | null>(null);
+
+  const resetDetailState = useCallback(() => {
+    setIsVideoModalOpen(false);
+    setSelectedVideo(null);
+    setIsOverlayOpen(false);
+    setActiveIndex(null);
+  }, []);
 
   const adjustCollectionVideoCount = useCallback((collectionId: string | undefined, delta: number) => {
     if (!collectionId || collectionId === 'all-videos' || delta === 0) return;
@@ -906,6 +916,9 @@ export const CollectionsRoot: React.FC = () => {
   const handleViewCollection = (collection: Collection) => {
     setSelectedCollection(collection);
     setView('detail');
+    if (routeCollectionId !== collection.id) {
+      navigate(`/collections/${collection.id}`);
+    }
   };
 
   const handleEditCollection = (collection: Collection) => {
@@ -915,8 +928,10 @@ export const CollectionsRoot: React.FC = () => {
   const handleBackToGrid = () => {
     setView('grid');
     setSelectedCollection(null);
-    setIsVideoModalOpen(false);
-    setSelectedVideo(null);
+    resetDetailState();
+    if (routeCollectionId) {
+      navigate('/collections');
+    }
   };
 
   const handleVideoPlay = (video: ContentItem) => {
@@ -1065,11 +1080,15 @@ export const CollectionsRoot: React.FC = () => {
         if (!cancelled) {
           setCollections([]);
           setIsCollectionsLoading(false);
+          setCollectionsLoaded(false);
         }
         return;
       }
 
-      if (!cancelled) setIsCollectionsLoading(true);
+      if (!cancelled) {
+        setIsCollectionsLoading(true);
+        setCollectionsLoaded(false);
+      }
 
       try {
         beginPageLoad();
@@ -1081,12 +1100,53 @@ export const CollectionsRoot: React.FC = () => {
         console.warn('Failed to fetch collections', e);
       } finally {
         endPageLoad();
-        if (!cancelled) setIsCollectionsLoading(false);
+        if (!cancelled) {
+          setIsCollectionsLoading(false);
+          setCollectionsLoaded(true);
+        }
       }
     }
     loadCollections();
     return () => { cancelled = true; };
   }, [isAuthReady, userId, beginPageLoad, endPageLoad]);
+
+  useEffect(() => {
+    if (!routeCollectionId) {
+      if (view !== 'grid') setView('grid');
+      if (selectedCollection !== null) setSelectedCollection(null);
+      resetDetailState();
+      return;
+    }
+
+    const match = collections.find((collection) => collection.id === routeCollectionId) ?? null;
+    if (match) {
+      if (selectedCollection !== match) {
+        setSelectedCollection(match);
+      }
+      if (view !== 'detail') setView('detail');
+      return;
+    }
+
+    if (!collectionsLoaded) {
+      return;
+    }
+
+    if (!isCollectionsLoading) {
+      if (view !== 'grid') setView('grid');
+      if (selectedCollection !== null) setSelectedCollection(null);
+      resetDetailState();
+      navigate('/collections', { replace: true });
+    }
+  }, [
+    routeCollectionId,
+    collections,
+    isCollectionsLoading,
+    collectionsLoaded,
+    navigate,
+    view,
+    selectedCollection,
+    resetDetailState,
+  ]);
 
   const fetchCollectionVideos = useCallback(
     async (options?: { silent?: boolean }) => {

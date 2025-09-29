@@ -32,6 +32,14 @@ const Extensions = () => <div>Extensions - Coming Soon</div>;
 const Mobile = () => <div>Mobile - Coming Soon</div>;
 
 function App() {
+  const collectionsElement = (
+    <ProtectedRoute>
+      <Layout>
+        <Collections />
+      </Layout>
+    </ProtectedRoute>
+  );
+
   return (
     <ThemeProvider>
       <AuthProvider>
@@ -50,13 +58,8 @@ function App() {
               </ProtectedRoute>
             } />
             
-            <Route path="/collections" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Collections />
-                </Layout>
-              </ProtectedRoute>
-            } />
+            <Route path="/collections" element={collectionsElement} />
+            <Route path="/collections/:collectionId" element={collectionsElement} />
             
             <Route path="/library" element={
               <ProtectedRoute>
