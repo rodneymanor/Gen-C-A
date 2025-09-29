@@ -1,19 +1,19 @@
 # Unification Status
 
- - Updated: 2025-09-27 17:05:00Z
+- Updated: 2025-09-29 00:49:00Z
   - Branch: main
-  - Head: 23519e07
+  - Head: 09469510
 
 This document tracks the current state of the application unification effort and provides a single place to see what has shipped, what’s in flight, and what’s next.
 
 ## Summary
-- Canonical backend: apps/backend is the source of truth for business logic.
-- Thin shims: Most Vercel `api/**` and Next App Router handlers now delegate to the backend.
- - Env contract: Shared validation and `.env.example` added; local `.env.local` pins a stable backend port.
- - OpenAPI contract: Scripts endpoints are documented in `openapi/openapi.yaml`, generate typed clients, and are validated at runtime.
-- Observability: Lightweight request logging added to dev server; smoke script verifies backend vs. proxy parity.
+- Canonical backend: `apps/backend` owns business logic; responses now normalize timestamps/required fields to satisfy the OpenAPI validator.
+- Thin shims: Most Vercel `api/**` and Next App Router handlers delegate to the backend; frontend clients call the generated SDK with Firebase auth headers.
+- Env contract: Shared validation and `.env.example` added; local `.env.local` pins a stable backend port.
+- OpenAPI contract: Notes/Collections/Scripts/Videos/Instagram/TikTok endpoints live in `openapi/openapi.yaml`, generate typed clients, and are validated at runtime.
+- Observability: Lightweight request logging + `x-served-by` header expose serving runtime; smoke scripts cover auth + TikTok 200/400 parity.
 
-Recent focus: removed redundant serverless handlers under `api/**`, consolidated to a single catch‑all proxy, removed `api/_utils`, added CI smoke, and expanded OpenAPI to Notes/Collections.
+Recent focus: enforced Firebase ID token verification for collections/library flows, normalized collection + script payloads so express-openapi-validator passes, migrated remaining TikTok/Instagram utilities to the generated client, refreshed CI/local smokes to include `/api/tiktok/user-feed` cases, and reconnected Chrome Extension flows in production via App Router shims plus Vercel rewrites.
 
 ## Environment Contract
 - [x] `.env.example` added with complete variable inventory.
@@ -43,7 +43,7 @@ Recent focus: removed redundant serverless handlers under `api/**`, consolidated
 - Voice: [x] `voice/analyze-patterns`
 - Personas: [ ] `personas/*` (if still required) — align with backend or deprecate
 - Brand: [ ] `brand` (review and align)
- - Chrome Extension: shims removed; traffic routes via catch‑all or optional rewrite.
+ - Chrome Extension: App Router shims forward to backend; production rewrite covers `/api/chrome-extension/*`.
 
 ## Validation & Observability
 - [x] Local smoke: `npm run smoke:local`
@@ -51,11 +51,17 @@ Recent focus: removed redundant serverless handlers under `api/**`, consolidated
   - Asserts parity for GET `/api/viral-content/feed`
   - Basic error-parity checks for `/api/instagram/user-id` and `/api/tiktok/user-feed` without params
   - Scripts API validated at runtime via `express-openapi-validator` against `openapi/openapi.yaml`.
-- [ ] Add route-by-route smoke for high-traffic flows (collections/video ingest) with a test `SMOKE_USER_ID`.
-- [ ] Add a small `x-served-by` header from backend and shims to confirm the serving runtime in logs.
- - [ ] Add Chrome Extension smoke:
-   - GET `/api/chrome-extension/youtube-transcript?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ` (expects 200 with `segments` array when RAPIDAPI_KEY is set; 401 when auth missing).
-   - POST `/api/chrome-extension/idea-inbox/text` with `{ content: "hello" }` (expects 201 and note shape in dev with test key; 401 otherwise).
+ - [x] Add `x-served-by` header from backend/shims to confirm serving runtime (surfaced in smoke logs).
+ - [x] Chrome Extension smoke:
+   - GET `/api/chrome-extension/youtube-transcript?url=...` (401 without key; 200 with key when `RAPIDAPI_KEY` is set).
+   - POST `/api/chrome-extension/idea-inbox/text` (201 with dev internal key; 401 otherwise).
+ - [x] Videos contract smoke: POST `/api/videos/collection` (presence/shape check; auth-sensitive).
+- [x] CI smoke workflow `.github/workflows/smoke.yml` prints `x-served-by` summary.
+- [x] Added TikTok smokes: 400 (missing params) and optional 200 check when `RAPIDAPI_KEY` + `TIKTOK_SMOKE_USERNAME` (or `VIRAL_TIKTOK_USERNAME`) are set.
+ - [ ] Add route-by-route smoke for high-traffic flows (collections/video ingest) with a test `SMOKE_USER_ID` (optional, gated).
+ - [x] Gated collections smokes (optional):
+   - `SMOKE_FIREBASE_TOKEN` — enables authenticated tests
+   - `SMOKE_COLLECTION_ID`, `SMOKE_TARGET_COLLECTION_ID`, `SMOKE_VIDEO_ID` — enable update/move/copy checks
 
 ## API Contracts & Tooling
 - [x] Document scripts endpoints in `openapi/openapi.yaml`.
@@ -63,20 +69,30 @@ Recent focus: removed redundant serverless handlers under `api/**`, consolidated
 - [x] Frontend hook `useScriptsApi` now consumes the generated client.
 - [x] Backend enforces the scripts spec at runtime with `express-openapi-validator`.
 - [x] Extend OpenAPI coverage to Notes and Collections; added `/api/notes`, `/api/notes/{id}`, `/api/collections`, plus `/api/collections/(move-video|copy-video|update|delete)`, and `/api/videos/(collection|add-to-collection)`.
-- [ ] Migrate remaining client hooks to the shared OpenAPI client once specs exist.
+- [x] Migrate library + collections service to the generated client; scripts hook already migrated.
+- [x] Extend OpenAPI coverage to Instagram: added `/api/instagram/user-id` and `/api/instagram/user-reels`.
+- [x] Extend OpenAPI coverage to TikTok: added `/api/tiktok/user-feed` (GET/POST).
+- [x] Extend OpenAPI to Video: added `/api/video/transcribe-from-url` and `/api/video/orchestrate` (minimal contracts).
+- [x] Extend OpenAPI to Video scrape: added `/api/video/scrape-url` (minimal contract).
+- [x] Regenerate clients via `npm run gen`; added `src/api/client.ts` helper using `openapi-fetch`.
+- [x] Migrate Instagram client calls in `src/features/brandhub/services/instagramVoiceService.ts` and `src/pages/TikTokAnalysisTest.tsx` to the generated client.
+- [x] Migrate TikTok client utilities to generated client: `src/features/brandhub/services/tiktokVoiceService.ts`, `src/app/(main)/personas/services/api.ts`, and `src/pages/TikTokAnalysisTest.tsx`.
+- [x] Migrate transcription callers to generated client: `src/app/(main)/personas/services/api.ts`, `src/features/brandhub/services/videoTranscriptionService.ts`, partial in `src/pages/TikTokAnalysisTest.tsx`.
+- [x] Migrate scrape callers: `src/test/writing-redesign/WritingRedesign.tsx` now uses the generated client for `/api/video/scrape-url`.
+- [x] Migrate remaining TikTok helpers to the shared OpenAPI client (personas + brand hub flows).
  - [ ] Decide if Chrome Extension endpoints are included in OpenAPI (recommended minimal read-only coverage for transcript endpoint).
 
 ## Outstanding Work
 - Phase 2
   - [x] Delegate `api/**` to backend via catch‑all; remove endpoint files.
-  - [ ] Remove JSON fallbacks in `server.js` once all delegated routes pass smoke tests.
-  - [ ] Add a Vercel rewrite for `/api/chrome-extension/(.*)` → backend base (optional; catch‑all handles today).
+- [x] Remove JSON fallbacks in `server.js`; keep pure proxy with explicit chrome‑extension mappings. `x-served-by: dev-proxy` set.
+  - [x] Add a Vercel rewrite for `/api/chrome-extension/(.*)` → backend base (optional; catch‑all handles today).
 - Phase 2.5 (Contract-first)
-  - [ ] Expand OpenAPI spec beyond scripts; regenerate shared clients.
+  - [ ] Expand OpenAPI coverage to remaining high-traffic endpoints; regenerate shared clients.
 - Phase 3 (Auth Unification)
   - [ ] Implement shared Firebase auth middleware in backend; enforce roles for admin routes.
   - [ ] Create centralized frontend API client that injects ID tokens, replaces `x-user-id`/`x-api-key` flows. *(Scripts hook now uses the generated OpenAPI client as the first adopter.)*
-  - [ ] Migrate clients (collections, scripts, instagram/tiktok tools) to the centralized client.
+  - [ ] Migrate remaining utilities (instagram/tiktok tools) to the centralized client.
 - Phase 4 (Hardening & Cleanup)
 - [x] Delete duplicate handlers in `api/**` after traffic fully shifts.
   - [ ] Archive/remove `src/api-routes/**` once their logic is migrated to `src/services/**` and consumed by backend.
@@ -84,11 +100,11 @@ Recent focus: removed redundant serverless handlers under `api/**`, consolidated
 
 ## Today’s Action Items
 - Chrome Extension
-  - [ ] Fix recursion in `api/chrome-extension/youtube-transcript/route.ts` by delegating to `process.env.BACKEND_INTERNAL_URL` (fallback to `BACKEND_URL`) plus path `/chrome-extension/youtube-transcript`.
-  - [ ] Add equivalent shims (or remove if Vercel rewrite is added) for `idea-inbox/text`, `idea-inbox/video`, and `collections/*` endpoints that exist in `apps/backend/src/routes/extension.ts`.
-  - [ ] Verify with curl against dev and prod; update this doc with results.
+  - [x] Fix recursion in `api/chrome-extension/youtube-transcript/route.ts` by delegating to `process.env.BACKEND_INTERNAL_URL` (fallback to `BACKEND_URL`) plus path `/chrome-extension/youtube-transcript`.
+  - [x] Add equivalent shims (or remove if Vercel rewrite is added) for `idea-inbox/text`, `idea-inbox/video`, and `collections/*` endpoints that exist in `apps/backend/src/routes/extension.ts`.
+  - [x] Verify with curl against dev and prod; update this doc with results.
 - Rewrites
-  - [ ] Add Vercel rewrite for `/api/chrome-extension/(.*)` to backend base (safer than same-origin).
+  - [x] Add Vercel rewrite for `/api/chrome-extension/(.*)` to backend base (safer than same-origin).
 - Observability
   - [ ] Add `x-served-by: backend|shim|dev-proxy` headers across backend and shims.
 - Auth cleanup
@@ -99,6 +115,9 @@ Recent focus: removed redundant serverless handlers under `api/**`, consolidated
 - Restart cleanly: `npm run dev:restart` (clears ports incl. 4000 & 5001)
 - Smoke tests: `npm run smoke:local`
   - Optional: `SMOKE_USER_ID=<uid> npm run smoke:local` to include collections endpoints
+  - Optional gated auth tests:
+    - `SMOKE_FIREBASE_TOKEN=<id_token>`
+    - `SMOKE_COLLECTION_ID=<sourceColl>` `SMOKE_TARGET_COLLECTION_ID=<targetColl>` `SMOKE_VIDEO_ID=<video>`
  - CI: GitHub Actions workflow `.github/workflows/smoke.yml` runs backend + smoke on PRs and pushes to `main`. Logs include `x-served-by` header summaries.
  - For Chrome Extension endpoints locally:
    - Ensure `RAPIDAPI_KEY` is set in `.env.local` for YouTube transcript.
@@ -106,9 +125,10 @@ Recent focus: removed redundant serverless handlers under `api/**`, consolidated
 
 ## Deployment Checklist
 - [x] Set `BACKEND_INTERNAL_URL` (or `BACKEND_URL`) in the serverless environment to point to the canonical backend.
-- [ ] Confirm `npm run smoke:prod` succeeds against the deployed base.
+- [x] Confirm `npm run smoke:prod` (manual curl suite) succeeds against the deployed base.
 - [ ] Monitor logs for `x-served-by` (once added) to ensure requests are served by backend.
 
 ## Notes / Risks
 - Some legacy TypeScript errors remain in the repo; they do not affect the shims but should be addressed as part of service migration.
 - Collections endpoints require a real user id/token; smoke tests will show 404/401 when using placeholders.
+- Firestore still needs the composite index referenced in backend logs for Notes list queries; create the index via the Firebase console link surfaced in `/api/notes` failures.
