@@ -1132,6 +1132,8 @@ export const CollectionsRoot: React.FC = () => {
       return;
     }
 
+    const cutoff = Date.now() - 5 * 60 * 1000;
+
     const hasActiveTranscription = videos.some((video) => {
       const statusCandidate =
         (video as any).transcriptionStatus ??
@@ -1141,7 +1143,41 @@ export const CollectionsRoot: React.FC = () => {
         video.metadata?.contentMetadata?.transcriptionStatus ??
         '';
       const normalized = typeof statusCandidate === 'string' ? statusCandidate.toLowerCase() : '';
-      return normalized === 'processing' || normalized === 'pending';
+      if (normalized !== 'processing' && normalized !== 'pending') {
+        return false;
+      }
+
+      const timestamps: number[] = [];
+
+      if (video.updated instanceof Date) timestamps.push(video.updated.getTime());
+      if (video.created instanceof Date) timestamps.push(video.created.getTime());
+
+      const metadata = video.metadata ?? {};
+      const coerceTimestamp = (value: unknown) => {
+        if (typeof value === 'string' && value.length > 0) {
+          const parsed = Date.parse(value);
+          if (!Number.isNaN(parsed)) return parsed;
+        }
+        if (value instanceof Date) return value.getTime();
+        return null;
+      };
+
+      const metaCandidates = [
+        metadata.updatedAt,
+        metadata.transcriptionQueuedAt,
+        metadata.transcriptionCompletedAt,
+        metadata.transcriptionFailedAt,
+        metadata?.transcriptionMetadata?.processedAt,
+        metadata?.transcriptionMetadata?.queuedAt,
+      ];
+
+      metaCandidates.forEach((candidate) => {
+        const parsed = coerceTimestamp(candidate);
+        if (parsed != null) timestamps.push(parsed);
+      });
+
+      const lastTouched = timestamps.length > 0 ? Math.max(...timestamps) : 0;
+      return lastTouched >= cutoff;
     });
 
     if (hasActiveTranscription) {
