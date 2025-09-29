@@ -841,50 +841,66 @@ export const CollectionsRoot: React.FC = () => {
     setActiveModal('add');
   };
 
-  const handleConfirmAddVideo = async () => {
-    try {
-      setAddError('');
-      if (!userId) {
-        setAddError('You must be signed in.');
-        return;
-      }
-      if (!addCollectionId) {
-        setAddError('Please select a collection.');
-        return;
-      }
-      if (!addVideoUrl || !/^https?:\/\//i.test(addVideoUrl)) {
-        setAddError('Please provide a valid video URL.');
-        return;
-      }
-      setAddBusy(true);
-      const platform = addVideoUrl.includes('tiktok') ? 'tiktok' : addVideoUrl.includes('instagram') ? 'instagram' : 'unknown';
-      const addedAt = new Date().toISOString();
-      const resp = await RbacClient.addVideoToCollection(String(userId), addCollectionId, { originalUrl: addVideoUrl, platform, addedAt });
-      if (!resp?.success) {
-        setAddError(resp?.error || 'Failed to import video');
-        setAddBusy(false);
-        return;
-      }
-
-      if (view === 'detail' && selectedCollection && selectedCollection.id === addCollectionId) {
-        try {
-          const v = await RbacClient.getCollectionVideos(String(userId), addCollectionId, 50);
-          if (v?.success) setVideos((v.videos || []).map(mapServerVideoToContentItem));
-        } catch {}
-      }
-      try {
-        const c = await RbacClient.getCollections(String(userId));
-        if (c?.success) setCollections((c.collections || []).map(mapServerCollectionToUi));
-      } catch {}
-
-      setActiveModal(null);
-      debug.info('Video added to collection', { addCollectionId, addVideoUrl, platform });
-      setAddBusy(false);
-    } catch (e: any) {
-      console.error('Add video error', e);
-      setAddError(e?.message || 'Import failed');
-      setAddBusy(false);
+  const handleConfirmAddVideo = () => {
+    setAddError('');
+    if (!userId) {
+      setAddError('You must be signed in.');
+      return;
     }
+    if (!addCollectionId) {
+      setAddError('Please select a collection.');
+      return;
+    }
+    if (!addVideoUrl || !/^https?:\/\//i.test(addVideoUrl)) {
+      setAddError('Please provide a valid video URL.');
+      return;
+    }
+
+    const targetCollectionId = addCollectionId;
+    const targetUrl = addVideoUrl.trim();
+    const platform = targetUrl.includes('tiktok') ? 'tiktok' : targetUrl.includes('instagram') ? 'instagram' : 'unknown';
+    const addedAt = new Date().toISOString();
+
+    setAddBusy(true);
+    setActiveModal(null);
+
+    (async () => {
+      try {
+        const resp = await RbacClient.addVideoToCollection(String(userId), targetCollectionId, {
+          originalUrl: targetUrl,
+          platform,
+          addedAt,
+        });
+
+        if (!resp?.success) {
+          throw new Error(resp?.error || 'Failed to import video');
+        }
+
+        if (view === 'detail' && selectedCollection && selectedCollection.id === targetCollectionId) {
+          try {
+            const v = await RbacClient.getCollectionVideos(String(userId), targetCollectionId, 50);
+            if (v?.success) setVideos((v.videos || []).map(mapServerVideoToContentItem));
+          } catch (refreshError) {
+            console.warn('Failed to refresh videos after import', refreshError);
+          }
+        }
+
+        try {
+          const c = await RbacClient.getCollections(String(userId));
+          if (c?.success) setCollections((c.collections || []).map(mapServerCollectionToUi));
+        } catch (refreshCollectionsError) {
+          console.warn('Failed to refresh collections after import', refreshCollectionsError);
+        }
+
+        debug.info('Video added to collection', { targetCollectionId, targetUrl, platform });
+      } catch (error: any) {
+        console.error('Add video error', error);
+        const message = typeof error?.message === 'string' ? error.message : 'Import failed';
+        alert(message);
+      } finally {
+        setAddBusy(false);
+      }
+    })();
   };
 
   const handleViewCollection = (collection: Collection) => {
