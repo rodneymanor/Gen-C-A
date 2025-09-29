@@ -1,8 +1,8 @@
 # Unification Status
 
-- Updated: 2025-09-29 00:49:00Z
+- Updated: 2025-09-29 00:55:00Z
   - Branch: main
-  - Head: 09469510
+  - Head: HEAD
 
 This document tracks the current state of the application unification effort and provides a single place to see what has shipped, what’s in flight, and what’s next.
 
@@ -13,7 +13,7 @@ This document tracks the current state of the application unification effort and
 - OpenAPI contract: Notes/Collections/Scripts/Videos/Instagram/TikTok endpoints live in `openapi/openapi.yaml`, generate typed clients, and are validated at runtime.
 - Observability: Lightweight request logging + `x-served-by` header expose serving runtime; smoke scripts cover auth + TikTok 200/400 parity.
 
-Recent focus: enforced Firebase ID token verification for collections/library flows, normalized collection + script payloads so express-openapi-validator passes, migrated remaining TikTok/Instagram utilities to the generated client, refreshed CI/local smokes to include `/api/tiktok/user-feed` cases, and reconnected Chrome Extension flows in production via App Router shims plus Vercel rewrites.
+Recent focus: enforced Firebase ID token verification for collections/library flows, normalized collection + script payloads so express-openapi-validator passes, migrated remaining TikTok/Instagram utilities to the generated client, refreshed CI/local smokes to include `/api/tiktok/user-feed` cases, reconnected Chrome Extension flows in production via App Router shims plus Vercel rewrites, and published live OpenAPI docs at `/docs` (backed by `/openapi`).
 
 ## Environment Contract
 - [x] `.env.example` added with complete variable inventory.
@@ -80,6 +80,7 @@ Recent focus: enforced Firebase ID token verification for collections/library fl
 - [x] Migrate transcription callers to generated client: `src/app/(main)/personas/services/api.ts`, `src/features/brandhub/services/videoTranscriptionService.ts`, partial in `src/pages/TikTokAnalysisTest.tsx`.
 - [x] Migrate scrape callers: `src/test/writing-redesign/WritingRedesign.tsx` now uses the generated client for `/api/video/scrape-url`.
 - [x] Migrate remaining TikTok helpers to the shared OpenAPI client (personas + brand hub flows).
+ - [x] Host Swagger UI at `/docs` consuming `/openapi/openapi.yaml`.
  - [ ] Decide if Chrome Extension endpoints are included in OpenAPI (recommended minimal read-only coverage for transcript endpoint).
 
 ## Outstanding Work
