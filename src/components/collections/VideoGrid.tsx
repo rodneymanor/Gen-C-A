@@ -372,7 +372,9 @@ const VideoCard: React.FC<{
   const transcriptionStatusRaw = transcriptionCandidates.find(
     (value) => typeof value === 'string' && value.length > 0,
   ) as string | undefined;
-  const transcriptionStatus = transcriptionStatusRaw?.toLowerCase();
+  const transcriptionStatus = typeof transcriptionStatusRaw === 'string'
+    ? transcriptionStatusRaw.trim().toLowerCase()
+    : undefined;
   const isTimeout = transcriptionStatus === 'timeout';
   const rawTimeoutMessage =
     typeof video.metadata?.transcriptionError === 'string' ? video.metadata?.transcriptionError : undefined;
