@@ -13,7 +13,7 @@ This document tracks the current state of the application unification effort and
 - OpenAPI contract: Notes/Collections/Scripts/Videos/Instagram/TikTok endpoints live in `openapi/openapi.yaml`, generate typed clients, and are validated at runtime.
 - Observability: Lightweight request logging + `x-served-by` header expose serving runtime; smoke scripts cover auth + TikTok 200/400 parity.
 
-Recent focus: enforced Firebase ID token verification for collections/library flows, normalized collection + script payloads so express-openapi-validator passes, migrated remaining TikTok/Instagram utilities to the generated client, refreshed CI/local smokes to include `/api/tiktok/user-feed` cases, reconnected Chrome Extension flows in production via App Router shims plus Vercel rewrites, and published live OpenAPI docs at `/docs` (backed by `/openapi`).
+Recent focus: enforced Firebase ID token verification for collections/library flows, normalized collection + script payloads so express-openapi-validator passes, migrated remaining TikTok/Instagram utilities to the generated client, refreshed CI/local smokes to include `/api/tiktok/user-feed` cases, reconnected Chrome Extension flows in production via Vercel rewrites, and published live OpenAPI docs at `/docs` (served by the backend `/openapi` endpoint).
 
 ## Environment Contract
 - [x] `.env.example` added with complete variable inventory.

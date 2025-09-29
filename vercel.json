@@ -3,6 +3,14 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/docs",
+      "destination": "https://api.gencapp.pro/docs"
+    },
+    {
+      "source": "/openapi",
+      "destination": "https://api.gencapp.pro/openapi"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "https://api.gencapp.pro/api/$1"
     },

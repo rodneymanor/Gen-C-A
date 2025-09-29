@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from 'express';
 import cors from 'cors';
 import path from 'node:path';
+import { promises as fs } from 'node:fs';
 import { middleware as openapiValidator } from 'express-openapi-validator';
 
 import { notesRouter } from './routes/notes';
@@ -36,6 +37,54 @@ export function createApp() {
   // Health endpoint (not part of OpenAPI; keep before validator)
   app.get('/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok' });
+  });
+
+  // Serve OpenAPI spec and Swagger UI from backend
+  app.get('/openapi', async (_req: Request, res: Response) => {
+    try {
+      const spec = await fs.readFile(scriptsApiSpecPath, 'utf8');
+      res.setHeader('Content-Type', 'text/yaml; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=300');
+      res.send(spec);
+    } catch (error) {
+      console.error('[backend][openapi] failed to read spec:', error);
+      res.status(500).json({ success: false, error: 'Failed to load OpenAPI spec' });
+    }
+  });
+
+  app.get('/docs', (_req: Request, res: Response) => {
+    const html = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Gen C API Docs</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+    <style>
+      body { margin: 0; background: #f7f7f7; }
+      #swagger-ui { box-sizing: border-box; }
+    </style>
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+      window.onload = () => {
+        window.ui = SwaggerUIBundle({
+          url: '/openapi',
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          docExpansion: 'none',
+          presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+          layout: 'BaseLayout'
+        });
+      };
+    </script>
+  </body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.send(html);
   });
 
   // Install OpenAPI validator for documented routes (request/response)
