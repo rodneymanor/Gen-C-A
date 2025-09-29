@@ -13,10 +13,13 @@ const GEMINI_SAFETY_SETTINGS = [
   { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
 ];
 
-const GEMINI_MODEL = 'gemini-1.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_TRANSCRIBE_MODEL || 'gemini-2.5-flash';
+const GEMINI_API_VERSION = 'v1beta';
+const GEMINI_UPLOAD_API_VERSION = 'v1beta';
 const DEFAULT_VIDEO_MIME = 'video/mp4';
 const GEMINI_FILE_POLL_INTERVAL_MS = 1000;
 const GEMINI_FILE_MAX_POLL_ATTEMPTS = 10;
+const MAX_TRANSCRIPT_LOG_PREVIEW = 500;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,20 +48,27 @@ class VideoTranscriptionService {
   constructor() {
     this.fileManager = null;
     this.gemini = null;
+    this.apiKey = null;
   }
 
   ensureGemini(apiKey) {
     if (!apiKey) {
       throw new VideoTranscriptionServiceError('GEMINI_API_KEY not configured', 500);
     }
+    this.apiKey = apiKey;
     if (!this.gemini) {
-      this.gemini = new GoogleGenerativeAI(apiKey).getGenerativeModel({
-        model: GEMINI_MODEL,
-        safetySettings: GEMINI_SAFETY_SETTINGS,
-      });
+      const client = new GoogleGenerativeAI(apiKey);
+      this.gemini = client.getGenerativeModel(
+        {
+          model: GEMINI_MODEL,
+          safetySettings: GEMINI_SAFETY_SETTINGS,
+        },
+        { apiVersion: GEMINI_API_VERSION },
+      );
     }
     if (!this.fileManager) {
-      this.fileManager = new GoogleAIFileManager(apiKey);
+      // Gemini file uploads are still served from the v1beta endpoint even when using v1 models.
+      this.fileManager = new GoogleAIFileManager(apiKey, { apiVersion: GEMINI_UPLOAD_API_VERSION });
     }
   }
 
@@ -141,7 +151,23 @@ class VideoTranscriptionService {
         } else {
           const buffer = await response.arrayBuffer();
           const mimeType = response.headers.get('content-type') || DEFAULT_VIDEO_MIME;
+          const normalizedMime = mimeType.toLowerCase();
+          const firstBytes = Buffer.from(buffer.slice(0, 64)).toString('utf8').trim().toLowerCase();
+          const looksLikeHtml = firstBytes.startsWith('<!doctype') || firstBytes.startsWith('<html');
+          const isVideoMime = normalizedMime.startsWith('video/') || normalizedMime === 'application/octet-stream';
           console.log(`✅ Video downloaded (attempt ${attempt}): ${buffer.byteLength} bytes`);
+          if (!isVideoMime || looksLikeHtml) {
+            throw new VideoTranscriptionServiceError(
+              `Download URL did not return video content (content-type=${mimeType})`,
+              400,
+              {
+                headersUsed: Object.keys(headers),
+                cookieNames,
+                status: response.status,
+                snippet: looksLikeHtml ? firstBytes.slice(0, 120) : undefined,
+              },
+            );
+          }
           if (buffer.byteLength > MAX_DOWNLOAD_SIZE) {
             throw new VideoTranscriptionServiceError(
               `Video file too large: ${buffer.byteLength} bytes (max ${MAX_DOWNLOAD_SIZE})`,
@@ -176,11 +202,7 @@ class VideoTranscriptionService {
     this.ensureGemini(apiKey);
 
     const effectiveMimeType = mimeType || DEFAULT_VIDEO_MIME;
-    const genAI = new GoogleGenerativeAI(apiKey).getGenerativeModel({
-      model: GEMINI_MODEL,
-      safetySettings: GEMINI_SAFETY_SETTINGS,
-    });
-    const fileManager = new GoogleAIFileManager(apiKey);
+    const fileManager = this.fileManager;
 
     const displayName = `transcription-${requestId}-${Date.now()}`;
     const uploadResponse = await fileManager.uploadFile(Buffer.from(buffer), {
@@ -199,21 +221,17 @@ class VideoTranscriptionService {
       'Transcribe every spoken word from this video. Return ONLY the verbatim transcript with no additional commentary.';
 
     try {
-      const result = await withTimeout(
-        genAI.generateContent([
-          { text: prompt },
-          {
-            fileData: {
-              fileUri: readyFile.uri,
-              mimeType: readyFile.mimeType || effectiveMimeType,
-            },
-          },
-        ]),
+      const transcript = await withTimeout(
+        this.requestGeminiTranscript({
+          prompt,
+          fileUri: readyFile.uri,
+          mimeType: readyFile.mimeType || effectiveMimeType,
+          requestId,
+        }),
         120000,
         `Gemini transcription ${requestId}`,
       );
 
-      const transcript = result.response.text().trim();
       if (!transcript) {
         throw new Error('Gemini returned an empty transcript');
       }
@@ -251,13 +269,22 @@ class VideoTranscriptionService {
       throw new Error('GEMINI_API_KEY not configured');
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+    this.ensureGemini(process.env.GEMINI_API_KEY);
+    const model = this.gemini;
 
     const prompt = `Analyze the following transcript and return JSON with keys hook, bridge, nugget, wta. Each field should contain a concise string summarizing that element. Transcript:\n${transcript}`;
 
+    const analysisRequest = {
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }],
+        },
+      ],
+    };
+
     const analysis = await withTimeout(
-      model.generateContent([{ text: prompt }]),
+      model.generateContent(analysisRequest),
       60000,
       `Gemini component analysis ${requestId}`,
     );
@@ -278,8 +305,86 @@ class VideoTranscriptionService {
     }
   }
 
+  async requestGeminiTranscript({ prompt, fileUri, mimeType, requestId }) {
+    const apiKey = this.apiKey || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new VideoTranscriptionServiceError('GEMINI_API_KEY not configured', 500);
+    }
+
+    const endpoint = `https://generativelanguage.googleapis.com/${GEMINI_API_VERSION}/models/${encodeURIComponent(
+      GEMINI_MODEL,
+    )}:generateContent`;
+
+    const requestBody = {
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: prompt },
+            {
+              fileData: {
+                fileUri,
+                mimeType,
+              },
+            },
+          ],
+        },
+      ],
+      safetySettings: GEMINI_SAFETY_SETTINGS,
+      generationConfig: {
+        responseMimeType: 'text/plain',
+      },
+    };
+
+    const url = `${endpoint}?key=${encodeURIComponent(apiKey)}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    let payload;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      throw new Error(`Gemini response parse error for ${requestId}: ${error?.message || error}`);
+    }
+
+    if (!response.ok) {
+      const message = payload?.error?.message || JSON.stringify(payload);
+      throw new Error(`Gemini transcription failed (${response.status}): ${message}`);
+    }
+
+    const parts = payload?.candidates?.[0]?.content?.parts;
+    const transcript = Array.isArray(parts)
+      ? parts
+          .map((part) => {
+            if (typeof part?.text === 'string') return part.text;
+            if (typeof part?.content === 'string') return part.content;
+            return '';
+          })
+          .join('')
+          .trim()
+      : '';
+
+    if (!transcript) {
+      throw new Error(`Gemini transcription returned no text for ${requestId}`);
+    }
+
+    return transcript;
+  }
+
   async transcribeVideo(buffer, mimeType, requestId, sourceUrl) {
     const transcript = await this.generateTranscriptFromBuffer(buffer, mimeType, requestId);
+    if (transcript) {
+      const preview = transcript.length > MAX_TRANSCRIPT_LOG_PREVIEW
+        ? `${transcript.slice(0, MAX_TRANSCRIPT_LOG_PREVIEW)}…`
+        : transcript;
+      console.log(`📝 [TRANSCRIPTION] Transcript (${requestId}) length=${transcript.length}:`, preview);
+    }
     const components = await this.analyzeTranscriptComponents(transcript, requestId);
 
     return {
@@ -327,6 +432,14 @@ class VideoTranscriptionService {
       requestId,
       headersUsed: downloadInfo.headersUsed,
       cookieNames: downloadInfo.cookieNames,
+      transcriptionMetadata: {
+        method: 'gemini-direct-upload',
+        processedAt: new Date().toISOString(),
+        model: GEMINI_MODEL,
+        apiVersion: GEMINI_API_VERSION,
+        fileSize: nodeBuffer.byteLength,
+        fallbackUsed: false,
+      },
     };
   }
 }

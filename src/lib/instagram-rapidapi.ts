@@ -20,20 +20,42 @@ export async function fetchInstagramRapidApiByShortcode(shortcode: string): Prom
   }
 
   const endpoint = `https://${INSTAGRAM_HOST}/post?shortcode=${encodeURIComponent(shortcode)}`;
-  const response = await fetch(endpoint, {
-    method: "GET",
-    headers: {
-      "x-rapidapi-key": rapidApiKey,
-      "x-rapidapi-host": INSTAGRAM_HOST,
-    },
-  });
+  const MAX_ATTEMPTS = 3;
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Instagram RapidAPI failed (${response.status}): ${body}`);
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          "x-rapidapi-key": rapidApiKey,
+          "x-rapidapi-host": INSTAGRAM_HOST,
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`Instagram RapidAPI failed (${response.status}): ${body}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      const message = normalizedError.message.length > 320
+        ? `${normalizedError.message.slice(0, 320)}…`
+        : normalizedError.message;
+      lastError = normalizedError;
+      const backoffMs = 500 * attempt;
+      console.warn(
+        `⚠️ [IG RapidAPI] Attempt ${attempt} failed for shortcode ${shortcode}: ${message}. Retrying in ${backoffMs}ms`,
+      );
+      if (attempt === MAX_ATTEMPTS) break;
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    }
   }
 
-  return response.json();
+  throw lastError ?? new Error("Instagram RapidAPI request failed");
 }
 
 export function mapInstagramToUnified(data: any, shortcode: string, preferAudioOnly: boolean): UnifiedVideoResult {

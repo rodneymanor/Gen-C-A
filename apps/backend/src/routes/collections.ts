@@ -367,6 +367,13 @@ async function addVideoToCollection(req: Request, res: Response) {
           transcriptionQueuedAt,
         };
 
+        if (scrapeResult.downloadUrl) {
+          updatedMetadata.downloadUrl = scrapeResult.downloadUrl;
+        }
+        if (scrapeResult.audioUrl) {
+          updatedMetadata.audioUrl = scrapeResult.audioUrl;
+        }
+
         if (metricsEntries.length > 0) {
           updatedMetadata.metrics = Object.fromEntries(metricsEntries);
         }
@@ -422,11 +429,52 @@ async function addVideoToCollection(req: Request, res: Response) {
     }
 
     if (!transcriptionQueued) {
-      queueTranscriptionTask({
-        videoId: String(result.videoId),
-        sourceUrl: enrichedVideo.url ?? (videoData as any).originalUrl,
-        platform: (videoData as any).platform ?? enrichedVideo.platform ?? 'other',
-      });
+      const isDownloadableUrl = (candidate: unknown): candidate is string => {
+        if (typeof candidate !== 'string') return false;
+        const lower = candidate.toLowerCase();
+        const isInstagramCdn = lower.includes('cdninstagram.com') && lower.includes('.mp4');
+        const isTikTokCdn =
+          (lower.includes('tiktokcdn.com') || lower.includes('bytecdn.cn') || lower.includes('ibyteimg.com')) &&
+          lower.includes('.mp4');
+        return isInstagramCdn || isTikTokCdn;
+      };
+
+      const fallbackSourceUrl = [
+        enrichedVideo.url,
+        (enrichedVideo.metadata as any)?.downloadUrl,
+        (videoData as any).downloadUrl,
+        (videoData as any).videoUrl,
+        (videoData as any).originalUrl,
+      ].find(isDownloadableUrl);
+
+      if (fallbackSourceUrl) {
+        queueTranscriptionTask({
+          videoId: String(result.videoId),
+          sourceUrl: fallbackSourceUrl,
+          platform: (videoData as any).platform ?? enrichedVideo.platform ?? 'other',
+        });
+        transcriptionQueued = true;
+      } else {
+        const failureTimestamp = nowIso();
+        const db = getDb();
+        if (db) {
+          await db.collection('videos').doc(String(result.videoId)).set(
+            {
+              transcriptionStatus: 'failed',
+              updatedAt: failureTimestamp,
+              metadata: {
+                transcriptionStatus: 'failed',
+                transcriptionError: 'Download URL unavailable after scrape failure',
+                transcriptionFailedAt: failureTimestamp,
+              },
+            },
+            { merge: true },
+          );
+        }
+        console.warn(
+          '[backend][collections] Skipping transcription queue: no downloadable source URL available after scrape failure',
+        );
+      }
     }
 
     res.status(201).json({ success: true, videoId: result.videoId, video: enrichedVideo });

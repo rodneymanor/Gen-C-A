@@ -94,27 +94,46 @@ async function runTranscriptionTask({
 
     const completedAt = new Date().toISOString();
 
+    const resolvedVisualContext =
+      transcriptionResult.visualContext ??
+      (typeof existing.visualContext === 'string' ? existing.visualContext : undefined) ??
+      (typeof existingMetadata.visualContext === 'string' ? existingMetadata.visualContext : undefined);
+
+    const metadataUpdate: Record<string, unknown> = {
+      ...existingMetadata,
+      transcript: transcriptionResult.transcript,
+      scriptComponents: components,
+      components,
+      transcriptionStatus: 'completed',
+      transcriptionCompletedAt: completedAt,
+      transcriptionMetadata: transcriptionResult.transcriptionMetadata,
+      transcriptionSourceUrl: sourceUrl,
+      transcriptionError: null,
+      contentMetadata: mergedMetadataContent,
+    };
+
+    if (resolvedVisualContext !== undefined) {
+      metadataUpdate.visualContext = resolvedVisualContext;
+    } else {
+      delete metadataUpdate.visualContext;
+    }
+
+    pruneUndefined(metadataUpdate);
+
     const updates: Record<string, unknown> = {
       transcript: transcriptionResult.transcript,
       components,
       transcriptionStatus: 'completed',
-      visualContext: transcriptionResult.visualContext || existing.visualContext,
       contentMetadata: mergedContentMetadata,
       updatedAt: completedAt,
-      metadata: {
-        ...existingMetadata,
-        transcript: transcriptionResult.transcript,
-        scriptComponents: components,
-        components,
-        transcriptionStatus: 'completed',
-        transcriptionCompletedAt: completedAt,
-        transcriptionMetadata: transcriptionResult.transcriptionMetadata,
-        transcriptionSourceUrl: sourceUrl,
-        transcriptionError: null,
-        contentMetadata: mergedMetadataContent,
-        visualContext: transcriptionResult.visualContext || existingMetadata.visualContext,
-      },
+      metadata: metadataUpdate,
     };
+
+    if (resolvedVisualContext !== undefined) {
+      updates.visualContext = resolvedVisualContext;
+    }
+
+    pruneUndefined(updates);
 
     await docRef.set(updates, { merge: true });
   } catch (error) {
@@ -122,6 +141,28 @@ async function runTranscriptionTask({
     const message = error instanceof Error ? error.message : 'Unknown transcription error';
     await markTranscriptionFailed(docRef, message);
   }
+}
+
+function pruneUndefined(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      pruneUndefined(value[i]);
+    }
+    return value;
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    Object.keys(record).forEach((key) => {
+      if (record[key] === undefined) {
+        delete record[key];
+      } else {
+        pruneUndefined(record[key]);
+      }
+    });
+  }
+
+  return value;
 }
 
 async function markTranscriptionFailed(docRef: DocumentReference, message: string): Promise<void> {

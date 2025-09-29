@@ -1,6 +1,7 @@
 /**
- * TranscriptionService - Video transcription abstraction
- * Extracted from video transcription implementations
+ * TranscriptionService - wraps the backend video transcription workflow.
+ * Uses the in-process service when available (Node/SSR) and falls back to the
+ * HTTP API when running in the browser.
  */
 
 export interface TranscriptionResult {
@@ -32,452 +33,246 @@ export interface TranscriptionResult {
   error?: string;
 }
 
-export interface TranscriptionProvider {
-  /**
-   * Transcribe video from URL
-   */
-  transcribeFromUrl(url: string, platform: string): Promise<TranscriptionResult | null>;
-  
-  /**
-   * Transcribe video from file buffer
-   */
-  transcribeFromBuffer(buffer: ArrayBuffer, filename: string, platform: string): Promise<TranscriptionResult | null>;
-  
-  /**
-   * Check if provider is available/configured
-   */
-  isAvailable(): boolean;
-  
-  /**
-   * Get provider name
-   */
-  getName(): string;
+const DEFAULT_BACKEND_BASE = 'http://localhost:5001';
+
+type VideoTranscriptionModule = typeof import('@/services/video/video-transcription-service.js');
+
+type VideoTranscriptionServiceInstance = ReturnType<VideoTranscriptionModule['getVideoTranscriptionService']> | null;
+
+function pickBackendBase(): string | null {
+  if (typeof process === 'undefined') return null;
+  const env = process.env || {};
+  return (
+    env.BACKEND_INTERNAL_URL ||
+    env.BACKEND_URL ||
+    env.BACKEND_DEV_URL ||
+    null
+  );
 }
 
-/**
- * Video transcription service with multiple provider support
- */
+function isServerEnvironment(): boolean {
+  return typeof window === 'undefined';
+}
+
+function toHashtagArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 export class TranscriptionService {
-  private providers: TranscriptionProvider[] = [];
-  private fallbackProvider: FallbackTranscriptionProvider;
+  private backendBase: string | null;
+  private directServicePromise: Promise<VideoTranscriptionServiceInstance> | null = null;
 
   constructor() {
-    // Initialize transcription providers
-    this.providers = [
-      new GeminiTranscriptionProvider(),
-      new OpenAITranscriptionProvider(),
-      new RapidAPITranscriptionProvider()
-    ];
-    
-    this.fallbackProvider = new FallbackTranscriptionProvider();
+    this.backendBase = pickBackendBase();
+    if (!this.backendBase && isServerEnvironment()) {
+      this.backendBase = DEFAULT_BACKEND_BASE;
+    }
   }
 
-  /**
-   * Transcribe video from URL using best available provider
-   */
+  private async resolveDirectService(): Promise<any | null> {
+    if (!isServerEnvironment()) {
+      return null;
+    }
+
+    if (!this.directServicePromise) {
+      this.directServicePromise = import('@/services/video/video-transcription-service.js')
+        .then((mod: VideoTranscriptionModule) => {
+          try {
+            return mod.getVideoTranscriptionService();
+          } catch (error) {
+            console.warn('[TranscriptionService] Failed to initialise direct transcription service:', error);
+            return null;
+          }
+        })
+        .catch((error) => {
+          console.warn('[TranscriptionService] Unable to load video transcription service module:', error);
+          return null;
+        });
+    }
+
+    return this.directServicePromise;
+  }
+
+  private buildEndpoint(): string {
+    if (this.backendBase) {
+      const base = this.backendBase.replace(/\/$/, '');
+      return `${base}/api/video/transcribe-from-url`;
+    }
+    return '/api/video/transcribe-from-url';
+  }
+
+  private mapResult(
+    raw: any,
+    platform: string,
+    options: { method?: string; processedAt?: string } = {},
+  ): TranscriptionResult {
+    const transcript = typeof raw?.transcript === 'string' ? raw.transcript.trim() : '';
+    if (!transcript) {
+      const message = typeof raw?.error === 'string' ? raw.error : 'Transcription service returned no transcript';
+      throw new Error(message);
+    }
+
+    const components = raw?.components && typeof raw.components === 'object'
+      ? {
+          hook: String(raw.components.hook ?? ''),
+          bridge: String(raw.components.bridge ?? ''),
+          nugget: String(raw.components.nugget ?? ''),
+          wta: String(raw.components.wta ?? ''),
+        }
+      : undefined;
+
+    const contentMetadata = raw?.contentMetadata && typeof raw.contentMetadata === 'object'
+      ? {
+          platform: String(raw.contentMetadata.platform ?? platform ?? 'other'),
+          author: typeof raw.contentMetadata.author === 'string' ? raw.contentMetadata.author : '',
+          description: typeof raw.contentMetadata.description === 'string' ? raw.contentMetadata.description : '',
+          source: typeof raw.contentMetadata.source === 'string' ? raw.contentMetadata.source : 'video-transcription-service',
+          hashtags: toHashtagArray(raw.contentMetadata.hashtags),
+        }
+      : {
+          platform: platform ?? 'other',
+          author: '',
+          description: '',
+          source: 'video-transcription-service',
+          hashtags: [],
+        };
+
+    const rawMetadata = raw?.transcriptionMetadata && typeof raw.transcriptionMetadata === 'object'
+      ? raw.transcriptionMetadata
+      : {};
+
+    const processedAt = options.processedAt || rawMetadata.processedAt || new Date().toISOString();
+    const method = options.method || rawMetadata.method || 'video-transcription-service';
+
+    const transcriptionMetadata: TranscriptionResult['transcriptionMetadata'] = {
+      method,
+      processedAt,
+      fallbackUsed: Boolean(rawMetadata.fallbackUsed),
+    };
+
+    if (typeof rawMetadata.fileSize === 'number') {
+      transcriptionMetadata.fileSize = rawMetadata.fileSize;
+    }
+    if (typeof rawMetadata.fileName === 'string' && rawMetadata.fileName.trim()) {
+      transcriptionMetadata.fileName = rawMetadata.fileName;
+    }
+    if (typeof rawMetadata.duration === 'number') {
+      transcriptionMetadata.duration = rawMetadata.duration;
+    }
+
+    return {
+      success: true,
+      transcript,
+      platform,
+      components,
+      contentMetadata,
+      visualContext: typeof raw?.visualContext === 'string' ? raw.visualContext : undefined,
+      transcriptionMetadata,
+      error: typeof raw?.error === 'string' ? raw.error : undefined,
+    };
+  }
+
   async transcribeFromUrl(url: string, platform: string): Promise<TranscriptionResult | null> {
-    console.log('🎙️ [TRANSCRIPTION] Starting URL-based transcription...');
-    console.log('🔗 [TRANSCRIPTION] URL:', url.substring(0, 100) + '...');
-    console.log('🎯 [TRANSCRIPTION] Platform:', platform);
+    if (!url) {
+      throw new Error('Video URL is required for transcription');
+    }
 
-    // Try each provider in order of preference
-    for (const provider of this.providers) {
-      if (!provider.isAvailable()) {
-        console.log(`⚠️ [TRANSCRIPTION] Provider ${provider.getName()} not available, skipping`);
-        continue;
-      }
-
+    const directService = await this.resolveDirectService();
+    if (directService) {
       try {
-        console.log(`🤖 [TRANSCRIPTION] Attempting transcription with ${provider.getName()}...`);
-        const result = await provider.transcribeFromUrl(url, platform);
-        
-        if (result?.success && result.transcript && !this.isFallbackTranscript(result.transcript)) {
-          console.log(`✅ [TRANSCRIPTION] Successfully transcribed with ${provider.getName()}`);
-          return result;
-        } else {
-          console.log(`⚠️ [TRANSCRIPTION] ${provider.getName()} returned fallback/empty result`);
-        }
+        const result = await directService.transcribeFromUrl({ videoUrl: url });
+        return this.mapResult(result, platform, { method: 'video-transcription-service' });
       } catch (error) {
-        console.error(`❌ [TRANSCRIPTION] ${provider.getName()} failed:`, error);
+        console.warn('[TranscriptionService] Direct transcription failed, falling back to HTTP API:', error);
       }
     }
 
-    // All providers failed, use fallback
-    console.log('🔄 [TRANSCRIPTION] All providers failed, using fallback');
-    return this.fallbackProvider.transcribeFromUrl(url, platform);
-  }
+    const response = await fetch(this.buildEndpoint(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoUrl: url }),
+    });
 
-  /**
-   * Transcribe video from buffer using best available provider
-   */
-  async transcribeFromBuffer(
-    buffer: ArrayBuffer, 
-    filename: string, 
-    platform: string
-  ): Promise<TranscriptionResult | null> {
-    console.log('🎙️ [TRANSCRIPTION] Starting buffer-based transcription...');
-    console.log('📁 [TRANSCRIPTION] Filename:', filename);
-    console.log('📊 [TRANSCRIPTION] Buffer size:', buffer.byteLength, 'bytes');
+    const payload = await response.json().catch(() => ({}));
 
-    for (const provider of this.providers) {
-      if (!provider.isAvailable()) {
-        console.log(`⚠️ [TRANSCRIPTION] Provider ${provider.getName()} not available, skipping`);
-        continue;
-      }
-
-      try {
-        console.log(`🤖 [TRANSCRIPTION] Attempting transcription with ${provider.getName()}...`);
-        const result = await provider.transcribeFromBuffer(buffer, filename, platform);
-        
-        if (result?.success && result.transcript && !this.isFallbackTranscript(result.transcript)) {
-          console.log(`✅ [TRANSCRIPTION] Successfully transcribed with ${provider.getName()}`);
-          return result;
-        }
-      } catch (error) {
-        console.error(`❌ [TRANSCRIPTION] ${provider.getName()} failed:`, error);
-      }
+    if (!response.ok || !payload?.success) {
+      const message = typeof payload?.error === 'string'
+        ? payload.error
+        : `Failed to transcribe video (${response.status})`;
+      throw new Error(message);
     }
 
-    // All providers failed, use fallback
-    console.log('🔄 [TRANSCRIPTION] All providers failed, using fallback');
-    return this.fallbackProvider.transcribeFromBuffer(buffer, filename, platform);
+    return this.mapResult(payload, platform, { method: 'video-transcription-service:http' });
   }
 
-  /**
-   * Get status of all transcription providers
-   */
+  async transcribeFromBuffer(buffer: ArrayBuffer, filename: string, platform: string): Promise<TranscriptionResult | null> {
+    const directService = await this.resolveDirectService();
+    if (!directService) {
+      throw new Error('Buffer transcription is only supported in server environments');
+    }
+
+    const mimeType = filename?.toLowerCase().endsWith('.webm')
+      ? 'video/webm'
+      : filename?.toLowerCase().endsWith('.mov')
+      ? 'video/quicktime'
+      : 'video/mp4';
+
+    const requestId = Math.random().toString(36).slice(2, 10);
+    const nodeBuffer = Buffer.from(buffer);
+
+    const result = await directService.transcribeVideo(nodeBuffer, mimeType, requestId, undefined);
+    return this.mapResult(
+      {
+        ...result,
+        transcriptionMetadata: {
+          method: 'video-transcription-service:buffer',
+          processedAt: new Date().toISOString(),
+          fileName: filename,
+          fileSize: nodeBuffer.byteLength,
+        },
+      },
+      platform,
+    );
+  }
+
   getProviderStatus(): Array<{
     name: string;
     available: boolean;
     configured: boolean;
+    status?: string;
   }> {
-    return this.providers.map(provider => ({
-      name: provider.getName(),
-      available: provider.isAvailable(),
-      configured: this.isProviderConfigured(provider.getName())
-    }));
+    const configured = typeof process !== 'undefined' ? Boolean(process.env?.GEMINI_API_KEY) : false;
+    const status = configured ? 'Gemini configured' : 'Set GEMINI_API_KEY to enable direct transcription';
+    return [
+      {
+        name: 'Gemini',
+        available: configured,
+        configured,
+        status,
+      },
+    ];
   }
 
-  /**
-   * Validate file for transcription
-   */
   validateFile(file: File): { valid: boolean; error?: string } {
-    // Check file type
     const allowedTypes = ['video/mp4', 'video/webm', 'video/mov', 'video/avi', 'video/quicktime'];
     if (!allowedTypes.includes(file.type)) {
       return {
         valid: false,
-        error: 'Only MP4, WebM, MOV, and AVI video files are supported'
+        error: 'Only MP4, WebM, MOV, AVI and QuickTime video files are supported',
       };
     }
 
-    // Check file size (20MB limit for most providers)
-    const maxSize = 20 * 1024 * 1024;
+    const maxSize = 80 * 1024 * 1024;
     if (file.size > maxSize) {
       return {
         valid: false,
-        error: 'Video file must be smaller than 20MB'
+        error: 'Video file must be smaller than 80MB',
       };
     }
 
     return { valid: true };
-  }
-
-  /**
-   * Private helper methods
-   */
-
-  private isFallbackTranscript(transcript: string): boolean {
-    return transcript.includes('temporarily unavailable') ||
-           transcript.includes('transcription pending') ||
-           transcript.includes('service configuration');
-  }
-
-  private isProviderConfigured(providerName: string): boolean {
-    switch (providerName.toLowerCase()) {
-      case 'gemini':
-        return !!process.env.GEMINI_API_KEY;
-      case 'openai':
-        return !!process.env.OPENAI_API_KEY;
-      case 'rapidapi':
-        return !!process.env.RAPIDAPI_KEY;
-      default:
-        return false;
-    }
-  }
-}
-
-/**
- * Gemini-based transcription provider
- */
-class GeminiTranscriptionProvider implements TranscriptionProvider {
-  async transcribeFromUrl(url: string, platform: string): Promise<TranscriptionResult | null> {
-    try {
-      console.log('🤖 [GEMINI] Starting Gemini URL transcription...');
-
-      // This would integrate with Gemini API
-      // Implementation would fetch video and process with Gemini
-      
-      const response = await this.callGeminiAPI(url, 'url');
-      
-      return {
-        success: true,
-        transcript: response.transcript,
-        platform,
-        components: response.components,
-        contentMetadata: response.contentMetadata,
-        visualContext: response.visualContext,
-        transcriptionMetadata: {
-          method: 'gemini-url',
-          processedAt: new Date().toISOString()
-        }
-      };
-    } catch (error) {
-      console.error('❌ [GEMINI] URL transcription failed:', error);
-      return null;
-    }
-  }
-
-  async transcribeFromBuffer(
-    buffer: ArrayBuffer, 
-    filename: string, 
-    platform: string
-  ): Promise<TranscriptionResult | null> {
-    try {
-      console.log('🤖 [GEMINI] Starting Gemini buffer transcription...');
-
-      const response = await this.callGeminiAPI(buffer, 'buffer');
-      
-      return {
-        success: true,
-        transcript: response.transcript,
-        platform,
-        components: response.components,
-        contentMetadata: response.contentMetadata,
-        visualContext: response.visualContext,
-        transcriptionMetadata: {
-          method: 'gemini-buffer',
-          processedAt: new Date().toISOString(),
-          fileSize: buffer.byteLength,
-          fileName: filename
-        }
-      };
-    } catch (error) {
-      console.error('❌ [GEMINI] Buffer transcription failed:', error);
-      return null;
-    }
-  }
-
-  isAvailable(): boolean {
-    return !!process.env.GEMINI_API_KEY;
-  }
-
-  getName(): string {
-    return 'Gemini';
-  }
-
-  private async callGeminiAPI(input: string | ArrayBuffer, type: 'url' | 'buffer'): Promise<any> {
-    // Mock implementation - actual would use GoogleGenerativeAI
-    console.log(`🤖 [GEMINI] Processing ${type}:`, type === 'url' ? input : 'buffer data');
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    return {
-      transcript: 'This is a mock transcript from Gemini API',
-      components: {
-        hook: 'Mock hook',
-        bridge: 'Mock bridge', 
-        nugget: 'Mock nugget',
-        wta: 'Mock why to act'
-      },
-      contentMetadata: {
-        platform: 'mock',
-        author: 'Mock Author',
-        description: 'Mock description',
-        source: 'gemini',
-        hashtags: ['mock', 'gemini']
-      },
-      visualContext: 'Mock visual context from Gemini'
-    };
-  }
-}
-
-/**
- * OpenAI-based transcription provider
- */
-class OpenAITranscriptionProvider implements TranscriptionProvider {
-  async transcribeFromUrl(url: string, platform: string): Promise<TranscriptionResult | null> {
-    try {
-      console.log('🤖 [OPENAI] Starting OpenAI URL transcription...');
-
-      // Download video first
-      const response = await fetch(url);
-      const buffer = await response.arrayBuffer();
-      
-      return this.transcribeFromBuffer(buffer, 'video.mp4', platform);
-    } catch (error) {
-      console.error('❌ [OPENAI] URL transcription failed:', error);
-      return null;
-    }
-  }
-
-  async transcribeFromBuffer(
-    buffer: ArrayBuffer, 
-    filename: string, 
-    platform: string
-  ): Promise<TranscriptionResult | null> {
-    try {
-      console.log('🤖 [OPENAI] Starting OpenAI Whisper transcription...');
-
-      const transcript = await this.callWhisperAPI(buffer, filename);
-      
-      return {
-        success: true,
-        transcript,
-        platform,
-        transcriptionMetadata: {
-          method: 'openai-whisper',
-          processedAt: new Date().toISOString(),
-          fileSize: buffer.byteLength,
-          fileName: filename
-        }
-      };
-    } catch (error) {
-      console.error('❌ [OPENAI] Buffer transcription failed:', error);
-      return null;
-    }
-  }
-
-  isAvailable(): boolean {
-    return !!process.env.OPENAI_API_KEY;
-  }
-
-  getName(): string {
-    return 'OpenAI';
-  }
-
-  private async callWhisperAPI(buffer: ArrayBuffer, filename: string): Promise<string> {
-    // Mock implementation - actual would use OpenAI Whisper API
-    console.log('🤖 [OPENAI] Processing with Whisper:', filename, buffer.byteLength, 'bytes');
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    return 'This is a mock transcript from OpenAI Whisper API';
-  }
-}
-
-/**
- * RapidAPI-based transcription provider
- */
-class RapidAPITranscriptionProvider implements TranscriptionProvider {
-  async transcribeFromUrl(url: string, platform: string): Promise<TranscriptionResult | null> {
-    try {
-      console.log('🤖 [RAPIDAPI] Starting RapidAPI transcription...');
-
-      // Use platform-specific RapidAPI endpoint
-      const transcript = await this.callRapidAPI(url, platform);
-      
-      return {
-        success: true,
-        transcript,
-        platform,
-        transcriptionMetadata: {
-          method: 'rapidapi',
-          processedAt: new Date().toISOString()
-        }
-      };
-    } catch (error) {
-      console.error('❌ [RAPIDAPI] URL transcription failed:', error);
-      return null;
-    }
-  }
-
-  async transcribeFromBuffer(
-    buffer: ArrayBuffer, 
-    filename: string, 
-    platform: string
-  ): Promise<TranscriptionResult | null> {
-    // RapidAPI typically works with URLs, not buffers
-    console.log('⚠️ [RAPIDAPI] Buffer transcription not supported, skipping');
-    return null;
-  }
-
-  isAvailable(): boolean {
-    return !!process.env.RAPIDAPI_KEY;
-  }
-
-  getName(): string {
-    return 'RapidAPI';
-  }
-
-  private async callRapidAPI(url: string, platform: string): Promise<string> {
-    // Mock implementation - actual would call RapidAPI transcription services
-    console.log('🤖 [RAPIDAPI] Processing URL for platform:', platform, url.substring(0, 50) + '...');
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    return `This is a mock transcript from RapidAPI for ${platform}`;
-  }
-}
-
-/**
- * Fallback transcription provider when all others fail
- */
-class FallbackTranscriptionProvider implements TranscriptionProvider {
-  async transcribeFromUrl(url: string, platform: string): Promise<TranscriptionResult | null> {
-    return this.createFallbackResult(platform, 'url');
-  }
-
-  async transcribeFromBuffer(
-    buffer: ArrayBuffer, 
-    filename: string, 
-    platform: string
-  ): Promise<TranscriptionResult | null> {
-    return this.createFallbackResult(platform, 'buffer', buffer.byteLength, filename);
-  }
-
-  isAvailable(): boolean {
-    return true; // Fallback is always available
-  }
-
-  getName(): string {
-    return 'Fallback';
-  }
-
-  private createFallbackResult(
-    platform: string, 
-    method: string,
-    fileSize?: number,
-    fileName?: string
-  ): TranscriptionResult {
-    return {
-      success: true,
-      transcript: 'Transcription temporarily unavailable. Video content analysis will be available once transcription service is configured.',
-      platform,
-      components: {
-        hook: 'Video content analysis pending',
-        bridge: 'Transcription service configuration needed',
-        nugget: 'Main content insights will be available after transcription',
-        wta: 'Configure transcription API keys to enable full video analysis'
-      },
-      contentMetadata: {
-        platform,
-        author: 'Unknown',
-        description: 'Video added successfully - transcription pending service configuration',
-        source: 'other',
-        hashtags: []
-      },
-      visualContext: 'Visual analysis will be available once transcription service is configured',
-      transcriptionMetadata: {
-        method: `fallback-${method}`,
-        processedAt: new Date().toISOString(),
-        fileSize,
-        fileName,
-        fallbackUsed: true
-      }
-    };
   }
 }
