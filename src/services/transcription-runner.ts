@@ -139,7 +139,9 @@ async function runTranscriptionTask({
   } catch (error) {
     console.error('[transcription-runner] Transcription failed:', error);
     const message = error instanceof Error ? error.message : 'Unknown transcription error';
-    await markTranscriptionFailed(docRef, message);
+    const normalized = message.toLowerCase();
+    const isTimeout = /timed.?out|timeout|504|524|provider not responding/.test(normalized);
+    await markTranscriptionFailed(docRef, message, isTimeout ? 'timeout' : 'failed');
   }
 }
 
@@ -165,14 +167,18 @@ function pruneUndefined(value: unknown): unknown {
   return value;
 }
 
-async function markTranscriptionFailed(docRef: DocumentReference, message: string): Promise<void> {
+async function markTranscriptionFailed(
+  docRef: DocumentReference,
+  message: string,
+  status: 'failed' | 'timeout' = 'failed',
+): Promise<void> {
   const timestamp = new Date().toISOString();
   await docRef.set(
     {
-      transcriptionStatus: 'failed',
+      transcriptionStatus: status,
       updatedAt: timestamp,
       metadata: {
-        transcriptionStatus: 'failed',
+        transcriptionStatus: status,
         transcriptionError: message,
         transcriptionFailedAt: timestamp,
       },

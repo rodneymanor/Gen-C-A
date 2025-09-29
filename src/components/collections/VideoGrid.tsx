@@ -15,6 +15,7 @@ import CameraIcon from '@atlaskit/icon/glyph/camera';
 import MoreIcon from '@atlaskit/icon/glyph/more';
 import EyeIcon from '@atlaskit/icon/glyph/watch';
 import TrashIcon from '@atlaskit/icon/glyph/trash';
+import WarningIcon from '@atlaskit/icon/glyph/warning';
 import { Instagram } from 'lucide-react';
 
 const TikTokGlyph: React.FC<{ size?: number }> = ({ size = 18 }) => (
@@ -111,6 +112,35 @@ const thumbnailContainerStyles = css`
     font-size: 48px;
     color: var(--color-neutral-400);
     background: var(--color-neutral-100);
+  }
+`;
+
+const timeoutOverlayStyles = css`
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.78);
+  backdrop-filter: blur(6px);
+  color: ${token('color.text.inverse', 'white')};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  text-align: center;
+  padding: var(--space-4);
+  z-index: 3;
+  pointer-events: none;
+
+  strong {
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-semibold);
+    display: block;
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--font-size-body-small);
+    color: rgba(255, 255, 255, 0.85);
   }
 `;
 
@@ -331,6 +361,26 @@ const VideoCard: React.FC<{
   const isTiktok = platform === 'tiktok';
   const hasRightBadge = isInstagram || isTiktok;
 
+  const transcriptionCandidates: Array<unknown> = [
+    (video as any).transcriptionStatus,
+    video.metadata?.transcriptionStatus,
+    (video.metadata as any)?.transcription_status,
+    video.metadata?.processing?.transcriptionStatus,
+    video.metadata?.contentMetadata?.transcriptionStatus,
+  ];
+
+  const transcriptionStatusRaw = transcriptionCandidates.find(
+    (value) => typeof value === 'string' && value.length > 0,
+  ) as string | undefined;
+  const transcriptionStatus = transcriptionStatusRaw?.toLowerCase();
+  const isTimeout = transcriptionStatus === 'timeout';
+  const rawTimeoutMessage =
+    typeof video.metadata?.transcriptionError === 'string' ? video.metadata?.transcriptionError : undefined;
+  const timeoutMessage =
+    rawTimeoutMessage && rawTimeoutMessage.length < 160 && !rawTimeoutMessage.includes('<')
+      ? rawTimeoutMessage
+      : 'Provider did not respond. We’ll retry automatically overnight.';
+
   return (
     <Card
       css={videoCardStyles(isSelected)}
@@ -357,7 +407,15 @@ const VideoCard: React.FC<{
             <VidPlayIcon label="Video thumbnail" size="xlarge" primaryColor={token('color.icon.disabled')} />
           </div>
         )}
-        
+
+        {isTimeout && (
+          <div css={timeoutOverlayStyles}>
+            <WarningIcon label="Provider timeout" size="medium" primaryColor={token('color.text.inverse', 'white')} />
+            <strong>Provider not responding</strong>
+            <p>{timeoutMessage}</p>
+          </div>
+        )}
+
         {/* Hover overlay with play button */}
         <div
           css={overlayStyles}

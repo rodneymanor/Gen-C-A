@@ -426,6 +426,45 @@ async function addVideoToCollection(req: Request, res: Response) {
       const message =
         enrichmentError instanceof Error ? enrichmentError.message : 'Unknown enrichment failure';
       console.warn('[backend][collections] Video enrichment skipped:', message);
+
+      const lowerMessage = message.toLowerCase();
+      const isTimeout = lowerMessage.includes('timeout') || lowerMessage.includes('timed out') || lowerMessage.includes('524');
+      if (isTimeout) {
+        const failureTimestamp = nowIso();
+        const status = 'timeout';
+        const db = getDb();
+        if (db) {
+          await db
+            .collection('videos')
+            .doc(String(result.videoId))
+            .set(
+              {
+                transcriptionStatus: status,
+                updatedAt: failureTimestamp,
+                metadata: {
+                  transcriptionStatus: status,
+                  transcriptionError: message,
+                  transcriptionFailedAt: failureTimestamp,
+                },
+              },
+              { merge: true },
+            );
+        }
+
+        enrichedVideo = {
+          ...enrichedVideo,
+          transcriptionStatus: status,
+          updatedAt: failureTimestamp,
+          metadata: {
+            ...(enrichedVideo.metadata ?? {}),
+            transcriptionStatus: status,
+            transcriptionError: message,
+            transcriptionFailedAt: failureTimestamp,
+          },
+        } as typeof enrichedVideo;
+
+        transcriptionQueued = true;
+      }
     }
 
     if (!transcriptionQueued) {
