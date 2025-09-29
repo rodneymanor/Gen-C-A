@@ -1,5 +1,6 @@
 import { PlatformType } from '../types/voiceWorkflow'
 import { parseJsonResponse } from '../utils/responseParsing'
+import { createApiClient } from '@/api/client'
 
 interface InstagramUserIdApiResponse {
   success?: boolean
@@ -229,21 +230,20 @@ const mapInstagramItemsToResult = (items: any[], userId: string, username: strin
 
 export const fetchInstagramStepData = async (identifier: string, displayHandle: string) => {
   console.log('Resolving Instagram user ID for', displayHandle)
-  const userIdResponse = await fetch(`/api/instagram/user-id?username=${encodeURIComponent(identifier)}`)
-  const { data: userIdResult } = await parseJsonResponse<InstagramUserIdApiResponse>(
-    userIdResponse,
-    'Instagram user lookup'
-  )
-
-  if (!userIdResponse.ok || !userIdResult?.success || !userIdResult?.user_id) {
-    const userIdError = userIdResult?.error?.trim()
-    const errorMessage = userIdError && userIdError.length > 0
-      ? userIdError
-      : `Failed to resolve Instagram user ID (HTTP ${userIdResponse.status})`
-    throw new Error(errorMessage)
+  const client = createApiClient('')
+  const userIdRes = await client.GET('/api/instagram/user-id', {
+    params: { query: { username: identifier } },
+  })
+  if (userIdRes.error || !userIdRes.data?.success || !userIdRes.data?.user_id) {
+    const code = (userIdRes.error as any)?.status ?? 500
+    const payload: any = userIdRes.error || userIdRes.data
+    const message = payload && typeof payload === 'object' && 'error' in payload && typeof (payload as any).error === 'string'
+      ? String((payload as any).error)
+      : `Failed to resolve Instagram user ID (HTTP ${code})`
+    throw new Error(message)
   }
 
-  const userId = String(userIdResult.user_id)
+  const userId = String(userIdRes.data.user_id)
   console.log(`Fetching Instagram reels for user ID: ${userId}`)
 
   const reelsQuery = new URLSearchParams({
@@ -251,18 +251,23 @@ export const fetchInstagramStepData = async (identifier: string, displayHandle: 
     include_feed_video: 'true',
     username: identifier
   })
-  const reelsResponse = await fetch(`/api/instagram/user-reels?${reelsQuery.toString()}`)
-  const { data: reelsResult } = await parseJsonResponse<InstagramReelsApiResponse>(
-    reelsResponse,
-    'Instagram reels fetch'
-  )
-
-  if (!reelsResponse.ok || !reelsResult?.success) {
-    const reelsError = reelsResult?.error?.trim()
-    const errorMessage = reelsError && reelsError.length > 0
-      ? reelsError
-      : `Failed to fetch Instagram reels (HTTP ${reelsResponse.status})`
-    throw new Error(errorMessage)
+  const reelsRes = await client.GET('/api/instagram/user-reels', {
+    params: {
+      query: {
+        user_id: userId,
+        include_feed_video: true as any,
+        username: identifier,
+      },
+    },
+  })
+  const reelsResult = reelsRes.data as InstagramReelsApiResponse | any
+  if (reelsRes.error || !reelsResult?.success) {
+    const code = (reelsRes.error as any)?.status ?? 500
+    const payload: any = reelsRes.error || reelsRes.data
+    const message = payload && typeof payload === 'object' && 'error' in payload && typeof (payload as any).error === 'string'
+      ? String((payload as any).error)
+      : `Failed to fetch Instagram reels (HTTP ${code})`
+    throw new Error(message)
   }
 
   if (!reelsResult) {
@@ -350,6 +355,6 @@ export const fetchInstagramStepData = async (identifier: string, displayHandle: 
     ...mapped,
     platform: 'instagram' as PlatformType,
     platformUserId: userId,
-    raw: { userId: userIdResult, reels: reelsResult }
+    raw: { userId: userIdRes.data, reels: reelsResult }
   }
 }

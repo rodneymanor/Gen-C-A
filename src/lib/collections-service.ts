@@ -950,24 +950,21 @@ export class CollectionsService {
    * Get user collections with RBAC (token-based authentication)
    */
   static async getUserCollectionsWithToken(firebaseToken?: string): Promise<CollectionsApiResponse> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (firebaseToken) {
-      headers["Authorization"] = `Bearer ${firebaseToken}`;
-    }
-
-    const response = await fetch("/api/collections/user-collections", {
-      method: "GET",
-      headers,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch collections: ${response.statusText}`);
-    }
-
-    return response.json();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (firebaseToken) headers["Authorization"] = `Bearer ${firebaseToken}`;
+    const { createApiClient } = await import("@/api/client");
+    const client = createApiClient("");
+    const { data, error } = await client.GET("/api/collections", { headers });
+    if (error) throw new Error("Failed to fetch collections");
+    const collections = Array.isArray(data?.collections) ? (data?.collections as any[]) : [];
+    return {
+      success: true,
+      collections,
+      accessibleCoaches: [],
+      total: collections.length,
+      timestamp: new Date().toISOString(),
+      user: { id: "", email: "", role: "user" },
+    } as CollectionsApiResponse;
   }
 
   /**

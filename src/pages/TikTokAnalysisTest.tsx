@@ -15,6 +15,7 @@ import DocumentIcon from '@atlaskit/icon/glyph/document';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
+import { createApiClient } from '@/api/client';
 
 type PlatformType = 'tiktok' | 'instagram';
 
@@ -630,25 +631,20 @@ export const TikTokAnalysisTest: React.FC = () => {
 
   const fetchInstagramStepData = async (identifier: string, displayHandle: string) => {
     console.log('📸 Resolving Instagram user ID for', displayHandle);
-    const userIdResponse = await fetch(`/api/instagram/user-id?username=${encodeURIComponent(identifier)}`);
-    const { data: userIdResult } = await parseJsonResponse<InstagramUserIdApiResponse>(
-      userIdResponse,
-      'Instagram user lookup'
-    );
-
-    if (!userIdResponse.ok || !userIdResult?.success || !userIdResult?.user_id) {
-      const userIdError = userIdResult?.error?.trim();
-      const errorMessage = userIdError && userIdError.length > 0
-        ? userIdError
-        : `Failed to resolve Instagram user ID (HTTP ${userIdResponse.status})`;
-      throw new Error(errorMessage);
+    const client = createApiClient('');
+    const userIdRes = await client.GET('/api/instagram/user-id', {
+      params: { query: { username: identifier } },
+    });
+    if (userIdRes.error || !userIdRes.data?.success || !userIdRes.data?.user_id) {
+      const code = (userIdRes.error as any)?.status ?? 500;
+      const payload: any = userIdRes.error || userIdRes.data;
+      const message = payload && typeof payload === 'object' && 'error' in payload && typeof (payload as any).error === 'string'
+        ? String((payload as any).error)
+        : `Failed to resolve Instagram user ID (HTTP ${code})`;
+      throw new Error(message);
     }
 
-    if (!userIdResult) {
-      throw new Error('Failed to resolve Instagram user ID (empty response).');
-    }
-
-    const userId = String(userIdResult.user_id);
+    const userId = String(userIdRes.data.user_id);
     console.log(`📸 Fetching Instagram reels for user ID: ${userId}`);
 
     const reelsQuery = new URLSearchParams({
@@ -656,22 +652,23 @@ export const TikTokAnalysisTest: React.FC = () => {
       include_feed_video: 'true',
       username: identifier
     });
-    const reelsResponse = await fetch(`/api/instagram/user-reels?${reelsQuery.toString()}`);
-    const { data: reelsResult } = await parseJsonResponse<InstagramReelsApiResponse>(
-      reelsResponse,
-      'Instagram reels fetch'
-    );
-
-    if (!reelsResponse.ok || !reelsResult?.success) {
-      const reelsError = reelsResult?.error?.trim();
-      const errorMessage = reelsError && reelsError.length > 0
-        ? reelsError
-        : `Failed to fetch Instagram reels (HTTP ${reelsResponse.status})`;
-      throw new Error(errorMessage);
-    }
-
-    if (!reelsResult) {
-      throw new Error('Failed to fetch Instagram reels (empty response).');
+    const reelsRes = await client.GET('/api/instagram/user-reels', {
+      params: {
+        query: {
+          user_id: userId,
+          include_feed_video: true as any,
+          username: identifier,
+        },
+      },
+    });
+    const reelsResult = reelsRes.data as InstagramReelsApiResponse | any;
+    if (reelsRes.error || !reelsResult?.success) {
+      const code = (reelsRes.error as any)?.status ?? 500;
+      const payload: any = reelsRes.error || reelsRes.data;
+      const message = payload && typeof payload === 'object' && 'error' in payload && typeof (payload as any).error === 'string'
+        ? String((payload as any).error)
+        : `Failed to fetch Instagram reels (HTTP ${code})`;
+      throw new Error(message);
     }
 
     const items = Array.isArray(reelsResult?.data?.items) ? reelsResult.data.items : [];
@@ -755,7 +752,7 @@ export const TikTokAnalysisTest: React.FC = () => {
       ...mapped,
       platform: 'instagram' as const,
       platformUserId: userId,
-      raw: { userId: userIdResult, reels: reelsResult },
+      raw: { userId: userIdRes.data, reels: reelsResult },
     };
   };
 
@@ -775,26 +772,19 @@ export const TikTokAnalysisTest: React.FC = () => {
       let baseResult: any;
 
       if (platform === 'tiktok') {
-        const response = await fetch('/api/tiktok/user-feed', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: identifier, count: VIDEO_LIMIT })
+        const client = createApiClient('');
+        const { data, error } = await client.POST('/api/tiktok/user-feed', {
+          body: { username: identifier, count: VIDEO_LIMIT },
         });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || `API returned ${response.status}`);
+        if (error || !data?.success) {
+          const code = (error as any)?.status ?? 500;
+          const msg = (data as any)?.error || (error as any)?.error || `API error ${code}`;
+          throw new Error(msg);
         }
-
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to fetch videos');
-        }
-
         baseResult = {
-          ...result,
+          ...(data as any),
           platform: 'tiktok' as const,
-          platformUserId: result?.userInfo?.id ?? identifier,
+          platformUserId: (data as any)?.userInfo?.id ?? identifier,
         };
       } else {
         baseResult = await fetchInstagramStepData(identifier, displayHandle);
@@ -932,17 +922,14 @@ export const TikTokAnalysisTest: React.FC = () => {
               continue;
             }
 
-            const transcriptionResponse = await fetch('/api/video/transcribe-from-url', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ videoUrl: transcriptionUrl })
+            const client = createApiClient('');
+            const { data: transcriptionResult, error: tErr } = await client.POST('/api/video/transcribe-from-url', {
+              body: { videoUrl: transcriptionUrl },
             });
 
-            const transcriptionResult = await transcriptionResponse.json();
-
-            if (transcriptionResponse.ok && transcriptionResult.success && transcriptionResult.transcript) {
+            if (!tErr && transcriptionResult?.success && (transcriptionResult as any).transcript) {
               results[i] = {
-                transcript: transcriptionResult.transcript,
+                transcript: (transcriptionResult as any).transcript,
                 meta: {
                   id: String(video.id ?? video.meta?.id ?? `video-${i}`),
                   url: transcriptionUrl,
@@ -954,7 +941,7 @@ export const TikTokAnalysisTest: React.FC = () => {
               };
               console.log(`✅ [W${workerId}] Video ${i + 1} transcribed`);
             } else {
-              console.warn(`⚠️ [W${workerId}] Video ${i + 1} transcription failed:`, transcriptionResult?.error);
+              console.warn(`⚠️ [W${workerId}] Video ${i + 1} transcription failed:`, (transcriptionResult as any)?.error || tErr);
             }
           } catch (err) {
             console.warn(`⚠️ [W${workerId}] Error transcribing video ${i + 1}:`, err);

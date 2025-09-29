@@ -100,21 +100,15 @@ export const transcribeVideos = async ({
           continue
         }
 
-        const transcriptionResponse = await fetch('/api/video/transcribe-from-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ videoUrl: transcriptionUrl })
+        const { createApiClient } = await import('@/api/client')
+        const client = createApiClient('')
+        const { data: transcriptionResult, error: tErr } = await client.POST('/api/video/transcribe-from-url', {
+          body: { videoUrl: transcriptionUrl },
         })
 
-        const transcriptionResult = await transcriptionResponse.json().catch(() => null)
-
-        if (
-          transcriptionResponse.ok &&
-          transcriptionResult?.success &&
-          transcriptionResult?.transcript
-        ) {
+        if (!tErr && transcriptionResult?.success && (transcriptionResult as any)?.transcript) {
           results[currentIndex] = {
-            transcript: transcriptionResult.transcript,
+            transcript: (transcriptionResult as any).transcript,
             meta: {
               id: String(video.id ?? video.meta?.id ?? `video-${currentIndex}`),
               url: transcriptionUrl,
@@ -127,7 +121,7 @@ export const transcribeVideos = async ({
             }
           }
         } else {
-          console.warn('Transcription failed for video', video?.id, transcriptionResult?.error)
+          console.warn('Transcription failed for video', video?.id, (transcriptionResult as any)?.error || tErr)
         }
       } catch (workerError) {
         console.warn('Error transcribing video', video?.id, workerError)

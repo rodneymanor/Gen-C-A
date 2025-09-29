@@ -42,7 +42,7 @@ const BACKEND_PROXY_TARGET =
 app.use(cors());
 app.use(express.json());
 
-// Priority shims: ensure instagram/tiktok always hit canonical backend in dev
+// Priority shims: ensure instagram/tiktok always hit canonical backend in dev (redundant with catch-all, but explicit for clarity)
 app.use('/api/instagram', forwardHandler());
 app.use('/api/tiktok', forwardHandler());
 
@@ -194,120 +194,14 @@ async function handleApiRoute(routeHandler, req, res) {
   }
 }
 
-// Import API routes
+// Configure minimal dev proxy routes; all others forwarded by catch-all below
 async function setupRoutes() {
-  try {
-    // Import simplified creator API routes
-    const { handleCreatorTranscription, handleHealthCheck } = await import('./src/api-routes/creators.js');
-    const { handleInstagramReels } = await import('./src/api-routes/videos/instagram-reels.js');
-    const { handleInstagramUserId } = await import('./src/api-routes/videos/instagram-user-id.js');
+  // Chrome Extension routes (explicit mappings maintained while migrating)
+  app.use('/api/chrome-extension', forwardHandler());
+  app.post('/api/content-inbox/items', forwardHandler('/api/chrome-extension/content-inbox'));
+  app.post('/api/idea-inbox/items', forwardHandler('/api/chrome-extension/idea-inbox/text'));
 
-    // Import other API route handlers
-    const { handleTikTokUserFeed } = await import('./src/api-routes/videos/tiktok-user-feed.js');
-    const { handleVideoTranscribe } = await import('./src/api-routes/videos/transcribe.js');
-    const { handleYouTubeTranscript } = await import('./src/api-routes/videos/youtube-transcript.js');
-    const { handleVideoScrape } = await import('./src/api-routes/videos/scrape-url.js');
-    const { handleVideoWorkflow } = await import('./src/api-routes/videos/orchestrate.js');
-    const { handleVoiceAnalyzePatterns } = await import('./src/api-routes/voice.js');
-    const { handleSaveCreatorAnalysis } = await import('./src/api-routes/creator-analysis.js');
-    const { handleListAnalyzedVideoIds } = await import('./src/api-routes/creator-lookup.js');
-    const { handleListBrandVoices, handleGetBrandVoiceTemplates, handleUpdateBrandVoiceMeta } = await import('./src/api-routes/brand-voices.js');
-    const { handleGenerateYouTubeIdeaSeeds } = await import('./src/api-routes/scripts.js');
-    const { handleGetNotes, handleCreateNote, handleGetNoteById, handleUpdateNote, handleDeleteNote } = await import('./src/api-routes/notes.js');
-    // Main transcription endpoint (replaces the complex follow workflow)
-    app.post('/api/creators/follow', handleCreatorTranscription);
-    app.post('/api/creators/transcribe', handleCreatorTranscription);
-
-    // Instagram: delegate to canonical backend to avoid divergence
-    app.use('/api/instagram', forwardHandler());
-
-    // TikTok: delegate to canonical backend
-    app.use('/api/tiktok', forwardHandler());
-
-    app.post('/api/video/transcribe-from-url', handleVideoTranscribe);
-    app.post('/api/video/scrape-url', handleVideoScrape);
-    app.post('/api/video/orchestrate', handleVideoWorkflow);
-    app.get('/api/video/youtube-transcript', handleYouTubeTranscript);
-    app.post('/api/video/youtube-transcript', handleYouTubeTranscript);
-
-    app.post('/api/voice/analyze-patterns', handleVoiceAnalyzePatterns);
-    app.post('/api/scripts/youtube-ideas', handleGenerateYouTubeIdeaSeeds);
-    app.post('/api/creator/save-analysis', handleSaveCreatorAnalysis);
-    app.get('/api/creator/analyzed-video-ids', handleListAnalyzedVideoIds);
-    app.get('/api/brand-voices/list', handleListBrandVoices);
-    app.get('/api/brand-voices/templates', handleGetBrandVoiceTemplates);
-    app.post('/api/brand-voices/update-meta', handleUpdateBrandVoiceMeta);
-
-    // Notes API (used by iOS Shortcuts and app)
-    app.get('/api/notes', handleGetNotes);
-    app.post('/api/notes', handleCreateNote);
-    app.get('/api/notes/:id', handleGetNoteById);
-    app.put('/api/notes/:id', handleUpdateNote);
-    app.delete('/api/notes/:id', handleDeleteNote);
-
-    // Chrome Extension routes (proxy to backend)
-    app.use('/api/chrome-extension', forwardHandler());
-    app.post('/api/content-inbox/items', forwardHandler('/api/chrome-extension/content-inbox'));
-    app.post('/api/idea-inbox/items', forwardHandler('/api/chrome-extension/idea-inbox/text'));
-
-    // Persona routes - TODO: Convert from Next.js format if needed
-    // app.post('/api/personas/generate-metadata', handlePersonaMetadata);
-    // app.post('/api/personas/create', handlePersonaCreate);
-
-    // Health check with API info
-    app.get('/api/health', handleHealthCheck);
-
-    console.log('✅ API routes loaded successfully (including TikTok routes)');
-  } catch (error) {
-    console.error('❌ Failed to load API routes:', error);
-
-    // Fallback routes for development
-    app.post('/api/creators/follow', (req, res) => {
-      res.json({
-        success: true,
-        userId: req.body.username,
-        message: 'Fallback transcription route',
-        creator: {
-          username: req.body.username,
-          platform: req.body.platform || 'instagram'
-        },
-        videos: [
-          {
-            id: '1',
-            title: 'Test Video',
-            url: 'https://example.com/video.mp4',
-            status: 'pending'
-          }
-        ],
-        totalCount: 1
-      });
-    });
-
-    app.get('/api/instagram/user-id', (req, res) => {
-      res.status(503).json({
-        success: false,
-        error: 'Instagram user-id route unavailable in fallback mode'
-      });
-    });
-
-    const fallbackReels = (req, res) => {
-      res.json({
-        success: true,
-        videos: [
-          {
-            id: 'reel_1',
-            videoUrl: 'https://example.com/reel1.mp4',
-            thumbnailUrl: 'https://example.com/thumb1.jpg',
-            title: 'Test Reel 1'
-          }
-        ],
-        totalCount: 1
-      });
-    };
-
-    app.get('/api/instagram/user-reels', fallbackReels);
-    app.post('/api/instagram/user-reels', fallbackReels);
-  }
+  console.log('✅ Dev proxy configured. All /api/* forwarded to backend.');
 }
 
 // Start server

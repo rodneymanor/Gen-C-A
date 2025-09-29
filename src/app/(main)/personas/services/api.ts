@@ -34,34 +34,26 @@ export class PersonaApiService {
 
   // Fetch user feed from TikTok
   static async fetchUserFeed(username: string, count: number = 20) {
-    const response = await fetch("/api/tiktok/user-feed", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ username, count }),
-    });
-
-    const data = await response.json();
-    if (!data.success || !data.videos || data.videos.length === 0) {
-      throw new Error(data.error ?? "No videos found for this user");
+    const { createApiClient } = await import('@/api/client')
+    const client = createApiClient('')
+    const { data, error } = await client.POST('/api/tiktok/user-feed', {
+      body: { username, count },
+    })
+    if (error || !data?.success || !Array.isArray((data as any).videos) || (data as any).videos.length === 0) {
+      throw new Error((data as any)?.error ?? (error as any)?.error ?? 'No videos found for this user')
     }
-
-    return data.videos;
+    return (data as any).videos
   }
 
   // Transcribe video from URL
   static async transcribeVideo(videoUrl: string) {
-    const response = await fetch("/api/video/transcribe-from-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ videoUrl }),
+    const { createApiClient } = await import('@/api/client');
+    const client = createApiClient('');
+    const { data, error } = await client.POST('/api/video/transcribe-from-url', {
+      body: { videoUrl },
     });
-
-    const data = await response.json();
-    if (data.success && data.transcript) {
-      return data.transcript;
-    }
+    if (error) return null;
+    if (data?.success && (data as any).transcript) return (data as any).transcript as string;
     return null;
   }
 

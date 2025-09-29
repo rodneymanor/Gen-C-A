@@ -719,7 +719,9 @@ export const CollectionsRoot: React.FC = () => {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
-  const [userId, setUserId] = useState<string>(() => (import.meta as any).env?.VITE_DEBUG_USER_ID || localStorage.getItem('userId') || '');
+  // Wait for Firebase auth before issuing any API calls
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [userId, setUserId] = useState<string>('');
   const [favoriteVideoId, setFavoriteVideoId] = useState<string | null>(null);
 
   const [activeModal, setActiveModal] = useState<null | 'add' | 'create'>(null);
@@ -785,8 +787,11 @@ export const CollectionsRoot: React.FC = () => {
     const unsub = onAuthStateChanged(auth, (u) => {
       if (u?.uid) {
         setUserId(u.uid);
-        localStorage.setItem('userId', u.uid);
+        try { localStorage.setItem('userId', u.uid); } catch {}
+      } else {
+        setUserId('');
       }
+      setIsAuthReady(true);
     });
     return () => unsub();
   }, []);
@@ -1039,7 +1044,7 @@ export const CollectionsRoot: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     async function loadCollections() {
-      if (!userId) {
+      if (!isAuthReady || !userId) {
         if (!cancelled) {
           setCollections([]);
           setIsCollectionsLoading(false);
@@ -1064,12 +1069,12 @@ export const CollectionsRoot: React.FC = () => {
     }
     loadCollections();
     return () => { cancelled = true; };
-  }, [userId, beginPageLoad, endPageLoad]);
+  }, [isAuthReady, userId, beginPageLoad, endPageLoad]);
 
   useEffect(() => {
     let cancelled = false;
     async function loadVideos() {
-      if (!userId || !selectedCollection) return;
+      if (!isAuthReady || !userId || !selectedCollection) return;
       try {
         beginPageLoad();
         const resp = await RbacClient.getCollectionVideos(String(userId), selectedCollection.id, 50);
@@ -1086,7 +1091,7 @@ export const CollectionsRoot: React.FC = () => {
       loadVideos();
     }
     return () => { cancelled = true; };
-  }, [userId, view, selectedCollection, beginPageLoad, endPageLoad]);
+  }, [isAuthReady, userId, view, selectedCollection, beginPageLoad, endPageLoad]);
   useEffect(() => {
     setPlatformFilter('all');
     setFavoritesOnly(false);

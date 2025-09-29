@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 
 import { getDb } from '../lib/firebase-admin.js';
+import { verifyBearer } from '../lib/firebase-admin.js';
 import {
   CollectionsServiceError,
   getCollectionsAdminService,
@@ -9,7 +10,12 @@ import {
 import { getVideoScraperService } from '../../../../src/services/video/video-scraper-service.js';
 import { queueTranscriptionTask } from '../../../../src/services/transcription-runner.ts';
 
-function extractUserId(req: Request, res: Response): string | null {
+async function extractUserId(req: Request, res: Response): Promise<string | null> {
+  // Prefer Firebase Bearer token
+  const bearer = await verifyBearer(req as unknown as { headers: Request['headers'] });
+  if (bearer?.uid) return bearer.uid;
+
+  // Backward-compatible fallbacks (legacy dev paths)
   const candidate =
     req.headers['x-user-id'] ??
     req.headers['x-user'] ??
@@ -17,7 +23,7 @@ function extractUserId(req: Request, res: Response): string | null {
     req.body?.userId;
 
   if (!candidate) {
-    res.status(400).json({ success: false, error: 'userId required (x-user-id header or query/body param)' });
+    res.status(401).json({ success: false, error: 'Unauthorized: Firebase token or userId required' });
     return null;
   }
 
@@ -59,27 +65,81 @@ function nowIso(): string {
 function handleCollectionsError(res: Response, error: unknown, fallback: string) {
   if (error instanceof CollectionsServiceError) {
     console.warn('[backend][collections] service error:', error.message);
-    res.status(error.statusCode).json({ success: false, error: error.message });
+    const payload: Record<string, unknown> = { success: false, error: error.message };
+    if ((process.env.NODE_ENV || 'development') !== 'production') {
+      payload.debug = { name: error.name, statusCode: error.statusCode };
+    }
+    res.status(error.statusCode).json(payload);
     return;
   }
 
   const message = error instanceof Error ? error.message : String(error);
   console.error('[backend][collections] unexpected error:', message);
-  res.status(500).json({ success: false, error: fallback });
+  const payload: Record<string, unknown> = { success: false, error: fallback };
+  if ((process.env.NODE_ENV || 'development') !== 'production') {
+    payload.debug = { message };
+  }
+  res.status(500).json(payload);
 }
 
 async function listCollections(req: Request, res: Response) {
-  const userId = extractUserId(req, res);
+  const userId = await extractUserId(req, res);
   if (!userId) return;
 
   const service = getCollectionsService(res);
   if (!service) return;
 
   try {
-    const result = await service.listCollections(userId);
+    let result = await service.listCollections(userId);
+
+    // Dev convenience: auto-create a starter collection for new users
+    const isProd = (process.env.NODE_ENV || 'development') === 'production';
+    const autoCreate = process.env.AUTO_CREATE_DEFAULT_COLLECTION === 'true' || !isProd;
+    if (autoCreate && Array.isArray(result.collections) && result.collections.length === 0) {
+      try {
+        await service.createCollection(userId, { title: 'My Collection', description: 'Auto-created' });
+        result = await service.listCollections(userId);
+      } catch (e) {
+        // non-fatal
+      }
+    }
+    // Normalize timestamps to ISO strings to satisfy OpenAPI (date-time)
+    const toIso = (v: any): string | undefined => {
+      try {
+        if (!v) return undefined;
+        if (typeof v === 'string') {
+          const t = Date.parse(v);
+          return Number.isNaN(t) ? undefined : new Date(t).toISOString();
+        }
+        if (v instanceof Date) return v.toISOString();
+        if (typeof v.toDate === 'function') {
+          const d = v.toDate();
+          return d instanceof Date ? d.toISOString() : undefined;
+        }
+        if (typeof v.seconds === 'number') {
+          const ms = v.seconds * 1000 + (typeof v.nanoseconds === 'number' ? Math.floor(v.nanoseconds / 1e6) : 0);
+          return new Date(ms).toISOString();
+        }
+        if (typeof v === 'number') {
+          const ms = v < 10_000_000_000 ? v * 1000 : v;
+          return new Date(ms).toISOString();
+        }
+      } catch {}
+      return undefined;
+    };
+
+    const normalized = Array.isArray(result.collections)
+      ? result.collections.map((c: any) => ({
+          ...c,
+          createdAt: toIso(c?.createdAt) ?? c?.createdAt,
+          updatedAt: toIso(c?.updatedAt) ?? c?.updatedAt,
+          userId: c?.userId ? String(c.userId) : userId,
+        }))
+      : [];
+
     const response: Record<string, unknown> = {
       success: true,
-      collections: result.collections,
+      collections: normalized,
       total: result.total,
     };
 
@@ -94,7 +154,7 @@ async function listCollections(req: Request, res: Response) {
 }
 
 async function createCollection(req: Request, res: Response) {
-  const userId = extractUserId(req, res);
+  const userId = await extractUserId(req, res);
   if (!userId) return;
 
   const service = getCollectionsService(res);
@@ -116,7 +176,7 @@ async function createCollection(req: Request, res: Response) {
 async function updateCollection(req: Request, res: Response) {
   if (!validateApiKey(req, res)) return;
 
-  const userId = extractUserId(req, res);
+  const userId = await extractUserId(req, res);
   if (!userId) return;
 
   const service = getCollectionsService(res);
@@ -140,7 +200,7 @@ async function updateCollection(req: Request, res: Response) {
 async function deleteCollection(req: Request, res: Response) {
   if (!validateApiKey(req, res)) return;
 
-  const userId = extractUserId(req, res);
+  const userId = await extractUserId(req, res);
   if (!userId) return;
 
   const collectionId = req.query.collectionId ?? req.body?.collectionId;
@@ -161,7 +221,7 @@ async function deleteCollection(req: Request, res: Response) {
 }
 
 async function moveVideo(req: Request, res: Response) {
-  const userId = extractUserId(req, res);
+  const userId = await extractUserId(req, res);
   if (!userId) return;
 
   const { videoId, targetCollectionId } = (req.body ?? {}) as Record<string, unknown>;
@@ -182,7 +242,7 @@ async function moveVideo(req: Request, res: Response) {
 }
 
 async function copyVideo(req: Request, res: Response) {
-  const userId = extractUserId(req, res);
+  const userId = await extractUserId(req, res);
   if (!userId) return;
 
   const { videoId, targetCollectionId } = (req.body ?? {}) as Record<string, unknown>;
@@ -203,7 +263,7 @@ async function copyVideo(req: Request, res: Response) {
 }
 
 async function deleteVideo(req: Request, res: Response) {
-  const userId = extractUserId(req, res);
+  const userId = await extractUserId(req, res);
   if (!userId) return;
 
   const { videoId } = (req.body ?? {}) as Record<string, unknown>;
@@ -224,7 +284,7 @@ async function deleteVideo(req: Request, res: Response) {
 }
 
 async function toggleVideoFavorite(req: Request, res: Response) {
-  const userId = extractUserId(req, res);
+  const userId = await extractUserId(req, res);
   if (!userId) return;
 
   const { videoId, favorite } = (req.body ?? {}) as Record<string, unknown>;
@@ -257,7 +317,7 @@ async function toggleVideoFavorite(req: Request, res: Response) {
 }
 
 async function addVideoToCollection(req: Request, res: Response) {
-  const userId = extractUserId(req, res);
+  const userId = await extractUserId(req, res);
   if (!userId) return;
 
   const { collectionId, videoData } = (req.body ?? {}) as Record<string, unknown>;
@@ -376,7 +436,7 @@ async function addVideoToCollection(req: Request, res: Response) {
 }
 
 async function listCollectionVideos(req: Request, res: Response) {
-  const userId = extractUserId(req, res);
+  const userId = await extractUserId(req, res);
   if (!userId) return;
 
   const { collectionId, videoLimit } = (req.body ?? {}) as Record<string, unknown>;

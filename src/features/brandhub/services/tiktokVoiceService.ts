@@ -1,25 +1,21 @@
 import { VIDEO_LIMIT } from './voiceCreationConfig'
+import { createApiClient } from '@/api/client'
 
 export const fetchTikTokFeed = async (identifier: string) => {
-  const response = await fetch('/api/tiktok/user-feed', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: identifier, count: VIDEO_LIMIT })
+  const client = createApiClient('')
+  const { data, error } = await client.POST('/api/tiktok/user-feed', {
+    body: { username: identifier, count: VIDEO_LIMIT },
   })
 
-  const result = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    throw new Error(result?.error || `API returned ${response.status}`)
-  }
-
-  if (!result?.success) {
-    throw new Error(result?.error || 'Failed to fetch videos')
+  if (error || !data?.success) {
+    const code = (error as any)?.status ?? 500
+    const msg = (error as any)?.error || (data as any)?.error || `Failed to fetch videos (HTTP ${code})`
+    throw new Error(msg)
   }
 
   return {
-    ...result,
+    ...data,
     platform: 'tiktok' as const,
-    platformUserId: result?.userInfo?.id ?? identifier
+    platformUserId: (data as any)?.userInfo?.id ?? identifier,
   }
 }

@@ -16,6 +16,11 @@
 import * as runtime from '../runtime';
 import type {
   AddVideoToCollectionRequest,
+  ApiInstagramUserReelsGetUserIdParameter,
+  ApiInstagramUserReelsPostRequest,
+  ApiTiktokUserFeedPostRequest,
+  ApiVideoScrapeUrlPost200Response,
+  ApiVideoScrapeUrlPostRequest,
   ApiVideosAddToCollectionPost200Response,
   ApiVideosCollectionPostRequest,
   BasicSuccessResponse,
@@ -26,11 +31,18 @@ import type {
   ErrorResponse,
   GenerateIdeaSeedsRequest,
   GenerateIdeaSeedsResponse,
+  InstagramReelsResponse,
+  InstagramUserIdResponse,
   MoveVideoRequest,
   NoteResponse,
   NotesResponse,
+  OrchestrateRequest,
+  OrchestrateResponse,
   ScriptResponse,
   ScriptsResponse,
+  TikTokUserFeedResponse,
+  TranscribeFromUrlRequest,
+  TranscribeFromUrlResponse,
   UpdateCollectionRequest,
   UpdateNoteRequest,
   UpdateScriptRequest,
@@ -39,6 +51,16 @@ import type {
 import {
     AddVideoToCollectionRequestFromJSON,
     AddVideoToCollectionRequestToJSON,
+    ApiInstagramUserReelsGetUserIdParameterFromJSON,
+    ApiInstagramUserReelsGetUserIdParameterToJSON,
+    ApiInstagramUserReelsPostRequestFromJSON,
+    ApiInstagramUserReelsPostRequestToJSON,
+    ApiTiktokUserFeedPostRequestFromJSON,
+    ApiTiktokUserFeedPostRequestToJSON,
+    ApiVideoScrapeUrlPost200ResponseFromJSON,
+    ApiVideoScrapeUrlPost200ResponseToJSON,
+    ApiVideoScrapeUrlPostRequestFromJSON,
+    ApiVideoScrapeUrlPostRequestToJSON,
     ApiVideosAddToCollectionPost200ResponseFromJSON,
     ApiVideosAddToCollectionPost200ResponseToJSON,
     ApiVideosCollectionPostRequestFromJSON,
@@ -59,16 +81,30 @@ import {
     GenerateIdeaSeedsRequestToJSON,
     GenerateIdeaSeedsResponseFromJSON,
     GenerateIdeaSeedsResponseToJSON,
+    InstagramReelsResponseFromJSON,
+    InstagramReelsResponseToJSON,
+    InstagramUserIdResponseFromJSON,
+    InstagramUserIdResponseToJSON,
     MoveVideoRequestFromJSON,
     MoveVideoRequestToJSON,
     NoteResponseFromJSON,
     NoteResponseToJSON,
     NotesResponseFromJSON,
     NotesResponseToJSON,
+    OrchestrateRequestFromJSON,
+    OrchestrateRequestToJSON,
+    OrchestrateResponseFromJSON,
+    OrchestrateResponseToJSON,
     ScriptResponseFromJSON,
     ScriptResponseToJSON,
     ScriptsResponseFromJSON,
     ScriptsResponseToJSON,
+    TikTokUserFeedResponseFromJSON,
+    TikTokUserFeedResponseToJSON,
+    TranscribeFromUrlRequestFromJSON,
+    TranscribeFromUrlRequestToJSON,
+    TranscribeFromUrlResponseFromJSON,
+    TranscribeFromUrlResponseToJSON,
     UpdateCollectionRequestFromJSON,
     UpdateCollectionRequestToJSON,
     UpdateNoteRequestFromJSON,
@@ -93,6 +129,21 @@ export interface ApiCollectionsMoveVideoPostRequest {
 
 export interface ApiCollectionsUpdatePatchRequest {
     updateCollectionRequest: UpdateCollectionRequest;
+}
+
+export interface ApiInstagramUserIdGetRequest {
+    username: string;
+}
+
+export interface ApiInstagramUserReelsGetRequest {
+    userId: ApiInstagramUserReelsGetUserIdParameter;
+    username?: string;
+    count?: number;
+    includeFeedVideo?: boolean;
+}
+
+export interface ApiInstagramUserReelsPostOperationRequest {
+    apiInstagramUserReelsPostRequest: ApiInstagramUserReelsPostRequest;
 }
 
 export interface ApiNotesIdDeleteRequest {
@@ -131,6 +182,27 @@ export interface ApiScriptsPostRequest {
 
 export interface ApiScriptsYoutubeIdeasPostRequest {
     generateIdeaSeedsRequest: GenerateIdeaSeedsRequest;
+}
+
+export interface ApiTiktokUserFeedGetRequest {
+    username: string;
+    count?: number;
+}
+
+export interface ApiTiktokUserFeedPostOperationRequest {
+    apiTiktokUserFeedPostRequest: ApiTiktokUserFeedPostRequest;
+}
+
+export interface ApiVideoOrchestratePostRequest {
+    orchestrateRequest: OrchestrateRequest;
+}
+
+export interface ApiVideoScrapeUrlPostOperationRequest {
+    apiVideoScrapeUrlPostRequest: ApiVideoScrapeUrlPostRequest;
+}
+
+export interface ApiVideoTranscribeFromUrlPostRequest {
+    transcribeFromUrlRequest: TranscribeFromUrlRequest;
 }
 
 export interface ApiVideosAddToCollectionPostRequest {
@@ -369,6 +441,137 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async apiCollectionsUpdatePatch(requestParameters: ApiCollectionsUpdatePatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BasicSuccessResponse> {
         const response = await this.apiCollectionsUpdatePatchRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Resolve Instagram user ID by username.
+     */
+    async apiInstagramUserIdGetRaw(requestParameters: ApiInstagramUserIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InstagramUserIdResponse>> {
+        if (requestParameters['username'] == null) {
+            throw new runtime.RequiredError(
+                'username',
+                'Required parameter "username" was null or undefined when calling apiInstagramUserIdGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['username'] != null) {
+            queryParameters['username'] = requestParameters['username'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/instagram/user-id`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => InstagramUserIdResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Resolve Instagram user ID by username.
+     */
+    async apiInstagramUserIdGet(requestParameters: ApiInstagramUserIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InstagramUserIdResponse> {
+        const response = await this.apiInstagramUserIdGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Fetch Instagram reels for a user.
+     */
+    async apiInstagramUserReelsGetRaw(requestParameters: ApiInstagramUserReelsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InstagramReelsResponse>> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling apiInstagramUserReelsGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['userId'] != null) {
+            queryParameters['user_id'] = requestParameters['userId'];
+        }
+
+        if (requestParameters['username'] != null) {
+            queryParameters['username'] = requestParameters['username'];
+        }
+
+        if (requestParameters['count'] != null) {
+            queryParameters['count'] = requestParameters['count'];
+        }
+
+        if (requestParameters['includeFeedVideo'] != null) {
+            queryParameters['include_feed_video'] = requestParameters['includeFeedVideo'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/instagram/user-reels`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => InstagramReelsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Fetch Instagram reels for a user.
+     */
+    async apiInstagramUserReelsGet(requestParameters: ApiInstagramUserReelsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InstagramReelsResponse> {
+        const response = await this.apiInstagramUserReelsGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Fetch Instagram reels for a user (JSON body variant).
+     */
+    async apiInstagramUserReelsPostRaw(requestParameters: ApiInstagramUserReelsPostOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InstagramReelsResponse>> {
+        if (requestParameters['apiInstagramUserReelsPostRequest'] == null) {
+            throw new runtime.RequiredError(
+                'apiInstagramUserReelsPostRequest',
+                'Required parameter "apiInstagramUserReelsPostRequest" was null or undefined when calling apiInstagramUserReelsPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/instagram/user-reels`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ApiInstagramUserReelsPostRequestToJSON(requestParameters['apiInstagramUserReelsPostRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => InstagramReelsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Fetch Instagram reels for a user (JSON body variant).
+     */
+    async apiInstagramUserReelsPost(requestParameters: ApiInstagramUserReelsPostOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InstagramReelsResponse> {
+        const response = await this.apiInstagramUserReelsPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -866,6 +1069,206 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async apiScriptsYoutubeIdeasPost(requestParameters: ApiScriptsYoutubeIdeasPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateIdeaSeedsResponse> {
         const response = await this.apiScriptsYoutubeIdeasPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Fetch TikTok user feed by username.
+     */
+    async apiTiktokUserFeedGetRaw(requestParameters: ApiTiktokUserFeedGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TikTokUserFeedResponse>> {
+        if (requestParameters['username'] == null) {
+            throw new runtime.RequiredError(
+                'username',
+                'Required parameter "username" was null or undefined when calling apiTiktokUserFeedGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['username'] != null) {
+            queryParameters['username'] = requestParameters['username'];
+        }
+
+        if (requestParameters['count'] != null) {
+            queryParameters['count'] = requestParameters['count'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/tiktok/user-feed`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TikTokUserFeedResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Fetch TikTok user feed by username.
+     */
+    async apiTiktokUserFeedGet(requestParameters: ApiTiktokUserFeedGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TikTokUserFeedResponse> {
+        const response = await this.apiTiktokUserFeedGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Fetch TikTok user feed (JSON body variant).
+     */
+    async apiTiktokUserFeedPostRaw(requestParameters: ApiTiktokUserFeedPostOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TikTokUserFeedResponse>> {
+        if (requestParameters['apiTiktokUserFeedPostRequest'] == null) {
+            throw new runtime.RequiredError(
+                'apiTiktokUserFeedPostRequest',
+                'Required parameter "apiTiktokUserFeedPostRequest" was null or undefined when calling apiTiktokUserFeedPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/tiktok/user-feed`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ApiTiktokUserFeedPostRequestToJSON(requestParameters['apiTiktokUserFeedPostRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TikTokUserFeedResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Fetch TikTok user feed (JSON body variant).
+     */
+    async apiTiktokUserFeedPost(requestParameters: ApiTiktokUserFeedPostOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TikTokUserFeedResponse> {
+        const response = await this.apiTiktokUserFeedPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Orchestrate scrape → transcribe → persist workflow.
+     */
+    async apiVideoOrchestratePostRaw(requestParameters: ApiVideoOrchestratePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OrchestrateResponse>> {
+        if (requestParameters['orchestrateRequest'] == null) {
+            throw new runtime.RequiredError(
+                'orchestrateRequest',
+                'Required parameter "orchestrateRequest" was null or undefined when calling apiVideoOrchestratePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/video/orchestrate`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: OrchestrateRequestToJSON(requestParameters['orchestrateRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OrchestrateResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Orchestrate scrape → transcribe → persist workflow.
+     */
+    async apiVideoOrchestratePost(requestParameters: ApiVideoOrchestratePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OrchestrateResponse> {
+        const response = await this.apiVideoOrchestratePostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Resolve a public video URL to downloadable media.
+     */
+    async apiVideoScrapeUrlPostRaw(requestParameters: ApiVideoScrapeUrlPostOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiVideoScrapeUrlPost200Response>> {
+        if (requestParameters['apiVideoScrapeUrlPostRequest'] == null) {
+            throw new runtime.RequiredError(
+                'apiVideoScrapeUrlPostRequest',
+                'Required parameter "apiVideoScrapeUrlPostRequest" was null or undefined when calling apiVideoScrapeUrlPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/video/scrape-url`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ApiVideoScrapeUrlPostRequestToJSON(requestParameters['apiVideoScrapeUrlPostRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiVideoScrapeUrlPost200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Resolve a public video URL to downloadable media.
+     */
+    async apiVideoScrapeUrlPost(requestParameters: ApiVideoScrapeUrlPostOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiVideoScrapeUrlPost200Response> {
+        const response = await this.apiVideoScrapeUrlPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Transcribe a video from a platform URL.
+     */
+    async apiVideoTranscribeFromUrlPostRaw(requestParameters: ApiVideoTranscribeFromUrlPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TranscribeFromUrlResponse>> {
+        if (requestParameters['transcribeFromUrlRequest'] == null) {
+            throw new runtime.RequiredError(
+                'transcribeFromUrlRequest',
+                'Required parameter "transcribeFromUrlRequest" was null or undefined when calling apiVideoTranscribeFromUrlPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/video/transcribe-from-url`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: TranscribeFromUrlRequestToJSON(requestParameters['transcribeFromUrlRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TranscribeFromUrlResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Transcribe a video from a platform URL.
+     */
+    async apiVideoTranscribeFromUrlPost(requestParameters: ApiVideoTranscribeFromUrlPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TranscribeFromUrlResponse> {
+        const response = await this.apiVideoTranscribeFromUrlPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

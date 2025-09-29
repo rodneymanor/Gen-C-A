@@ -577,6 +577,280 @@ export interface paths {
       };
     };
   };
+  "/api/video/transcribe-from-url": {
+    /** Transcribe a video from a platform URL. */
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["TranscribeFromUrlRequest"];
+        };
+      };
+      responses: {
+        /** @description Transcript generated. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["TranscribeFromUrlResponse"];
+          };
+        };
+        /** @description Invalid or missing URL. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Upstream fetch/model error. */
+        502: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/video/orchestrate": {
+    /** Orchestrate scrape → transcribe → persist workflow. */
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["OrchestrateRequest"];
+        };
+      };
+      responses: {
+        /** @description Orchestration completed (or job accepted). */
+        200: {
+          content: {
+            "application/json": components["schemas"]["OrchestrateResponse"];
+          };
+        };
+        /** @description Invalid payload. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/video/scrape-url": {
+    /** Resolve a public video URL to downloadable media. */
+    post: {
+      requestBody: {
+        content: {
+          "application/json": {
+            /** Format: uri */
+            url: string;
+            preferAudioOnly?: boolean;
+            [key: string]: unknown;
+          };
+        };
+      };
+      responses: {
+        /** @description Media resolved. */
+        200: {
+          content: {
+            "application/json": {
+              /** @enum {boolean} */
+              success: true;
+              result?: {
+                /** Format: uri */
+                downloadUrl?: string;
+                /** Format: uri */
+                audioUrl?: string;
+                /** Format: uri */
+                thumbnailUrl?: string;
+                title?: string;
+                description?: string;
+                author?: string;
+                duration?: number;
+                /** @enum {string} */
+                platform?: "tiktok" | "instagram";
+                [key: string]: unknown;
+              };
+              [key: string]: unknown;
+            };
+          };
+        };
+        /** @description Invalid or unsupported URL. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Upstream scraping error. */
+        502: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/instagram/user-id": {
+    /** Resolve Instagram user ID by username. */
+    get: {
+      parameters: {
+        query: {
+          username: string;
+        };
+      };
+      responses: {
+        /** @description User ID resolved. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["InstagramUserIdResponse"];
+          };
+        };
+        /** @description Missing or invalid username. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description User not found. */
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Upstream API error. */
+        502: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/instagram/user-reels": {
+    /** Fetch Instagram reels for a user. */
+    get: {
+      parameters: {
+        query: {
+          user_id: string | number;
+          username?: string;
+          count?: number;
+          include_feed_video?: boolean;
+        };
+      };
+      responses: {
+        /** @description Reels fetched. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["InstagramReelsResponse"];
+          };
+        };
+        /** @description Invalid parameters. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Upstream API error. */
+        502: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    /** Fetch Instagram reels for a user (JSON body variant). */
+    post: {
+      requestBody: {
+        content: {
+          "application/json": {
+            userId: string | number;
+            username?: string;
+            count?: number;
+            includeFeedVideo?: boolean;
+            [key: string]: unknown;
+          };
+        };
+      };
+      responses: {
+        /** @description Reels fetched. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["InstagramReelsResponse"];
+          };
+        };
+        /** @description Invalid parameters. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Upstream API error. */
+        502: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/tiktok/user-feed": {
+    /** Fetch TikTok user feed by username. */
+    get: {
+      parameters: {
+        query: {
+          username: string;
+          count?: number;
+        };
+      };
+      responses: {
+        /** @description User feed returned. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["TikTokUserFeedResponse"];
+          };
+        };
+        /** @description Missing or invalid parameters. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Upstream API error. */
+        502: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    /** Fetch TikTok user feed (JSON body variant). */
+    post: {
+      requestBody: {
+        content: {
+          "application/json": {
+            username: string;
+            count?: number;
+            [key: string]: unknown;
+          };
+        };
+      };
+      responses: {
+        /** @description User feed returned. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["TikTokUserFeedResponse"];
+          };
+        };
+        /** @description Missing or invalid parameters. */
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        /** @description Upstream API error. */
+        502: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
 }
 
 export type webhooks = Record<string, never>;
@@ -789,6 +1063,162 @@ export interface components {
     BasicSuccessResponse: {
       /** @enum {boolean} */
       success: true;
+      [key: string]: unknown;
+    };
+    TranscribeFromUrlRequest: {
+      /** Format: uri */
+      videoUrl: string;
+      /** @enum {string} */
+      platform?: "tiktok" | "instagram" | "youtube";
+      preferAudioOnly?: boolean;
+      [key: string]: unknown;
+    };
+    TranscribeFromUrlResponse: {
+      /** @enum {boolean} */
+      success: true;
+      transcript?: string;
+      meta?: {
+        duration?: number;
+        author?: string;
+        title?: string;
+        /** @enum {string} */
+        platform?: "tiktok" | "instagram" | "youtube";
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+    OrchestrateRequest: {
+      /** Format: uri */
+      url: string;
+      collectionId?: string;
+      options?: {
+        transcribe?: boolean;
+        preferAudioOnly?: boolean;
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+    OrchestrateResponse: {
+      /** @enum {boolean} */
+      success: true;
+      videoId?: string;
+      transcript?: string;
+      jobId?: string;
+      [key: string]: unknown;
+    };
+    TikTokUserInfo: {
+      id?: string;
+      username?: string;
+      nickname?: string;
+      /** Format: uri */
+      avatar?: string;
+      verified?: boolean;
+      signature?: string;
+      stats?: {
+        followingCount?: number;
+        followerCount?: number;
+        heartCount?: number;
+        videoCount?: number;
+        diggCount?: number;
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+    TikTokVideo: {
+      id?: string;
+      description?: string;
+      createTime?: number;
+      duration?: number;
+      /** Format: uri */
+      cover?: string;
+      /** Format: uri */
+      playUrl?: string;
+      /** Format: uri */
+      downloadUrl?: string;
+      stats?: {
+        diggCount?: number;
+        shareCount?: number;
+        commentCount?: number;
+        playCount?: number;
+        collectCount?: number;
+        [key: string]: unknown;
+      };
+      music?: {
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+    TikTokUserFeedResponse: {
+      /** @enum {boolean} */
+      success: true;
+      userInfo?: components["schemas"]["TikTokUserInfo"];
+      videos?: components["schemas"]["TikTokVideo"][];
+      metadata?: {
+        [key: string]: unknown;
+      };
+      /** Format: date-time */
+      timestamp?: string;
+      [key: string]: unknown;
+    };
+    InstagramUserIdResponse: {
+      /** @enum {boolean} */
+      success: true;
+      user_id: string | number;
+      username: string;
+      [key: string]: unknown;
+    };
+    InstagramProcessedVideo: {
+      id?: string;
+      /** @enum {string} */
+      platform?: "instagram";
+      /** Format: uri */
+      videoUrl?: string;
+      /** Format: uri */
+      downloadUrl?: string;
+      /** Format: uri */
+      playUrl?: string;
+      /** Format: uri */
+      thumbnailUrl?: string;
+      viewCount?: number;
+      likeCount?: number;
+      quality?: string;
+      title?: string;
+      description?: string;
+      author?: string;
+      duration?: number;
+      [key: string]: unknown;
+    };
+    InstagramProfileData: {
+      /** Format: uri */
+      profileImageUrl?: string;
+      displayName?: string;
+      bio?: string;
+      followersCount?: number;
+      followingCount?: number;
+      postsCount?: number;
+      isVerified?: boolean;
+      isPrivate?: boolean;
+      /** Format: uri */
+      externalUrl?: string;
+      category?: string;
+      [key: string]: unknown;
+    };
+    InstagramReelsResponse: {
+      /** @enum {boolean} */
+      success: true;
+      status?: string;
+      data?: {
+        items?: {
+            [key: string]: unknown;
+          }[];
+        [key: string]: unknown;
+      };
+      processed?: {
+        videos?: components["schemas"]["InstagramProcessedVideo"][];
+        profileData?: components["schemas"]["InstagramProfileData"];
+        totalFound?: number;
+        [key: string]: unknown;
+      };
       [key: string]: unknown;
     };
     TranscriptChunk: {

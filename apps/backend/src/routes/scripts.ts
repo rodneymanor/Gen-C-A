@@ -77,7 +77,40 @@ scriptsRouter.get('/', async (req, res) => {
   try {
     const service = getScriptsService(db);
     const scripts = await service.listScripts(auth.uid);
-    res.json({ success: true, scripts });
+    const toIso = (v: any): string | undefined => {
+      try {
+        if (!v) return undefined;
+        if (typeof v === 'string') {
+          const t = Date.parse(v);
+          return Number.isNaN(t) ? undefined : new Date(t).toISOString();
+        }
+        if (v instanceof Date) return v.toISOString();
+        if (typeof v.toDate === 'function') {
+          const d = v.toDate();
+          return d instanceof Date ? d.toISOString() : undefined;
+        }
+        if (typeof v.seconds === 'number') {
+          const ms = v.seconds * 1000 + (typeof v.nanoseconds === 'number' ? Math.floor(v.nanoseconds / 1e6) : 0);
+          return new Date(ms).toISOString();
+        }
+        if (typeof v === 'number') {
+          const ms = v < 10_000_000_000 ? v * 1000 : v;
+          return new Date(ms).toISOString();
+        }
+      } catch {}
+      return undefined;
+    };
+
+    const normalized = Array.isArray(scripts)
+      ? scripts.map((s: any) => ({
+          ...s,
+          content: typeof s?.content === 'string' ? s.content : '',
+          createdAt: toIso(s?.createdAt) ?? s?.createdAt,
+          updatedAt: toIso(s?.updatedAt) ?? s?.updatedAt,
+        }))
+      : [];
+
+    res.json({ success: true, scripts: normalized });
   } catch (error) {
     sendServiceError(res, error, 'Failed to load scripts.');
   }

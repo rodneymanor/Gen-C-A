@@ -303,6 +303,193 @@ components:
         success:
           type: boolean
           enum: [true]
+    TranscribeFromUrlRequest:
+      type: object
+      additionalProperties: true
+      required: [videoUrl]
+      properties:
+        videoUrl: { type: string, format: uri }
+        platform:
+          type: string
+          enum: [tiktok, instagram, youtube]
+        preferAudioOnly: { type: boolean }
+    TranscribeFromUrlResponse:
+      type: object
+      additionalProperties: true
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        transcript: { type: string }
+        meta:
+          type: object
+          additionalProperties: true
+          properties:
+            duration: { type: number }
+            author: { type: string }
+            title: { type: string }
+            platform:
+              type: string
+              enum: [tiktok, instagram, youtube]
+    OrchestrateRequest:
+      type: object
+      additionalProperties: true
+      required: [url]
+      properties:
+        url: { type: string, format: uri }
+        collectionId: { type: string }
+        options:
+          type: object
+          additionalProperties: true
+          properties:
+            transcribe: { type: boolean }
+            preferAudioOnly: { type: boolean }
+    OrchestrateResponse:
+      type: object
+      additionalProperties: true
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        videoId: { type: string }
+        transcript: { type: string }
+        jobId: { type: string }
+    TikTokUserInfo:
+      type: object
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        username: { type: string }
+        nickname: { type: string }
+        avatar: { type: string, format: uri }
+        verified: { type: boolean }
+        signature: { type: string }
+        stats:
+          type: object
+          additionalProperties: true
+          properties:
+            followingCount: { type: number }
+            followerCount: { type: number }
+            heartCount: { type: number }
+            videoCount: { type: number }
+            diggCount: { type: number }
+    TikTokVideo:
+      type: object
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        description: { type: string }
+        createTime: { type: number }
+        duration: { type: number }
+        cover: { type: string, format: uri }
+        playUrl: { type: string, format: uri }
+        downloadUrl: { type: string, format: uri }
+        stats:
+          type: object
+          additionalProperties: true
+          properties:
+            diggCount: { type: number }
+            shareCount: { type: number }
+            commentCount: { type: number }
+            playCount: { type: number }
+            collectCount: { type: number }
+        music:
+          type: object
+          additionalProperties: true
+      
+    TikTokUserFeedResponse:
+      type: object
+      additionalProperties: true
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        userInfo:
+          $ref: '#/components/schemas/TikTokUserInfo'
+        videos:
+          type: array
+          items: { $ref: '#/components/schemas/TikTokVideo' }
+        metadata:
+          type: object
+          additionalProperties: true
+        timestamp: { type: string, format: date-time }
+    InstagramUserIdResponse:
+      type: object
+      additionalProperties: true
+      required: [success, user_id, username]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        user_id:
+          oneOf:
+            - { type: string }
+            - { type: number }
+        username:
+          type: string
+    InstagramProcessedVideo:
+      type: object
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        platform: { type: string, enum: [instagram] }
+        videoUrl: { type: string, format: uri }
+        downloadUrl: { type: string, format: uri }
+        playUrl: { type: string, format: uri }
+        thumbnailUrl: { type: string, format: uri }
+        viewCount: { type: number }
+        likeCount: { type: number }
+        quality: { type: string }
+        title: { type: string }
+        description: { type: string }
+        author: { type: string }
+        duration: { type: number }
+    InstagramProfileData:
+      type: object
+      additionalProperties: true
+      properties:
+        profileImageUrl: { type: string, format: uri }
+        displayName: { type: string }
+        bio: { type: string }
+        followersCount: { type: number }
+        followingCount: { type: number }
+        postsCount: { type: number }
+        isVerified: { type: boolean }
+        isPrivate: { type: boolean }
+        externalUrl: { type: string, format: uri }
+        category: { type: string }
+    InstagramReelsResponse:
+      type: object
+      additionalProperties: true
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        status:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+        processed:
+          type: object
+          additionalProperties: true
+          properties:
+            videos:
+              type: array
+              items: { $ref: '#/components/schemas/InstagramProcessedVideo' }
+            profileData:
+              $ref: '#/components/schemas/InstagramProfileData'
+            totalFound: { type: number }
     TranscriptChunk:
       type: object
       required: [text]
@@ -883,6 +1070,258 @@ paths:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
         '503':
           description: Service unavailable (e.g., missing Gemini key).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/video/transcribe-from-url:
+    post:
+      summary: Transcribe a video from a platform URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TranscribeFromUrlRequest' }
+      responses:
+        '200':
+          description: Transcript generated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TranscribeFromUrlResponse' }
+        '400':
+          description: Invalid or missing URL.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '502':
+          description: Upstream fetch/model error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/video/orchestrate:
+    post:
+      summary: Orchestrate scrape → transcribe → persist workflow.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrchestrateRequest' }
+      responses:
+        '200':
+          description: Orchestration completed (or job accepted).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrchestrateResponse' }
+        '400':
+          description: Invalid payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/video/scrape-url:
+    post:
+      summary: Resolve a public video URL to downloadable media.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [url]
+              properties:
+                url: { type: string, format: uri }
+                preferAudioOnly: { type: boolean }
+      responses:
+        '200':
+          description: Media resolved.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  result:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      downloadUrl: { type: string, format: uri }
+                      audioUrl: { type: string, format: uri }
+                      thumbnailUrl: { type: string, format: uri }
+                      title: { type: string }
+                      description: { type: string }
+                      author: { type: string }
+                      duration: { type: number }
+                      platform:
+                        type: string
+                        enum: [tiktok, instagram]
+        '400':
+          description: Invalid or unsupported URL.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '502':
+          description: Upstream scraping error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /api/instagram/user-id:
+    get:
+      summary: Resolve Instagram user ID by username.
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: User ID resolved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstagramUserIdResponse' }
+        '400':
+          description: Missing or invalid username.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: User not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '502':
+          description: Upstream API error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/instagram/user-reels:
+    get:
+      summary: Fetch Instagram reels for a user.
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema: { oneOf: [ { type: string }, { type: number } ] }
+        - name: username
+          in: query
+          required: false
+          schema: { type: string }
+        - name: count
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+        - name: include_feed_video
+          in: query
+          required: false
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Reels fetched.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstagramReelsResponse' }
+        '400':
+          description: Invalid parameters.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '502':
+          description: Upstream API error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    post:
+      summary: Fetch Instagram reels for a user (JSON body variant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              properties:
+                userId: { oneOf: [ { type: string }, { type: number } ] }
+                username: { type: string }
+                count: { type: integer, minimum: 1 }
+                includeFeedVideo: { type: boolean }
+              required: [userId]
+      responses:
+        '200':
+          description: Reels fetched.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstagramReelsResponse' }
+        '400':
+          description: Invalid parameters.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '502':
+          description: Upstream API error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/tiktok/user-feed:
+    get:
+      summary: Fetch TikTok user feed by username.
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema: { type: string }
+        - name: count
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: User feed returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TikTokUserFeedResponse' }
+        '400':
+          description: Missing or invalid parameters.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '502':
+          description: Upstream API error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    post:
+      summary: Fetch TikTok user feed (JSON body variant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              properties:
+                username: { type: string }
+                count: { type: integer, minimum: 1 }
+              required: [username]
+      responses:
+        '200':
+          description: User feed returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TikTokUserFeedResponse' }
+        '400':
+          description: Missing or invalid parameters.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '502':
+          description: Upstream API error.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }

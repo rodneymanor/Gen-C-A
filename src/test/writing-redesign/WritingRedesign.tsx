@@ -1174,17 +1174,16 @@ export const WritingRedesignShowcase: React.FC<WritingRedesignShowcaseProps> = (
         }
       } else {
         setAnalyzeStage('Resolving media');
-        const scrapeResponse = await fetch('/api/video/scrape-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: trimmedUrl }),
+        const { createApiClient } = await import('@/api/client');
+        const client = createApiClient('');
+        const { data: scrapePayload, error: scrapeErr } = await client.POST('/api/video/scrape-url', {
+          body: { url: trimmedUrl },
         });
-        const scrapePayload = await scrapeResponse.json().catch(() => null);
-        if (!scrapeResponse.ok || !scrapePayload?.success || !scrapePayload?.result) {
-          throw new Error(scrapePayload?.error || 'Failed to resolve the video media URL.');
+        if (scrapeErr || !scrapePayload?.success || !(scrapePayload as any)?.result) {
+          throw new Error((scrapePayload as any)?.error || (scrapeErr as any)?.error || 'Failed to resolve the video media URL.');
         }
 
-        const downloadUrl = scrapePayload.result.audioUrl || scrapePayload.result.downloadUrl;
+        const downloadUrl = (scrapePayload as any).result?.audioUrl || (scrapePayload as any).result?.downloadUrl;
         if (!downloadUrl) {
           throw new Error('Unable to find a downloadable media URL for this video.');
         }

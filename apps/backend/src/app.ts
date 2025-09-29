@@ -44,6 +44,8 @@ export function createApp() {
       apiSpec: scriptsApiSpecPath,
       validateRequests: true,
       validateResponses: true,
+      // Allow routes not yet described in the spec (Instagram/TikTok/Viral Content, etc.)
+      ignoreUndocumented: true,
     }),
   );
 

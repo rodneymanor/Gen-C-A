@@ -12,6 +12,11 @@ const dev = (process.env.DEV_URL || 'http://localhost:4000').replace(/\/$/, '');
 const userId = process.env.SMOKE_USER_ID || process.env.FIREBASE_TEST_UID || process.env.DEFAULT_EXTENSION_USER_ID;
 const extKey = process.env.INTERNAL_API_SECRET || process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || process.env.ADMIN_API_KEY;
 const rapidKey = process.env.RAPIDAPI_KEY;
+const ttUser = process.env.TIKTOK_SMOKE_USERNAME || process.env.VIRAL_TIKTOK_USERNAME;
+const fbToken = process.env.SMOKE_FIREBASE_TOKEN;
+const collId = process.env.SMOKE_COLLECTION_ID;
+const targetCollId = process.env.SMOKE_TARGET_COLLECTION_ID;
+const videoId = process.env.SMOKE_VIDEO_ID;
 
 async function check(name, url) {
   const start = Date.now();
@@ -57,6 +62,40 @@ async function main() {
 
   allOk &&= await check400('instagram/user-id (missing)', '/api/instagram/user-id');
   allOk &&= await check400('tiktok/user-feed (missing)', '/api/tiktok/user-feed');
+
+  // TikTok user-feed positive check (requires RAPIDAPI_KEY and a test username)
+  if (rapidKey && ttUser) {
+    try {
+      const payload = { username: ttUser, count: 3 };
+      const beRes = await fetch(`${backend}/api/tiktok/user-feed`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const beServedBy = beRes.headers.get('x-served-by');
+      let deStatus = 'skip';
+      let deServedBy = 'skip';
+      if (devUp) {
+        const deRes = await fetch(`${dev}/api/tiktok/user-feed`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        deStatus = String(deRes.status);
+        deServedBy = String(deRes.headers.get('x-served-by'));
+      }
+      console.log(`tiktok/user-feed POST → backend:${beRes.status} [${beServedBy}]${devUp ? ` dev:${deStatus} [${deServedBy}]` : ' dev:skip'}`);
+      const json = await beRes.json().catch(() => ({}));
+      const ok = beRes.ok && json?.success === true && Array.isArray(json?.videos);
+      console.log(`tiktok/user-feed shape: ${ok ? 'OK' : 'NOT VERIFIED'}`);
+      if (ok) allOk &&= true; // non-blocking if not verified (depends on external API/username)
+    } catch (e) {
+      console.error('tiktok/user-feed positive check failed:', e.message);
+      allOk = false;
+    }
+  } else {
+    console.log('ℹ️ Set RAPIDAPI_KEY and TIKTOK_SMOKE_USERNAME (or VIRAL_TIKTOK_USERNAME) to enable TikTok 200 smoke.');
+  }
 
   // Chrome Extension: youtube-transcript
   const ytUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
@@ -136,6 +175,30 @@ async function main() {
   } catch (e) {
     console.log('videos/collection check failed:', e.message);
     allOk = false;
+  }
+
+  // Gated authenticated collection ops
+  if (fbToken) {
+    const authHeaders = { 'content-type': 'application/json', Authorization: `Bearer ${fbToken}` };
+    // Update collection title if collection id provided
+    if (collId) {
+      const newTitle = `Smoke ${new Date().toISOString().slice(11,19)}`;
+      const upd = await fetch(`${backend}/api/collections/update`, { method: 'PATCH', headers: authHeaders, body: JSON.stringify({ id: collId, title: newTitle }) });
+      console.log(`collections/update PATCH → backend:${upd.status}`);
+      allOk &&= upd.status === 200;
+    }
+    // Move/copy video if all ids provided
+    if (videoId && collId && targetCollId) {
+      const mv = await fetch(`${backend}/api/collections/move-video`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ videoId, fromCollectionId: collId, toCollectionId: targetCollId }) });
+      console.log(`collections/move-video POST → backend:${mv.status}`);
+      allOk &&= mv.status === 200 || mv.status === 404 || mv.status === 400; // tolerate data missing
+
+      const cp = await fetch(`${backend}/api/collections/copy-video`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ videoId, fromCollectionId: collId, toCollectionId: targetCollId }) });
+      console.log(`collections/copy-video POST → backend:${cp.status}`);
+      allOk &&= cp.status === 200 || cp.status === 404 || cp.status === 400;
+    }
+  } else {
+    console.log('ℹ️ Set SMOKE_FIREBASE_TOKEN (and SMOKE_COLLECTION_ID / SMOKE_TARGET_COLLECTION_ID / SMOKE_VIDEO_ID) to exercise authenticated collections ops.');
   }
 
   // Optional: collections endpoints when a test user is provided
