@@ -3,6 +3,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://api.gencapp.pro/api/$1"
+    },
+    {
       "source": "/((?!api(?:/|$)|assets/|static/|favicon\\.ico|robots\\.txt|manifest\\.json|service-worker\\.js).*)",
       "destination": "/"
     }
