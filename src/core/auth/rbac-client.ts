@@ -36,7 +36,70 @@ export interface VideosResponse {
   totalCount?: number;
 }
 
+import type { User } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/config/firebase';
+
+let pendingUserPromise: Promise<User | null> | null = null;
+
+async function waitForFirebaseUser(timeoutMs = 4000): Promise<User | null> {
+  if (auth.currentUser) return auth.currentUser;
+  if (!pendingUserPromise) {
+    pendingUserPromise = new Promise<User | null>((resolve) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(null);
+      }, timeoutMs);
+
+      let unsubscribe: () => void = () => {};
+      const cleanup = () => {
+        clearTimeout(timer);
+        const fn = unsubscribe;
+        unsubscribe = () => {};
+        try {
+          fn();
+        } catch {}
+      };
+
+      unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(user);
+      });
+    }).finally(() => {
+      pendingUserPromise = null;
+    });
+  }
+
+  return pendingUserPromise;
+}
+
+async function resolveIdToken(expectedUid?: string): Promise<string | null> {
+  const user = auth.currentUser ?? (await waitForFirebaseUser());
+  if (!user) {
+    return null;
+  }
+
+  if (expectedUid && user.uid !== expectedUid) {
+    console.warn('[rbac-client] Firebase user mismatch', { expectedUid, actualUid: user.uid });
+  }
+
+  try {
+    return await user.getIdToken();
+  } catch (error) {
+    console.warn('[rbac-client] getIdToken failed, forcing refresh', error);
+    try {
+      return await user.getIdToken(true);
+    } catch (retryError) {
+      console.error('[rbac-client] Failed to obtain Firebase ID token', retryError);
+      return null;
+    }
+  }
+}
 
 async function authHeaders(userId?: string, apiKey?: string) {
   const h: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -44,10 +107,11 @@ async function authHeaders(userId?: string, apiKey?: string) {
   if (apiKey) h['x-api-key'] = apiKey;
   try {
     // Prefer Firebase ID token when available
-    const u = auth.currentUser;
-    if (u) {
-      const token = await u.getIdToken();
+    const token = await resolveIdToken(userId);
+    if (token) {
       h['Authorization'] = `Bearer ${token}`;
+    } else if (userId) {
+      console.warn('[rbac-client] Missing Firebase ID token for authenticated request');
     }
   } catch {
     // ignore
