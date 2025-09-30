@@ -39,6 +39,13 @@ type VideoTranscriptionModule = typeof import('@/services/video/video-transcript
 
 type VideoTranscriptionServiceInstance = ReturnType<VideoTranscriptionModule['getVideoTranscriptionService']> | null;
 
+// Vite statically analyzes dynamic imports when the specifier is a literal, which
+// forces browser bundles to include server-only modules (and their Node built-ins).
+// Wrapping import() in a Function keeps the specifier opaque to the bundler while
+// still enabling runtime resolution in Node, preventing `fs` from leaking into the
+// client bundle.
+const dynamicImport = new Function('specifier', 'return import(specifier);') as <T>(specifier: string) => Promise<T>;
+
 function pickBackendBase(): string | null {
   if (typeof process === 'undefined') return null;
   const env = process.env || {};
@@ -78,7 +85,7 @@ export class TranscriptionService {
     }
 
     if (!this.directServicePromise) {
-      this.directServicePromise = import('@/services/video/video-transcription-service.js')
+      this.directServicePromise = dynamicImport<VideoTranscriptionModule>('@/services/video/video-transcription-service.js')
         .then((mod: VideoTranscriptionModule) => {
           try {
             return mod.getVideoTranscriptionService();
