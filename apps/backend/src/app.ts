@@ -2,6 +2,7 @@ import express, { type Request, type Response } from 'express';
 import cors from 'cors';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { middleware as openapiValidator } from 'express-openapi-validator';
 
 import { notesRouter } from './routes/notes';
@@ -19,8 +20,10 @@ import { brandVoicesRouter } from './routes/brand-voices';
 import { extensionRouter } from './routes/extension/index.js';
 import { keysRouter } from './routes/keys.js';
 import { viralContentRouter } from './routes/viral-content';
+import { diagnosticsRouter } from './routes/diagnostics';
 
-const scriptsApiSpecPath = path.resolve(process.cwd(), 'openapi/openapi.yaml');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const scriptsApiSpecPath = path.resolve(__dirname, '../openapi/openapi.yaml');
 
 export function createApp() {
   const app = express();
@@ -130,6 +133,7 @@ export function createApp() {
   app.use('/api/brand-voices', brandVoicesRouter);
   app.use('/api/chrome-extension', extensionRouter);
   app.use('/api/viral-content', viralContentRouter);
+  app.use('/api/diagnostics', diagnosticsRouter);
 
   return app;
 }

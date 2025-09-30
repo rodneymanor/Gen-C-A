@@ -139,9 +139,11 @@ components:
     AddVideoToCollectionRequest:
       type: object
       additionalProperties: true
-      required: [userId, collectionId, videoData]
+      required: [collectionId, videoData]
       properties:
-        userId: { type: string }
+        userId:
+          type: string
+          description: Optional override; defaults to the authenticated user.
         collectionId: { type: string }
         videoData:
           type: object
@@ -881,6 +883,18 @@ paths:
             schema: { $ref: '#/components/schemas/AddVideoToCollectionRequest' }
       responses:
         '200':
+          description: Video added.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  videoId: { type: string }
+        '201':
           description: Video added.
           content:
             application/json:

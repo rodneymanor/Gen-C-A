@@ -10,7 +10,7 @@ This document tracks the current state of the application unification effort and
 - Canonical backend: `apps/backend` owns business logic; responses now normalize timestamps/required fields to satisfy the OpenAPI validator.
 - Thin shims: Most Vercel `api/**` and Next App Router handlers delegate to the backend; frontend clients call the generated SDK with Firebase auth headers.
 - Env contract: Shared validation and `.env.example` added; local `.env.local` pins a stable backend port.
-- OpenAPI contract: Notes/Collections/Scripts/Videos/Instagram/TikTok endpoints live in `openapi/openapi.yaml`, generate typed clients, and are validated at runtime.
+- OpenAPI contract: Notes/Collections/Scripts/Videos/Instagram/TikTok endpoints live in `apps/backend/openapi/openapi.yaml`, generate typed clients, and are validated at runtime.
 - Observability: Lightweight request logging + `x-served-by` header expose serving runtime; smoke scripts cover auth + TikTok 200/400 parity.
 
 Recent focus: enforced Firebase ID token verification for collections/library flows, normalized collection + script payloads so express-openapi-validator passes, migrated remaining TikTok/Instagram utilities to the generated client, refreshed CI/local smokes to include `/api/tiktok/user-feed` cases, reconnected Chrome Extension flows in production via Vercel rewrites, and published live OpenAPI docs at `/docs` (served by the backend `/openapi` endpoint).
@@ -50,7 +50,7 @@ Recent focus: enforced Firebase ID token verification for collections/library fl
   - Verifies backend /health and dev /api/health
   - Asserts parity for GET `/api/viral-content/feed`
   - Basic error-parity checks for `/api/instagram/user-id` and `/api/tiktok/user-feed` without params
-  - Scripts API validated at runtime via `express-openapi-validator` against `openapi/openapi.yaml`.
+  - Scripts API validated at runtime via `express-openapi-validator` against `apps/backend/openapi/openapi.yaml`.
  - [x] Add `x-served-by` header from backend/shims to confirm serving runtime (surfaced in smoke logs).
  - [x] Chrome Extension smoke:
    - GET `/api/chrome-extension/youtube-transcript?url=...` (401 without key; 200 with key when `RAPIDAPI_KEY` is set).
@@ -64,7 +64,7 @@ Recent focus: enforced Firebase ID token verification for collections/library fl
    - `SMOKE_COLLECTION_ID`, `SMOKE_TARGET_COLLECTION_ID`, `SMOKE_VIDEO_ID` — enable update/move/copy checks
 
 ## API Contracts & Tooling
-- [x] Document scripts endpoints in `openapi/openapi.yaml`.
+- [x] Document scripts endpoints in `apps/backend/openapi/openapi.yaml`.
 - [x] Generate client + type bundles via `npm run gen` (writes to `src/api/client` and `src/types/api.d.ts`).
 - [x] Frontend hook `useScriptsApi` now consumes the generated client.
 - [x] Backend enforces the scripts spec at runtime with `express-openapi-validator`.
@@ -80,7 +80,7 @@ Recent focus: enforced Firebase ID token verification for collections/library fl
 - [x] Migrate transcription callers to generated client: `src/app/(main)/personas/services/api.ts`, `src/features/brandhub/services/videoTranscriptionService.ts`, partial in `src/pages/TikTokAnalysisTest.tsx`.
 - [x] Migrate scrape callers: `src/test/writing-redesign/WritingRedesign.tsx` now uses the generated client for `/api/video/scrape-url`.
 - [x] Migrate remaining TikTok helpers to the shared OpenAPI client (personas + brand hub flows).
- - [x] Host Swagger UI at `/docs` consuming `/openapi/openapi.yaml`.
+ - [x] Host Swagger UI at `/docs` consuming `/openapi` from the Express backend (source: `apps/backend/openapi/openapi.yaml`).
  - [ ] Decide if Chrome Extension endpoints are included in OpenAPI (recommended minimal read-only coverage for transcript endpoint).
 
 ## Outstanding Work

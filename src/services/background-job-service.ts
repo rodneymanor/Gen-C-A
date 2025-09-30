@@ -1,3 +1,7 @@
+import { TranscriptionService } from './transcription-service';
+import { AIAnalysisService, type ScriptComponents } from './ai-analysis-service';
+import { getAdminDb } from '@/lib/firebase-admin';
+
 /**
  * BackgroundJobService - Background job orchestration for video processing
  * Extracted from background processing implementations
@@ -401,12 +405,22 @@ class MemoryJobQueue implements JobQueue {
  * Transcription job processor
  */
 class TranscriptionJobProcessor implements JobProcessor {
+  private transcriptionService: TranscriptionService;
+  private aiAnalysisService: AIAnalysisService;
+
+  constructor() {
+    this.transcriptionService = new TranscriptionService();
+    this.aiAnalysisService = new AIAnalysisService();
+  }
+
   async process(job: BackgroundJob): Promise<void> {
     try {
       console.log(`🎙️ [TRANSCRIPTION_PROCESSOR] Processing transcription job: ${job.id}`);
 
       const { videoDocument, downloadData, streamResult } = job.metadata as any;
       const queue = job.metadata?.queue || new MemoryJobQueue();
+      const skipTranscription = Boolean(job.metadata?.skipTranscription);
+      const skipAIAnalysis = Boolean(job.metadata?.skipAIAnalysis);
 
       // Update progress
       await queue.updateJob(job.id, { progress: 10 });
@@ -418,11 +432,33 @@ class TranscriptionJobProcessor implements JobProcessor {
         throw new Error('No video URL available for transcription');
       }
 
+      const platform =
+        (job.metadata?.platform as string) ||
+        downloadData?.platform ||
+        videoDocument?.platform ||
+        'other';
+
       console.log('🎙️ [TRANSCRIPTION_PROCESSOR] Starting transcription...');
       await queue.updateJob(job.id, { progress: 25 });
 
-      // Mock transcription (in real implementation, would call TranscriptionService)
-      const transcriptionResult = await this.mockTranscription(transcriptionUrl, downloadData.platform);
+      if (skipTranscription) {
+        console.log('⏭️ [TRANSCRIPTION_PROCESSOR] Transcription skipped by configuration');
+        await this.updateVideoDocument(job.videoId, {
+          transcriptionStatus: 'skipped',
+          updatedAt: new Date().toISOString(),
+        });
+        await queue.updateJob(job.id, {
+          status: 'completed',
+          progress: 100,
+          completedAt: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const transcriptionResult = await this.transcriptionService.transcribeFromUrl(
+        transcriptionUrl,
+        platform,
+      );
       
       await queue.updateJob(job.id, { progress: 60 });
 
@@ -433,25 +469,54 @@ class TranscriptionJobProcessor implements JobProcessor {
       console.log('✅ [TRANSCRIPTION_PROCESSOR] Transcription completed');
 
       // Perform AI analysis if not skipped
-      if (!job.metadata?.skipAIAnalysis) {
+      let components = transcriptionResult.components;
+
+      if (this.isComponentsEmpty(components) && !skipAIAnalysis) {
         console.log('🔍 [TRANSCRIPTION_PROCESSOR] Starting AI analysis...');
         await queue.updateJob(job.id, { progress: 75 });
 
-        const analysisResult = await this.mockAnalysis(transcriptionResult.transcript);
+        try {
+          const analysisResult = await this.aiAnalysisService.analyzeScriptComponents(
+            transcriptionResult.transcript,
+          );
+
+          if (analysisResult) {
+            components = analysisResult;
+          }
+        } catch (analysisError) {
+          console.warn(
+            '⚠️ [TRANSCRIPTION_PROCESSOR] AI analysis failed, falling back to heuristic split:',
+            analysisError,
+          );
+        }
         
         await queue.updateJob(job.id, { progress: 90 });
-
-        // Update video document with results
-        console.log('💾 [TRANSCRIPTION_PROCESSOR] Updating video document...');
-        await this.updateVideoDocument(job.videoId, {
-          transcript: transcriptionResult.transcript,
-          components: analysisResult.components,
-          contentMetadata: analysisResult.contentMetadata,
-          visualContext: analysisResult.visualContext,
-          transcriptionStatus: 'completed',
-          updatedAt: new Date().toISOString()
-        });
       }
+
+      if (this.isComponentsEmpty(components)) {
+        components = this.createHeuristicComponents(transcriptionResult.transcript);
+      }
+
+      const contentMetadata = this.mergeContentMetadata(
+        transcriptionResult,
+        downloadData,
+        platform,
+      );
+
+      console.log('💾 [TRANSCRIPTION_PROCESSOR] Updating video document...');
+      await this.updateVideoDocument(
+        job.videoId,
+        {
+          transcript: transcriptionResult.transcript,
+          components,
+          contentMetadata,
+          visualContext: transcriptionResult.visualContext,
+          transcriptionStatus: 'completed',
+          updatedAt: new Date().toISOString(),
+        },
+        transcriptionResult,
+        transcriptionUrl,
+      );
 
       await queue.updateJob(job.id, {
         status: 'completed',
@@ -480,42 +545,98 @@ class TranscriptionJobProcessor implements JobProcessor {
     return job.type === 'transcription';
   }
 
-  private async mockTranscription(url: string, platform: string): Promise<any> {
-    // Mock delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
+  private isComponentsEmpty(components?: ScriptComponents | null): boolean {
+    if (!components) return true;
+    return !components.hook && !components.bridge && !components.nugget && !components.wta;
+  }
+
+  private createHeuristicComponents(transcript: string): ScriptComponents {
+    const cleaned = transcript.trim();
+    if (!cleaned) {
+      return { hook: '', bridge: '', nugget: '', wta: '' };
+    }
+
+    const sentences = cleaned
+      .replace(/\s+/g, ' ')
+      .split(/(?<=[.!?])\s+/)
+      .filter(Boolean);
+
+    const chunkSize = Math.max(1, Math.ceil(sentences.length / 4));
+
+    const hook = sentences.slice(0, chunkSize).join(' ');
+    const bridge = sentences.slice(chunkSize, chunkSize * 2).join(' ');
+    const nugget = sentences.slice(chunkSize * 2, chunkSize * 3).join(' ');
+    const wta = sentences.slice(chunkSize * 3).join(' ') || sentences.slice(-chunkSize).join(' ');
+
+    return { hook, bridge, nugget, wta };
+  }
+
+  private mergeContentMetadata(transcriptionResult: any, downloadData: any, platform: string) {
+    const transcriptMetadata = transcriptionResult?.contentMetadata ?? {};
+    const scrapedMetadata = downloadData?.additionalMetadata ?? {};
+
+    const author = transcriptMetadata.author || scrapedMetadata.author || 'Unknown';
+    const description = transcriptMetadata.description || scrapedMetadata.description || '';
+    const hashtags = Array.isArray(transcriptMetadata.hashtags)
+      ? transcriptMetadata.hashtags
+      : Array.isArray(scrapedMetadata.hashtags)
+      ? scrapedMetadata.hashtags
+      : [];
+
     return {
-      transcript: `This is a mock transcript for ${platform} video from ${url.substring(0, 50)}...`,
-      platform
+      platform,
+      author,
+      description,
+      source: transcriptMetadata.source || 'video-transcription-service',
+      hashtags,
     };
   }
 
-  private async mockAnalysis(transcript: string): Promise<any> {
-    // Mock delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    return {
-      components: {
-        hook: 'Mock attention-grabbing hook',
-        bridge: 'Mock connecting bridge',
-        nugget: 'Mock core value proposition',
-        wta: 'Mock why to act'
-      },
-      contentMetadata: {
-        platform: 'mock',
-        author: 'Mock Author',
-        description: 'Mock video description',
-        source: 'background_processing',
-        hashtags: ['mock', 'background']
-      },
-      visualContext: 'Mock visual context from background analysis'
-    };
-  }
+  private async updateVideoDocument(
+    videoId: string,
+    updates: any,
+    transcriptionResult?: any,
+    sourceUrl?: string,
+  ): Promise<void> {
+    const db = getAdminDb();
+    if (!db) {
+      console.warn('⚠️ [TRANSCRIPTION_PROCESSOR] Firestore not available; skipping video update');
+      return;
+    }
 
-  private async updateVideoDocument(videoId: string, updates: any): Promise<void> {
-    // Mock database update
-    console.log(`💾 [TRANSCRIPTION_PROCESSOR] Updating video ${videoId} with:`, Object.keys(updates));
-    // In real implementation, would update database
+    const docRef = db.collection('videos').doc(String(videoId));
+    const snapshot = await docRef.get();
+    const existing = snapshot.exists ? snapshot.data() ?? {} : {};
+
+    const existingMetadata = (existing.metadata ?? {}) as Record<string, unknown>;
+    const existingContentMetadata = (existing.contentMetadata ?? {}) as Record<string, unknown>;
+    const mergedContentMetadata = { ...existingContentMetadata, ...(updates.contentMetadata ?? {}) };
+
+    const completedAt = new Date().toISOString();
+
+    const payload: Record<string, unknown> = {
+      transcript: updates.transcript,
+      components: updates.components,
+      transcriptionStatus: updates.transcriptionStatus,
+      visualContext: updates.visualContext ?? existing.visualContext,
+      contentMetadata: mergedContentMetadata,
+      updatedAt: completedAt,
+      metadata: {
+        ...existingMetadata,
+        transcript: updates.transcript,
+        scriptComponents: updates.components,
+        components: updates.components,
+        transcriptionStatus: updates.transcriptionStatus,
+        transcriptionCompletedAt: completedAt,
+        transcriptionMetadata: transcriptionResult?.transcriptionMetadata,
+        transcriptionSourceUrl: sourceUrl || transcriptionResult?.videoUrl,
+        transcriptionError: null,
+        contentMetadata: mergedContentMetadata,
+        visualContext: updates.visualContext ?? existingMetadata.visualContext,
+      },
+    };
+
+    await docRef.set(payload, { merge: true });
   }
 }
 

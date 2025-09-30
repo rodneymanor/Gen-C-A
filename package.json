@@ -53,10 +53,10 @@
     "smoke:prod": "node scripts/prod-troubleshoot.mjs --base=https://www.gencapp.pro",
     "smoke:local": "node scripts/smoke-local.mjs",
     "dns:add:api": "./scripts/vercel-add-subdomain.sh --domain gencapp.pro --sub api",
-    "gen:client": "node -e \"const fs=require('fs');const p='src/api/client';if(fs.existsSync(p))fs.rmSync(p,{recursive:true,force:true});\" && openapi-generator-cli generate -i openapi/openapi.yaml -g typescript-fetch -o src/api/client --additional-properties=supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true,modelPropertyNaming=camelCase,dateType=string,dateTimeType=string --type-mappings Date=string,DateTime=string",
-    "gen:types": "openapi-typescript openapi/openapi.yaml --output src/types/api.d.ts",
+    "gen:client": "node -e \"const fs=require('fs');const p='src/api/client';if(fs.existsSync(p))fs.rmSync(p,{recursive:true,force:true});\" && openapi-generator-cli generate -i apps/backend/openapi/openapi.yaml -g typescript-fetch -o src/api/client --additional-properties=supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true,modelPropertyNaming=camelCase,dateType=string,dateTimeType=string --type-mappings Date=string,DateTime=string",
+    "gen:types": "openapi-typescript apps/backend/openapi/openapi.yaml --output src/types/api.d.ts",
     "gen": "npm run gen:client && npm run gen:types",
-    "check:spec": "openapi-generator-cli validate -i openapi/openapi.yaml",
+    "check:spec": "openapi-generator-cli validate -i apps/backend/openapi/openapi.yaml",
     "deploy:firestore-indexes": "npx firebase-tools deploy --only firestore:indexes --project $FIREBASE_PROJECT_ID"
   },
   "dependencies": {

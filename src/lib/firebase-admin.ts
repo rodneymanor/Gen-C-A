@@ -99,7 +99,14 @@ export function getAdminDb(): Firestore | null {
 
     db = getFirestore();
     if (!settingsApplied) {
-      db.settings({ ignoreUndefinedProperties: true });
+      try {
+        db.settings({ ignoreUndefinedProperties: true });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!/settings\(\) once/i.test(message)) {
+          throw error;
+        }
+      }
       settingsApplied = true;
     }
     return db;

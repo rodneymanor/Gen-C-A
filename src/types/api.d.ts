@@ -347,6 +347,17 @@ export interface paths {
             };
           };
         };
+        /** @description Video added. */
+        201: {
+          content: {
+            "application/json": {
+              /** @enum {boolean} */
+              success?: true;
+              videoId?: string;
+              [key: string]: unknown;
+            };
+          };
+        };
         /** @description Invalid payload. */
         400: {
           content: {
@@ -941,7 +952,7 @@ export interface components {
       [key: string]: unknown;
     };
     AddVideoToCollectionRequest: {
-      userId: string;
+      userId?: string;
       collectionId: string;
       videoData: {
         [key: string]: unknown;

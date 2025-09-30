@@ -3,7 +3,7 @@
 This guide explains how to keep the scripts API contract, generated clients, and runtime validation in sync.
 
 ## Spec location
-- Canonical spec: `openapi/openapi.yaml`
+- Canonical spec: `apps/backend/openapi/openapi.yaml`
 - Covers:
   - `GET/POST /api/scripts`
   - `GET/PUT/DELETE /api/scripts/{id}`
@@ -22,12 +22,12 @@ This guide explains how to keep the scripts API contract, generated clients, and
 - Error handling: surface `error` messages from the `{ success: false, error }` envelope when present.
 
 ## Backend validation
-- `apps/backend/src/app.ts` loads `openapi/openapi.yaml` and installs `express-openapi-validator` immediately after `express.json`.
+- `apps/backend/src/app.ts` loads `apps/backend/openapi/openapi.yaml` and installs `express-openapi-validator` immediately after `express.json`.
 - The validator enforces both request and response conformance for documented routes before the scripts router executes business logic.
 - `apps/backend/src/server.ts` awaits validator installation during startup to avoid serving traffic without schema enforcement.
 
 ## Recommended workflow for changes
-1. Update `openapi/openapi.yaml` with the new/changed endpoint description.
+1. Update `apps/backend/openapi/openapi.yaml` with the new/changed endpoint description.
 2. Run `npm run check:spec` to ensure the spec is syntactically valid.
 3. Run `npm run gen` to regenerate the client and shared type bundle.
 4. Update the frontend/backend code to match the new types (prefer the generated models over handwritten interfaces).
@@ -38,4 +38,3 @@ This guide explains how to keep the scripts API contract, generated clients, and
 - Extend the spec to additional high-traffic endpoints (collections, notes, video ingest) and migrate their consumers to the shared client.
 - Add automated checks (`npm run check:spec`) to CI so invalid specs fail fast.
 - Document shared client patterns for server-side utilities once more routes are covered.
-

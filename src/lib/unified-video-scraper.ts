@@ -46,6 +46,12 @@ export class UnifiedVideoScraper {
         result = await this.scrapeTikTok(url, options);
       }
 
+      if (result?.downloadUrl) {
+        console.log("🗂️ [UNIFIED_SCRAPER] Selected CDN download URL:", result.downloadUrl);
+      }
+      if (result?.audioUrl && result.audioUrl !== result.downloadUrl) {
+        console.log("🎧 [UNIFIED_SCRAPER] Audio-only URL:", result.audioUrl);
+      }
       console.log("✅ [UNIFIED_SCRAPER] Scraping successful for:", platform);
       return result;
     } catch (error) {

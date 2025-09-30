@@ -5,6 +5,7 @@ import {
   GcDashButton,
   GcDashIconButton,
   GcDashLabel,
+  GcDashLoadingSpinner,
   GcDashTabs,
   gcDashShape,
   gcDashTypography,
@@ -12,7 +13,7 @@ import {
 import type { GcDashLabelTone, GcDashTabItem } from '../gc-dash';
 import { formatDate, formatDuration, formatRelativeTime, formatViewCount } from '../../utils/format';
 import type { ContentItem } from '../../types';
-import { Clock, Copy, ExternalLink, Play, Sparkles, Wand2, ArrowDown, ArrowUp, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Copy, ExternalLink, Play, Sparkles, Wand2, ArrowDown, ArrowUp, X } from 'lucide-react';
 
 export interface VideoOverlayMetric {
   id: string;
@@ -74,15 +75,60 @@ const palette = {
   textSecondary: '#64748B',
   textTertiary: '#94A3B8',
   danger: '#DC2626',
+  dangerTint: '#FEE2E2',
+  success: '#16A34A',
+  successTint: '#DCFCE7',
+  infoTint: 'rgba(45, 140, 255, 0.12)',
 };
 
 const spacing = {
   xs: '8px',
-  sm: '16px',
-  md: '24px',
-  lg: '32px',
-  xl: '48px',
+  sm: '12px',
+  md: '16px',
+  lg: '24px',
+  xl: '32px',
 };
+
+const transcriptionStatusStyles = (variant: 'processing' | 'failed' | 'success') => css`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: ${variant === 'processing' ? palette.infoTint : variant === 'failed' ? palette.dangerTint : palette.successTint};
+  color: ${variant === 'processing' ? palette.zoomBlue : variant === 'failed' ? palette.danger : palette.success};
+`;
+
+const transcriptionStatusIconStyles = css`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const analysisPlaceholderStyles = css`
+  display: flex;
+  align-items: center;
+  gap: ${spacing.sm};
+  padding: ${spacing.md};
+  border-radius: 12px;
+  border: 1px dashed ${palette.gray200};
+  background: ${palette.gray50};
+  color: ${palette.textSecondary};
+  font-size: 14px;
+`;
+
+const transcriptMessageStyles = (variant: 'processing' | 'failed' | 'empty') => css`
+  display: flex;
+  align-items: center;
+  gap: ${spacing.sm};
+  padding: ${spacing.sm};
+  border-radius: 12px;
+  background: ${variant === 'failed' ? palette.dangerTint : palette.gray50};
+  color: ${variant === 'failed' ? palette.danger : palette.textSecondary};
+  font-size: 14px;
+`;
 
 const statusToneMap: Record<ContentItem['status'], GcDashLabelTone> = {
   draft: 'warning',
@@ -619,6 +665,37 @@ export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClos
     return video.metrics;
   }, [video]);
 
+  const transcriptionStatusInfo = useMemo(() => {
+    if (!video) {
+      return {
+        raw: undefined as string | undefined,
+        normalized: undefined as string | undefined,
+        isProcessing: false,
+        isFailed: false,
+        isCompleted: false,
+        hasTranscript: false,
+      };
+    }
+
+    const candidates: Array<unknown> = [
+      (video as any).transcriptionStatus,
+      video.metadata?.transcriptionStatus,
+      (video.metadata as any)?.transcription_status,
+      video.metadata?.contentMetadata?.transcriptionStatus,
+      video.metadata?.processing?.transcriptionStatus,
+      video.metadata?.metadata?.transcriptionStatus,
+    ];
+
+    const raw = candidates.find((value) => typeof value === 'string' && value.length > 0) as string | undefined;
+    const normalized = raw ? raw.toLowerCase() : undefined;
+    const isProcessing = normalized === 'processing' || normalized === 'pending';
+    const isFailed = normalized === 'failed';
+    const hasTranscript = typeof video.transcript === 'string' && video.transcript.trim().length > 0;
+    const isCompleted = normalized === 'completed' || (hasTranscript && !isProcessing && !isFailed);
+
+    return { raw, normalized, isProcessing, isFailed, isCompleted, hasTranscript };
+  }, [video]);
+
   const actions = useMemo(() => {
     const defaults: VideoOverlayAction[] = [
       {
@@ -653,6 +730,37 @@ export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClos
 
   const overviewTabContent = useMemo<GcDashTabItem[]>(() => {
     if (!video) return [];
+
+    if (transcriptionStatusInfo.isProcessing) {
+      return [
+        {
+          id: 'analysis-pending',
+          label: 'Analysis',
+          content: (
+            <div css={analysisPlaceholderStyles}>
+              <GcDashLoadingSpinner size={18} />
+              <span>We're generating insights once transcription finishes.</span>
+            </div>
+          ),
+        },
+      ];
+    }
+
+    if (transcriptionStatusInfo.isFailed) {
+      return [
+        {
+          id: 'analysis-error',
+          label: 'Analysis',
+          content: (
+            <div css={analysisPlaceholderStyles} style={{ color: palette.danger, background: palette.dangerTint }}>
+              <AlertTriangle size={18} strokeWidth={1.6} />
+              <span>Analysis will be available after a successful transcription.</span>
+            </div>
+          ),
+        },
+      ];
+    }
+
     const { analysis } = video;
 
     const hookCopyText = [
@@ -816,7 +924,7 @@ export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClos
         ),
       },
     ];
-  }, [copyScriptSection, video]);
+  }, [copyScriptSection, transcriptionStatusInfo, video]);
 
   if (!open || !video) {
     return null;
@@ -824,7 +932,45 @@ export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClos
 
   const titleId = `video-overlay-title-${video.id}`;
   const descriptionPreview = video.description ?? 'No description provided yet.';
-  const transcriptText = video.transcript ?? 'Transcript will appear here once processing completes.';
+  const { isProcessing, isFailed, isCompleted, hasTranscript } = transcriptionStatusInfo;
+  const transcriptText = hasTranscript
+    ? String(video.transcript)
+    : isProcessing
+    ? "We're transcribing this video. Check back shortly."
+    : isFailed
+    ? "Transcription failed. Try re-running transcription from the collections panel."
+    : "Transcript will appear here once processing completes.";
+
+  const transcriptionStatusIndicator = (() => {
+    if (isProcessing) {
+      return (
+        <div css={transcriptionStatusStyles('processing')}>
+          <span css={transcriptionStatusIconStyles}><GcDashLoadingSpinner size={16} /></span>
+          <span>Transcription in progress…</span>
+        </div>
+      );
+    }
+
+    if (isFailed) {
+      return (
+        <div css={transcriptionStatusStyles('failed')}>
+          <span css={transcriptionStatusIconStyles}><AlertTriangle size={16} strokeWidth={1.6} /></span>
+          <span>Transcription failed. Retry from the collections menu.</span>
+        </div>
+      );
+    }
+
+    if (hasTranscript || isCompleted) {
+      return (
+        <div css={transcriptionStatusStyles('success')}>
+          <span css={transcriptionStatusIconStyles}><CheckCircle size={16} strokeWidth={1.6} /></span>
+          <span>Transcription ready</span>
+        </div>
+      );
+    }
+
+    return null;
+  })();
 
   const handleOverlayPointerDown: React.MouseEventHandler<HTMLDivElement> = (event) => {
     if (event.button !== 0) return;
@@ -938,6 +1084,9 @@ export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClos
                   ))}
                 </div>
               </div>
+              {transcriptionStatusIndicator ? (
+                <div css={css`margin-top: 8px;`}>{transcriptionStatusIndicator}</div>
+              ) : null}
               <div css={controlsStackStyles} />
             </header>
             <div css={bodyStyles}>
@@ -1111,38 +1260,60 @@ export const VideoInsightsOverlay: React.FC<VideoOverlayProps> = ({ open, onClos
                   <span css={css`font-size: 16px; font-weight: 500; color: ${palette.textPrimary};`}>
                     Transcript
                   </span>
-                  <GcDashButton
-                    variant="link"
-                    size="small"
-                    onClick={() => setTranscriptExpanded((prev) => !prev)}
+                  {hasTranscript ? (
+                    <GcDashButton
+                      variant="link"
+                      size="small"
+                      onClick={() => setTranscriptExpanded((prev) => !prev)}
+                      css={css`
+                        color: ${palette.zoomBlue};
+                        padding: 0;
+                        min-height: auto;
+                        box-shadow: none;
+                        &:hover {
+                          text-decoration: underline;
+                        }
+                      `}
+                    >
+                      {transcriptExpanded ? 'Show less' : 'Show full transcript'}
+                    </GcDashButton>
+                  ) : null}
+                </div>
+                {isProcessing && (
+                  <div css={transcriptMessageStyles('processing')}>
+                    <GcDashLoadingSpinner size={16} />
+                    <span>We're transcribing this video. Check back shortly.</span>
+                  </div>
+                )}
+                {isFailed && (
+                  <div css={transcriptMessageStyles('failed')}>
+                    <AlertTriangle size={16} strokeWidth={1.6} />
+                    <span>Transcription failed. Retry from the collections menu.</span>
+                  </div>
+                )}
+                {!hasTranscript && !isProcessing && !isFailed && (
+                  <div css={transcriptMessageStyles('empty')}>
+                    <Clock size={16} strokeWidth={1.6} />
+                    <span>Transcript will appear here once processing completes.</span>
+                  </div>
+                )}
+                {hasTranscript && (
+                  <p
                     css={css`
-                      color: ${palette.zoomBlue};
-                      padding: 0;
-                      min-height: auto;
-                      box-shadow: none;
-                      &:hover {
-                        text-decoration: underline;
-                      }
+                      margin: 0;
+                      color: ${palette.textSecondary};
+                      font-size: 14px;
+                      line-height: 1.6;
+                      font-family: ${gcDashTypography.family};
+                      display: -webkit-box;
+                      -webkit-box-orient: vertical;
+                      overflow: hidden;
+                      ${transcriptExpanded ? 'white-space: normal;' : '-webkit-line-clamp: 6;'}
                     `}
                   >
-                    {transcriptExpanded ? 'Show less' : 'Show full transcript'}
-                  </GcDashButton>
-                </div>
-                <p
-                  css={css`
-                    margin: 0;
-                    color: ${palette.textSecondary};
-                    font-size: 14px;
-                    line-height: 1.6;
-                    font-family: ${gcDashTypography.family};
-                    display: -webkit-box;
-                    -webkit-box-orient: vertical;
-                    overflow: hidden;
-                    ${transcriptExpanded ? 'white-space: normal;' : '-webkit-line-clamp: 6;'}
-                  `}
-                >
-                  {transcriptText}
-                </p>
+                    {transcriptText}
+                  </p>
+                )}
               </div>
 
               <div css={sectionStyles}>

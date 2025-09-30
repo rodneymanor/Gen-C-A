@@ -25,7 +25,7 @@ export interface AddVideoToCollectionRequest {
      * @type {string}
      * @memberof AddVideoToCollectionRequest
      */
-    userId: string;
+    userId?: string;
     /**
      * 
      * @type {string}
@@ -44,7 +44,6 @@ export interface AddVideoToCollectionRequest {
  * Check if a given object implements the AddVideoToCollectionRequest interface.
  */
 export function instanceOfAddVideoToCollectionRequest(value: object): value is AddVideoToCollectionRequest {
-    if (!('userId' in value) || value['userId'] === undefined) return false;
     if (!('collectionId' in value) || value['collectionId'] === undefined) return false;
     if (!('videoData' in value) || value['videoData'] === undefined) return false;
     return true;
@@ -61,7 +60,7 @@ export function AddVideoToCollectionRequestFromJSONTyped(json: any, ignoreDiscri
     return {
         
             ...json,
-        'userId': json['userId'],
+        'userId': json['userId'] ?? undefined,
         'collectionId': json['collectionId'],
         'videoData': json['videoData'],
     };
@@ -79,7 +78,7 @@ export function AddVideoToCollectionRequestToJSONTyped(value?: AddVideoToCollect
     return {
         
             ...value,
-        'userId': value['userId'],
+        ...(value['userId'] !== undefined && { 'userId': value['userId'] }),
         'collectionId': value['collectionId'],
         'videoData': value['videoData'],
     };
