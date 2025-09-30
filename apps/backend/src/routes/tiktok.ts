@@ -1,10 +1,21 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 
-import {
-  getTikTokFeedService,
-  TikTokFeedServiceError,
-} from '../../../../src/services/video/tiktok-feed-service.js';
+import { loadSharedModule } from '../services/shared-service-proxy.js';
+
+type TikTokServiceError = Error & { statusCode: number; debug?: unknown };
+
+const tiktokModule = loadSharedModule<any>(
+  '../../../../src/services/video/tiktok-feed-service.js',
+);
+const getTikTokFeedService = tiktokModule?.getTikTokFeedService as (() => any) | undefined;
+const TikTokFeedServiceError = tiktokModule?.TikTokFeedServiceError as
+  | (new (message?: string, statusCode?: number, debug?: unknown) => TikTokServiceError)
+  | undefined;
+
+const isTikTokServiceError = (
+  error: unknown,
+): error is TikTokServiceError => typeof TikTokFeedServiceError === 'function' && error instanceof TikTokFeedServiceError;
 
 function extractTikTokParams(req: Request) {
   if (req.method.toUpperCase() === 'GET') {
@@ -33,7 +44,7 @@ function normaliseCount(raw: unknown) {
 }
 
 function handleTikTokError(res: Response, error: unknown) {
-  if (error instanceof TikTokFeedServiceError) {
+  if (isTikTokServiceError(error)) {
     res.status(error.statusCode).json({
       success: false,
       error: error.message,
@@ -57,6 +68,9 @@ async function handleTikTokUserFeed(req: Request, res: Response) {
   }
 
   try {
+    if (!getTikTokFeedService) {
+      throw new Error('TikTok feed service unavailable');
+    }
     const service = getTikTokFeedService();
     const result = await service.fetchUserFeed({
       username: Array.isArray(username) ? username[0] : String(username),

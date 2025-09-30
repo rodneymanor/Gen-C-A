@@ -3,10 +3,6 @@ import { Router } from 'express';
 import path from 'path';
 
 import {
-  getCollectionsAdminService,
-  CollectionsServiceError,
-} from '../../../../../src/services/collections/collections-admin-service.js';
-import {
   DATA_DIR,
   TEST_MODE_API_KEY,
   ensureDb,
@@ -15,10 +11,33 @@ import {
   writeArray,
   getApiKeyFromRequest,
 } from './utils.js';
-import {
-  ChromeExtensionCollectionsServiceError,
-  getChromeExtensionCollectionsService,
-} from '../../../../../src/services/chrome-extension/chrome-extension-collections-service.js';
+import { loadSharedModule } from '../../services/shared-service-proxy.js';
+
+type CollectionsError = Error & { statusCode: number };
+
+const collectionsModule = loadSharedModule<any>(
+  '../../../../../src/services/collections/collections-admin-service.js',
+);
+const CollectionsServiceError = collectionsModule?.CollectionsServiceError as
+  | (new (message?: string, statusCode?: number) => CollectionsError)
+  | undefined;
+const getCollectionsAdminService = collectionsModule?.getCollectionsAdminService as
+  | ((db: ReturnType<typeof ensureDb>) => any)
+  | undefined;
+
+const extensionCollectionsModule = loadSharedModule<any>(
+  '../../../../../src/services/chrome-extension/chrome-extension-collections-service.js',
+);
+const ChromeExtensionCollectionsServiceError = extensionCollectionsModule?.ChromeExtensionCollectionsServiceError as
+  | (new (message?: string, statusCode?: number) => CollectionsError)
+  | undefined;
+const getChromeExtensionCollectionsService = extensionCollectionsModule?.getChromeExtensionCollectionsService as
+  | ((options: { firestore: ReturnType<typeof ensureDb>; dataDir: string }) => any)
+  | undefined;
+
+const isCollectionsError = (error: unknown): error is CollectionsError =>
+  (typeof CollectionsServiceError === 'function' && error instanceof CollectionsServiceError) ||
+  (typeof ChromeExtensionCollectionsServiceError === 'function' && error instanceof ChromeExtensionCollectionsServiceError);
 
 function guessPlatformFromUrl(url: string) {
   try {
@@ -30,9 +49,8 @@ function guessPlatformFromUrl(url: string) {
 }
 
 function sendCollectionsError(res: Response, error: unknown, fallback: string) {
-  if (error instanceof CollectionsServiceError || error instanceof ChromeExtensionCollectionsServiceError) {
-    const statusCode = (error as CollectionsServiceError | ChromeExtensionCollectionsServiceError).statusCode;
-    res.status(statusCode).json({ success: false, error: error.message });
+  if (isCollectionsError(error)) {
+    res.status(error.statusCode).json({ success: false, error: error.message });
     return;
   }
   const message = error instanceof Error ? error.message : String(error);
@@ -132,6 +150,9 @@ collectionsRouter.get('/', async (req: Request, res: Response) => {
       return;
     }
 
+    if (!getCollectionsAdminService) {
+      throw new Error('Collections service unavailable');
+    }
     const service = getCollectionsAdminService(db);
     const result = await service.listCollections(user.uid);
     res.json({ success: true, ...result });
@@ -231,6 +252,9 @@ collectionsRouter.post('/', async (req: Request, res: Response) => {
       return;
     }
 
+    if (!getCollectionsAdminService) {
+      throw new Error('Collections service unavailable');
+    }
     const service = getCollectionsAdminService(db);
     const result = await service.createCollection(user.uid, { title, description });
     res.status(201).json({ success: true, message: 'Collection created successfully', collection: result });
@@ -262,6 +286,9 @@ collectionsRouter.post('/add-video', async (req: Request, res: Response) => {
       hasDb: Boolean(db),
     });
 
+    if (!getChromeExtensionCollectionsService) {
+      throw new Error('Chrome extension collections service unavailable');
+    }
     const service = getChromeExtensionCollectionsService({ firestore: db, dataDir: DATA_DIR });
     const normalizedUrl = String(videoUrl).trim();
     const normalizedTitle = String(collectionTitle).trim();

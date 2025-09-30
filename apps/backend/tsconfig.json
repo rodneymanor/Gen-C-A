@@ -14,5 +14,11 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true
   },
-  "include": ["src", "../../src/types/**/*.d.ts"]
+  "include": [
+    "src",
+    "../../src/**/*.ts",
+    "../../src/**/*.tsx",
+    "../../src/**/*.js",
+    "../../src/types/**/*.d.ts"
+  ]
 }

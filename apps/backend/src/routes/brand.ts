@@ -2,8 +2,12 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 
-import { GeminiService } from '../../../../src/lib/gemini.ts';
 import { getDb, verifyBearer } from '../lib/firebase-admin.js';
+import { loadSharedModule } from '../services/shared-service-proxy.js';
+
+const { GeminiService } = loadSharedModule<any>(
+  '../../../../src/lib/gemini.ts',
+);
 
 const SYSTEM_PROMPT = `You are an expert brand and content strategist. Your task is to analyze a user's business profile and generate a foundational brand strategy profile in a valid JSON format. This profile will include core keywords and a set of personalized content pillar themes.
 

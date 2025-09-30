@@ -5,11 +5,11 @@ import { getDb, verifyBearer } from '../lib/firebase-admin.js';
 import {
   getScriptsService,
   ScriptsServiceError,
-} from '../../../../src/services/scripts/scripts-service.js';
+} from '../services/scripts-service-bridge.js';
 import {
   getYouTubeIdeaSeedsService,
   YouTubeIdeaSeedsServiceError,
-} from '../../../../src/services/scripts/youtube-idea-seeds-service.js';
+} from '../services/youtube-idea-seeds-service-bridge.js';
 
 interface AuthResult {
   uid: string;

@@ -1,10 +1,19 @@
 import { Router } from 'express';
 
-import { TRACKED_CREATORS } from '../../../../src/services/viral-content/config.ts';
-import { ViralContentRepository } from '../../../../src/services/viral-content/repository.ts';
-import type { ViralPlatform } from '../../../../src/services/viral-content/types.ts';
-import { getAdminDb } from '../../../../src/lib/firebase-admin.ts';
-import { ViralContentSyncService } from '../../../../src/services/viral-content/sync-service.ts';
+import { getDb } from '../lib/firebase-admin.js';
+import { loadSharedModule } from '../services/shared-service-proxy.js';
+
+const { TRACKED_CREATORS } = loadSharedModule<any>(
+  '../../../../src/services/viral-content/config.ts',
+);
+const { ViralContentRepository } = loadSharedModule<any>(
+  '../../../../src/services/viral-content/repository.ts',
+);
+const { ViralContentSyncService } = loadSharedModule<any>(
+  '../../../../src/services/viral-content/sync-service.ts',
+);
+
+type ViralPlatform = 'youtube' | 'instagram' | 'tiktok' | 'all';
 
 const router = Router();
 
@@ -66,7 +75,7 @@ router.get('/feed', async (req, res) => {
   const pageSize = Math.min(60, Math.max(10, Number.parseInt(String(req.query.pageSize ?? '24'), 10) || 24));
   const searchQuery = typeof req.query.search === 'string' ? req.query.search.trim() : '';
 
-  const db = getAdminDb();
+  const db = getDb();
   if (!db) {
     return res.status(500).json({ success: false, error: 'Firestore not configured' });
   }

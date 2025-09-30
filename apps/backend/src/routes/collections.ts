@@ -3,12 +3,26 @@ import { Router } from 'express';
 
 import { getDb } from '../lib/firebase-admin.js';
 import { verifyBearer } from '../lib/firebase-admin.js';
-import {
-  CollectionsServiceError,
-  getCollectionsAdminService,
-} from '../../../../src/services/collections/collections-admin-service.js';
-import { getVideoScraperService } from '../../../../src/services/video/video-scraper-service.js';
-import { queueTranscriptionTask } from '../../../../src/services/transcription-runner.ts';
+import { loadSharedModule } from '../services/shared-service-proxy.js';
+
+type CollectionsServiceErrorInstance = Error & { statusCode: number };
+
+const collectionsModule = loadSharedModule<any>(
+  '../../../../src/services/collections/collections-admin-service.js',
+);
+const CollectionsServiceError = collectionsModule?.CollectionsServiceError as
+  | (new (message?: string, statusCode?: number) => CollectionsServiceErrorInstance)
+  | undefined;
+const getCollectionsAdminService = collectionsModule?.getCollectionsAdminService as
+  | ((db: ReturnType<typeof getDb>) => any)
+  | undefined;
+
+const getVideoScraperService = loadSharedModule<any>(
+  '../../../../src/services/video/video-scraper-service.js',
+)?.getVideoScraperService as (() => any) | undefined;
+const queueTranscriptionTask = loadSharedModule<any>(
+  '../../../../src/services/transcription-runner.ts',
+)?.queueTranscriptionTask as ((...args: any[]) => Promise<unknown>) | undefined;
 
 async function extractUserId(req: Request, res: Response): Promise<string | null> {
   // Prefer Firebase Bearer token
@@ -49,6 +63,9 @@ function getCollectionsService(res: Response) {
   }
 
   try {
+    if (!getCollectionsAdminService) {
+      throw new Error('Collections service is not available');
+    }
     return getCollectionsAdminService(db);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -63,13 +80,17 @@ function nowIso(): string {
 }
 
 function handleCollectionsError(res: Response, error: unknown, fallback: string) {
-  if (error instanceof CollectionsServiceError) {
+  const isCollectionsError =
+    typeof CollectionsServiceError === 'function' && error instanceof CollectionsServiceError;
+
+  if (isCollectionsError && error && typeof error === 'object') {
+    const typedError = error as CollectionsServiceErrorInstance;
     console.warn('[backend][collections] service error:', error.message);
-    const payload: Record<string, unknown> = { success: false, error: error.message };
+    const payload: Record<string, unknown> = { success: false, error: typedError.message };
     if ((process.env.NODE_ENV || 'development') !== 'production') {
-      payload.debug = { name: error.name, statusCode: error.statusCode };
+      payload.debug = { name: typedError.name, statusCode: typedError.statusCode };
     }
-    res.status(error.statusCode).json(payload);
+    res.status(typedError.statusCode).json(payload);
     return;
   }
 
@@ -336,8 +357,11 @@ async function addVideoToCollection(req: Request, res: Response) {
     let transcriptionQueued = false;
 
     try {
-      const scraper = getVideoScraperService();
-      const scrapeResult = await scraper.scrapeUrl((videoData as any).originalUrl);
+      const scraperFactory = typeof getVideoScraperService === 'function' ? getVideoScraperService : null;
+      const scraper = scraperFactory ? scraperFactory() : null;
+      const scrapeResult = scraper && typeof scraper.scrapeUrl === 'function'
+        ? await scraper.scrapeUrl((videoData as any).originalUrl)
+        : null;
 
       if (scrapeResult?.success) {
         const db = getDb();
@@ -403,16 +427,18 @@ async function addVideoToCollection(req: Request, res: Response) {
           await db.collection('videos').doc(String(result.videoId)).update(updates);
         }
 
-        queueTranscriptionTask({
-          videoId: String(result.videoId),
-          sourceUrl:
-            scrapeResult.downloadUrl ??
-            scrapeResult.videoUrl ??
-            enrichedVideo.url ??
-            (videoData as any).originalUrl,
-          platform: scrapeResult.platform ?? (videoData as any).platform ?? enrichedVideo.platform ?? 'other',
-        });
-        transcriptionQueued = true;
+        if (queueTranscriptionTask) {
+          await queueTranscriptionTask({
+            videoId: String(result.videoId),
+            sourceUrl:
+              scrapeResult.downloadUrl ??
+              scrapeResult.videoUrl ??
+              enrichedVideo.url ??
+              (videoData as any).originalUrl,
+            platform: scrapeResult.platform ?? (videoData as any).platform ?? enrichedVideo.platform ?? 'other',
+          });
+          transcriptionQueued = true;
+        }
 
         enrichedVideo = {
           ...enrichedVideo,
@@ -486,8 +512,8 @@ async function addVideoToCollection(req: Request, res: Response) {
         (videoData as any).originalUrl,
       ].find(isDownloadableUrl);
 
-      if (fallbackSourceUrl) {
-        queueTranscriptionTask({
+      if (fallbackSourceUrl && queueTranscriptionTask) {
+        await queueTranscriptionTask({
           videoId: String(result.videoId),
           sourceUrl: fallbackSourceUrl,
           platform: (videoData as any).platform ?? enrichedVideo.platform ?? 'other',

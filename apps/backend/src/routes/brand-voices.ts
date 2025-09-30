@@ -2,10 +2,22 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 
 import { getDb } from '../lib/firebase-admin.js';
-import {
-  BrandVoicesServiceError,
-  getBrandVoicesService,
-} from '../../../../src/services/brand-voices/brand-voices-service.js';
+import { loadSharedModule } from '../services/shared-service-proxy.js';
+
+type BrandVoicesError = Error & { statusCode: number };
+
+const brandVoicesModule = loadSharedModule<any>(
+  '../../../../src/services/brand-voices/brand-voices-service.js',
+);
+const BrandVoicesServiceError = brandVoicesModule?.BrandVoicesServiceError as
+  | (new (message?: string, statusCode?: number) => BrandVoicesError)
+  | undefined;
+const getBrandVoicesService = brandVoicesModule?.getBrandVoicesService as
+  | ((db: ReturnType<typeof getDb>) => any)
+  | undefined;
+
+const isBrandVoicesError = (error: unknown): error is BrandVoicesError =>
+  typeof BrandVoicesServiceError === 'function' && error instanceof BrandVoicesServiceError;
 
 export const brandVoicesRouter = Router();
 
@@ -17,6 +29,9 @@ function resolveService(res: Response) {
   }
 
   try {
+    if (!getBrandVoicesService) {
+      throw new Error('Brand voices service unavailable');
+    }
     return getBrandVoicesService(db);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -27,7 +42,7 @@ function resolveService(res: Response) {
 }
 
 function sendServiceError(res: Response, error: unknown, fallback: string) {
-  if (error instanceof BrandVoicesServiceError) {
+  if (isBrandVoicesError(error)) {
     res.status(error.statusCode).json({ success: false, error: error.message });
     return;
   }

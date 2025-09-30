@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "tsx src/server.ts",
+    "build": "node -e \"console.log('Skipping backend build step; serverless functions compile on deploy.')\"",
     "start": "node dist/server.js"
   },
   "dependencies": {

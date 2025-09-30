@@ -1,25 +1,55 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 
-import {
-  getVideoScraperService,
-  VideoScraperServiceError,
-} from '../../../../src/services/video/video-scraper-service.js';
-import {
-  getVideoTranscriptionService,
-  VideoTranscriptionServiceError,
-} from '../../../../src/services/video/video-transcription-service.js';
-import {
-  getVideoOrchestratorService,
-  VideoOrchestratorServiceError,
-} from '../../../../src/services/video/video-orchestrator-service.js';
-import {
-  getYouTubeTranscriptService,
-  YouTubeTranscriptServiceError,
-} from '../../../../src/services/video/youtube-transcript-service.js';
+import { loadSharedModule } from '../services/shared-service-proxy.js';
+
+type ServiceError = Error & { statusCode: number; debug?: unknown };
+
+const videoScraperModule = loadSharedModule<any>(
+  '../../../../src/services/video/video-scraper-service.js',
+);
+const getVideoScraperService = videoScraperModule?.getVideoScraperService as (() => any) | undefined;
+const VideoScraperServiceError = videoScraperModule?.VideoScraperServiceError as
+  | (new (message?: string, statusCode?: number, debug?: unknown) => ServiceError)
+  | undefined;
+
+const videoTranscriptionModule = loadSharedModule<any>(
+  '../../../../src/services/video/video-transcription-service.js',
+);
+const getVideoTranscriptionService = videoTranscriptionModule?.getVideoTranscriptionService as
+  | (() => any)
+  | undefined;
+const VideoTranscriptionServiceError = videoTranscriptionModule?.VideoTranscriptionServiceError as
+  | (new (message?: string, statusCode?: number, debug?: unknown) => ServiceError)
+  | undefined;
+
+const videoOrchestratorModule = loadSharedModule<any>(
+  '../../../../src/services/video/video-orchestrator-service.js',
+);
+const getVideoOrchestratorService = videoOrchestratorModule?.getVideoOrchestratorService as
+  | (() => any)
+  | undefined;
+const VideoOrchestratorServiceError = videoOrchestratorModule?.VideoOrchestratorServiceError as
+  | (new (message?: string, statusCode?: number, debug?: unknown) => ServiceError)
+  | undefined;
+
+const youtubeTranscriptModule = loadSharedModule<any>(
+  '../../../../src/services/video/youtube-transcript-service.js',
+);
+const getYouTubeTranscriptService = youtubeTranscriptModule?.getYouTubeTranscriptService as
+  | (() => any)
+  | undefined;
+const YouTubeTranscriptServiceError = youtubeTranscriptModule?.YouTubeTranscriptServiceError as
+  | (new (message?: string, statusCode?: number, debug?: unknown) => ServiceError)
+  | undefined;
+
+function isServiceError(error: unknown, ctor: typeof VideoScraperServiceError): error is ServiceError;
+function isServiceError(error: unknown, ctor: any): error is ServiceError {
+  return typeof ctor === 'function' && error instanceof ctor;
+}
 
 function handleScrapeError(res: Response, error: unknown) {
-  if (error instanceof VideoScraperServiceError) {
+  if (isServiceError(error, VideoScraperServiceError)) {
     res.status(error.statusCode).json({
       success: false,
       error: error.message,
@@ -34,7 +64,7 @@ function handleScrapeError(res: Response, error: unknown) {
 }
 
 function handleTranscriptionError(res: Response, error: unknown) {
-  if (error instanceof VideoTranscriptionServiceError) {
+  if (isServiceError(error, VideoTranscriptionServiceError)) {
     res.status(error.statusCode).json({
       success: false,
       error: error.message,
@@ -49,7 +79,7 @@ function handleTranscriptionError(res: Response, error: unknown) {
 }
 
 function handleOrchestratorError(res: Response, error: unknown) {
-  if (error instanceof VideoOrchestratorServiceError) {
+  if (isServiceError(error, VideoOrchestratorServiceError)) {
     res.status(error.statusCode).json({
       success: false,
       error: error.message,
@@ -64,7 +94,7 @@ function handleOrchestratorError(res: Response, error: unknown) {
 }
 
 function handleYouTubeTranscriptError(res: Response, error: unknown) {
-  if (error instanceof YouTubeTranscriptServiceError) {
+  if (isServiceError(error, YouTubeTranscriptServiceError)) {
     res.status(error.statusCode).json({
       success: false,
       error: error.message,
@@ -89,6 +119,9 @@ videoRouter.post('/scrape-url', async (req: Request, res: Response) => {
   }
 
   try {
+    if (!getVideoScraperService) {
+      throw new Error('Video scraper service unavailable');
+    }
     const service = getVideoScraperService();
     const result = await service.scrapeUrl(body.url, body.options || {});
     res.json({ success: true, result });
@@ -99,6 +132,9 @@ videoRouter.post('/scrape-url', async (req: Request, res: Response) => {
 
 videoRouter.post('/transcribe-from-url', async (req: Request, res: Response) => {
   try {
+    if (!getVideoTranscriptionService) {
+      throw new Error('Video transcription service unavailable');
+    }
     const service = getVideoTranscriptionService();
     const result = await service.transcribeFromUrl((req.body ?? {}) as Record<string, unknown>);
     res.json(result);
@@ -109,6 +145,9 @@ videoRouter.post('/transcribe-from-url', async (req: Request, res: Response) => 
 
 videoRouter.post('/orchestrate', async (req: Request, res: Response) => {
   try {
+    if (!getVideoOrchestratorService) {
+      throw new Error('Video orchestrator service unavailable');
+    }
     const service = getVideoOrchestratorService();
     const result = await service.orchestrateWorkflow((req.body ?? {}) as Record<string, unknown>);
     res.json(result);
@@ -120,6 +159,9 @@ videoRouter.post('/orchestrate', async (req: Request, res: Response) => {
 videoRouter.get('/youtube-transcript', async (req: Request, res: Response) => {
   try {
     const { url, lang } = req.query as { url?: string; lang?: string };
+    if (!getYouTubeTranscriptService) {
+      throw new Error('YouTube transcript service unavailable');
+    }
     const service = getYouTubeTranscriptService();
     const transcript = await service.fetchTranscript({ url, lang });
     res.status(200).json({ success: true, transcript });
@@ -131,6 +173,9 @@ videoRouter.get('/youtube-transcript', async (req: Request, res: Response) => {
 videoRouter.post('/youtube-transcript', async (req: Request, res: Response) => {
   try {
     const body = (req.body ?? {}) as { url?: string; lang?: string };
+    if (!getYouTubeTranscriptService) {
+      throw new Error('YouTube transcript service unavailable');
+    }
     const service = getYouTubeTranscriptService();
     const transcript = await service.fetchTranscript({ url: body.url, lang: body.lang });
     res.status(200).json({ success: true, transcript });

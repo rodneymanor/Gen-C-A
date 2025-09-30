@@ -4,14 +4,20 @@ import path from 'path';
 import fs from 'fs';
 
 import { getDb, verifyBearer, getCollectionRefByPath } from '../lib/firebase-admin.js';
-import {
+import { loadSharedModule } from '../services/shared-service-proxy.js';
+
+const {
   getChromeExtensionNotesService,
   ChromeExtensionNotesServiceError,
-} from '../../../../src/services/chrome-extension/chrome-extension-notes-service.js';
-import {
+} = loadSharedModule<any>(
+  '../../../../src/services/chrome-extension/chrome-extension-notes-service.js',
+);
+const {
   getCollectionsAdminService,
   CollectionsServiceError,
-} from '../../../../src/services/collections/collections-admin-service.js';
+} = loadSharedModule<any>(
+  '../../../../src/services/collections/collections-admin-service.js',
+);
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const TEST_MODE_API_KEY = 'test-internal-secret-123';

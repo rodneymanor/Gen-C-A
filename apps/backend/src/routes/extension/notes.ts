@@ -1,21 +1,36 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 
-import {
-  getChromeExtensionNotesService,
-  ChromeExtensionNotesServiceError,
-} from '../../../../../src/services/chrome-extension/chrome-extension-notes-service.js';
+import { loadSharedModule } from '../../services/shared-service-proxy.js';
+
+type ChromeNotesError = Error & { statusCode: number };
+
+const notesModule = loadSharedModule<any>(
+  '../../../../../src/services/chrome-extension/chrome-extension-notes-service.js',
+);
+const ChromeExtensionNotesServiceError = notesModule?.ChromeExtensionNotesServiceError as
+  | (new (message?: string, statusCode?: number) => ChromeNotesError)
+  | undefined;
+const getChromeExtensionNotesService = notesModule?.getChromeExtensionNotesService as
+  | ((options: { firestore: ReturnType<typeof ensureDb> }) => any)
+  | undefined;
+
+const isChromeNotesError = (error: unknown): error is ChromeNotesError =>
+  typeof ChromeExtensionNotesServiceError === 'function' && error instanceof ChromeExtensionNotesServiceError;
 import {
   ensureDb,
   resolveUser,
 } from './utils.js';
 
 function createNotesService(db: ReturnType<typeof ensureDb>) {
+  if (!getChromeExtensionNotesService) {
+    throw new Error('Chrome extension notes service unavailable');
+  }
   return getChromeExtensionNotesService({ firestore: db });
 }
 
 function sendNotesError(res: Response, error: unknown, fallback: string) {
-  if (error instanceof ChromeExtensionNotesServiceError) {
+  if (isChromeNotesError(error)) {
     res.status(error.statusCode).json({ success: false, error: error.message });
     return;
   }

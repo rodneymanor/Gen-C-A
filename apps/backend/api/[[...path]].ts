@@ -4,7 +4,7 @@ import { createApp } from '../src/app';
 const app = createApp();
 
 export const config = {
-  runtime: 'nodejs20.x',
+  runtime: 'nodejs',
   regions: ['iad1'],
   includeFiles: [
     'openapi/openapi.yaml',

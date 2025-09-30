@@ -8,15 +8,27 @@ import {
   ensureDb,
   resolveUser,
 } from './utils.js';
-import {
-  ChromeExtensionInboxServiceError,
-  getChromeExtensionInboxService,
-} from '../../../../../src/services/chrome-extension/chrome-extension-inbox-service.js';
+import { loadSharedModule } from '../../services/shared-service-proxy.js';
+
+type ChromeInboxError = Error & { statusCode: number };
+
+const inboxModule = loadSharedModule<any>(
+  '../../../../../src/services/chrome-extension/chrome-extension-inbox-service.js',
+);
+const ChromeExtensionInboxServiceError = inboxModule?.ChromeExtensionInboxServiceError as
+  | (new (message?: string, statusCode?: number) => ChromeInboxError)
+  | undefined;
+const getChromeExtensionInboxService = inboxModule?.getChromeExtensionInboxService as
+  | ((options: { firestore: ReturnType<typeof ensureDb>; dataDir: string }) => any)
+  | undefined;
+
+const isChromeInboxError = (error: unknown): error is ChromeInboxError =>
+  typeof ChromeExtensionInboxServiceError === 'function' && error instanceof ChromeExtensionInboxServiceError;
 
 export const inboxRouter = Router();
 
 function sendInboxError(res: Response, error: unknown, fallback: string) {
-  if (error instanceof ChromeExtensionInboxServiceError) {
+  if (isChromeInboxError(error)) {
     res.status(error.statusCode).json({ success: false, error: error.message });
     return;
   }
@@ -34,6 +46,9 @@ inboxRouter.post('/content-inbox', async (req: Request, res: Response) => {
     }
 
     const db = ensureDb();
+    if (!getChromeExtensionInboxService) {
+      throw new Error('Chrome extension inbox service unavailable');
+    }
     const service = getChromeExtensionInboxService({ firestore: db, dataDir: DATA_DIR });
     const result = await service.addContentItem(String(user.uid), req.body || {});
     res.status(201).json(result);
@@ -51,6 +66,9 @@ inboxRouter.post('/idea-inbox/text', async (req: Request, res: Response) => {
     }
 
     const db = ensureDb();
+    if (!getChromeExtensionInboxService) {
+      throw new Error('Chrome extension inbox service unavailable');
+    }
     const service = getChromeExtensionInboxService({ firestore: db, dataDir: DATA_DIR });
     const result = await service.addIdeaText({
       userId: String(user.uid),
@@ -72,6 +90,9 @@ inboxRouter.post('/idea-inbox/video', async (req: Request, res: Response) => {
     }
 
     const db = ensureDb();
+    if (!getChromeExtensionInboxService) {
+      throw new Error('Chrome extension inbox service unavailable');
+    }
     const service = getChromeExtensionInboxService({ firestore: db, dataDir: DATA_DIR });
     const result = await service.addIdeaVideo({
       userId: String(user.uid),

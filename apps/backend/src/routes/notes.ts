@@ -2,10 +2,7 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 
 import { getDb, verifyBearer } from '../lib/firebase-admin.js';
-import {
-  getNotesService,
-  NotesServiceError,
-} from '../../../../src/services/notes/notes-service.js';
+import { getNotesService, NotesServiceError } from '../services/notes-service-bridge.js';
 
 interface AuthResult {
   uid: string;

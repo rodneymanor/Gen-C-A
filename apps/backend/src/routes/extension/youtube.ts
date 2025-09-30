@@ -6,15 +6,27 @@ import {
   ensureDb,
   resolveUser,
 } from './utils.js';
-import {
-  ChromeExtensionYouTubeServiceError,
-  getChromeExtensionYouTubeService,
-} from '../../../../../src/services/chrome-extension/chrome-extension-youtube-service.js';
+import { loadSharedModule } from '../../services/shared-service-proxy.js';
+
+type ChromeYouTubeError = Error & { statusCode: number };
+
+const youtubeModule = loadSharedModule<any>(
+  '../../../../../src/services/chrome-extension/chrome-extension-youtube-service.js',
+);
+const ChromeExtensionYouTubeServiceError = youtubeModule?.ChromeExtensionYouTubeServiceError as
+  | (new (message?: string, statusCode?: number) => ChromeYouTubeError)
+  | undefined;
+const getChromeExtensionYouTubeService = youtubeModule?.getChromeExtensionYouTubeService as
+  | ((options: { firestore: ReturnType<typeof ensureDb>; dataDir: string }) => any)
+  | undefined;
+
+const isChromeYouTubeError = (error: unknown): error is ChromeYouTubeError =>
+  typeof ChromeExtensionYouTubeServiceError === 'function' && error instanceof ChromeExtensionYouTubeServiceError;
 
 export const youtubeRouter = Router();
 
 function sendYouTubeError(res: Response, error: unknown, fallback: string) {
-  if (error instanceof ChromeExtensionYouTubeServiceError) {
+  if (isChromeYouTubeError(error)) {
     res.status(error.statusCode).json({ success: false, error: error.message });
     return;
   }
@@ -32,6 +44,9 @@ youtubeRouter.post('/', async (req: Request, res: Response) => {
     }
 
     const db = ensureDb();
+    if (!getChromeExtensionYouTubeService) {
+      throw new Error('Chrome extension YouTube service unavailable');
+    }
     const service = getChromeExtensionYouTubeService({ firestore: db, dataDir: DATA_DIR });
     const result = await service.getTranscript({
       userId: String(user.uid),

@@ -1,14 +1,24 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 
-import {
-  getInstagramService,
-  InstagramServiceError,
-} from '../../../../src/services/video/instagram-service.js';
+import { loadSharedModule } from '../services/shared-service-proxy.js';
+
+type InstagramServiceErrorInstance = Error & { statusCode: number; debug?: unknown };
+
+const instagramModule = loadSharedModule<any>(
+  '../../../../src/services/video/instagram-service.js',
+);
+const getInstagramService = instagramModule?.getInstagramService as (() => any) | undefined;
+const InstagramServiceError = instagramModule?.InstagramServiceError as
+  | (new (message?: string, statusCode?: number, debug?: unknown) => InstagramServiceErrorInstance)
+  | undefined;
+
+const isInstagramError = (error: unknown): error is InstagramServiceErrorInstance =>
+  typeof InstagramServiceError === 'function' && error instanceof InstagramServiceError;
 import { registerAllMethods } from './utils/register-all-methods';
 
 function handleInstagramError(res: Response, error: unknown, fallback: string) {
-  if (error instanceof InstagramServiceError) {
+  if (isInstagramError(error)) {
     res.status(error.statusCode).json({
       success: false,
       error: error.message,
@@ -107,6 +117,9 @@ async function resolveUserId(req: Request, res: Response) {
     }
 
     const username = Array.isArray(rawUsername) ? rawUsername[0] : rawUsername;
+    if (!getInstagramService) {
+      throw new Error('Instagram service unavailable');
+    }
     const service = getInstagramService();
     const result = await service.getUserId(username);
     res.json(result);
@@ -118,6 +131,9 @@ async function resolveUserId(req: Request, res: Response) {
 async function fetchUserReels(req: Request, res: Response) {
   try {
     const payload = extractReelsPayload(req);
+    if (!getInstagramService) {
+      throw new Error('Instagram service unavailable');
+    }
     const service = getInstagramService();
     const result = await service.getUserReels(payload);
     res.json(result);
